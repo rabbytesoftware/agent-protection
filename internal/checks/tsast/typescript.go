@@ -1,4 +1,4 @@
-package checks
+package tsast
 
 import (
 	"encoding/json"
@@ -50,6 +50,14 @@ func TSESLint(root string) []report.Finding {
 		}
 	}
 	return findings
+}
+
+func RelPath(root, path string) string {
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return path
+	}
+	return rel
 }
 
 func bunBinary() string {

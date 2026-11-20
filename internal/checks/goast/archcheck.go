@@ -1,4 +1,4 @@
-package checks
+package goast
 
 import (
 	"fmt"
@@ -30,6 +30,18 @@ var supportPackageNames = map[string]bool{
 
 func isSharedSupportPackage(dir string) bool {
 	return supportPackageNames[filepath.Base(dir)]
+}
+
+var wiringFileHints = []string{"container.go", "wire.go", "main.go", "new.go"}
+
+func isWiringFile(path string) bool {
+	base := filepath.Base(path)
+	for _, hint := range wiringFileHints {
+		if base == hint || strings.HasSuffix(base, "_"+hint) || strings.Contains(base, "container") {
+			return true
+		}
+	}
+	return false
 }
 
 // SiblingImports flags R16: a package importing a sibling package under the

@@ -1,4 +1,4 @@
-package checks
+package rustast
 
 import (
 	"fmt"
@@ -18,6 +18,21 @@ var rustLintToRule = map[string]string{
 	"unwrap": "RUST-PANIC-RISK",
 	"expect": "RUST-PANIC-RISK",
 	"panic":  "RUST-PANIC-RISK",
+}
+
+func splitLines(s string) []string {
+	var lines []string
+	start := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\n' {
+			lines = append(lines, s[start:i])
+			start = i + 1
+		}
+	}
+	if start < len(s) {
+		lines = append(lines, s[start:])
+	}
+	return lines
 }
 
 func classifyRustMessage(msg string) (string, bool) {

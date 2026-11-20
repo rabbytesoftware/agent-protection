@@ -1,4 +1,4 @@
-package checks
+package tsast
 
 import (
 	"encoding/json"
@@ -84,7 +84,11 @@ func TSManifest(root string) ([]report.Finding, error) {
 	if err := os.WriteFile(cfgPath, []byte(apESLintConfig), 0o644); err != nil {
 		return nil, fmt.Errorf("write ts manifest config: %w", err)
 	}
-	defer os.Remove(cfgPath)
+	defer func() {
+		if rmErr := os.Remove(cfgPath); rmErr != nil {
+			fmt.Fprintf(os.Stderr, "cleanup generated config: %v\n", rmErr)
+		}
+	}()
 
 	cmd := exec.Command(bunBinary(), "x", "eslint", ".", "--config", cfgPath, "--format=json")
 	cmd.Dir = root

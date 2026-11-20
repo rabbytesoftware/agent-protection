@@ -1,7 +1,10 @@
-package checks
+package goast
 
 import (
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,7 +13,9 @@ import (
 )
 
 // TestPairing flags R42: every non-test .go file must have a matching
-// _test.go file beside it.
+// _test.go file beside it. Declaration-only files (pure interfaces/consts,
+// no function bodies -- nothing to assert behaviorally) are exempt, per the
+// ruling this project settled on early: there's no behavior to test.
 func TestPairing(root string) ([]report.Finding, error) {
 	var findings []report.Finding
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
@@ -26,6 +31,9 @@ func TestPairing(root string) ([]report.Finding, error) {
 		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
+		if isDeclarationOnly(path) {
+			return nil
+		}
 		testPath := strings.TrimSuffix(path, ".go") + "_test.go"
 		if _, statErr := os.Stat(testPath); statErr != nil {
 			findings = append(findings, report.Finding{
@@ -37,6 +45,22 @@ func TestPairing(root string) ([]report.Finding, error) {
 		return nil
 	})
 	return findings, err
+}
+
+// isDeclarationOnly reports whether a Go file has zero function
+// declarations -- i.e. it's pure types/interfaces/consts with no behavior.
+func isDeclarationOnly(path string) bool {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, path, nil, 0)
+	if err != nil {
+		return false // unparsable -- don't exempt, let other checks surface it
+	}
+	for _, decl := range f.Decls {
+		if _, ok := decl.(*ast.FuncDecl); ok {
+			return false
+		}
+	}
+	return true
 }
 
 // MaxFilesPerDir flags R46: a directory (excluding root) holds more than 8

@@ -1,4 +1,4 @@
-package checks
+package goast
 
 import (
 	"fmt"
@@ -76,7 +76,11 @@ func GolangciLint(root, buildTags string) ([]report.Finding, error) {
 	if err := os.WriteFile(cfgPath, []byte(lintConfig), 0o644); err != nil {
 		return nil, fmt.Errorf("write lint config: %w", err)
 	}
-	defer os.Remove(cfgPath)
+	defer func() {
+		if rmErr := os.Remove(cfgPath); rmErr != nil {
+			fmt.Fprintf(os.Stderr, "cleanup generated config: %v\n", rmErr)
+		}
+	}()
 
 	runArgs := []string{"run", "-c", cfgPath, "--max-issues-per-linter=0", "--max-same-issues=0", "--tests=false", "./..."}
 	if buildTags != "" {

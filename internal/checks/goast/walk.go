@@ -1,4 +1,4 @@
-package checks
+package goast
 
 import (
 	"go/ast"

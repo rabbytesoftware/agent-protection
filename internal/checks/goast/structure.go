@@ -1,8 +1,9 @@
-package checks
+package goast
 
 import (
 	"fmt"
 	"go/ast"
+	"os"
 	"strings"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
@@ -219,12 +220,20 @@ func CtxFirstParam(root string, files []ParsedFile) []report.Finding {
 func FileLineLimit(root string, files []ParsedFile) []report.Finding {
 	var findings []report.Finding
 	for _, pf := range files {
-		lastLine := pf.FSet.Position(pf.AST.End()).Line
-		if lastLine > 600 {
+		// Count raw source lines, not pf.AST.End()'s position -- AST end is
+		// the last DECLARATION's position, so a file ending in trailing
+		// comments with no following declaration under-counts its real
+		// length. Caught by a real test with a comment-only trailing body.
+		b, err := os.ReadFile(pf.Path)
+		if err != nil {
+			continue
+		}
+		lineCount := strings.Count(string(b), "\n") + 1
+		if lineCount > 600 {
 			findings = append(findings, report.Finding{
 				Rule:     "R44",
 				Location: RelPath(root, pf.Path),
-				Snippet:  fmt.Sprintf("%d lines (max 600)", lastLine),
+				Snippet:  fmt.Sprintf("%d lines (max 600)", lineCount),
 			})
 		}
 	}

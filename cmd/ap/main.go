@@ -5,7 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rabbytesoftware/agent-protection/internal/checks"
+	"github.com/rabbytesoftware/agent-protection/internal/checks/goast"
+	"github.com/rabbytesoftware/agent-protection/internal/checks/rustast"
+	"github.com/rabbytesoftware/agent-protection/internal/checks/tsast"
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 )
 
@@ -28,10 +30,10 @@ func main() {
 	case "go":
 		all, err = checkGo(root)
 	case "rust":
-		all = checks.RustClippy(root)
+		all = rustast.RustClippy(root)
 	case "typescript":
-		all = checks.TSESLint(root)
-		manifestFindings, merr := checks.TSManifest(root)
+		all = tsast.TSESLint(root)
+		manifestFindings, merr := tsast.TSManifest(root)
 		if merr != nil {
 			fmt.Fprintf(os.Stderr, "ts manifest: %v\n", merr)
 		} else {
@@ -79,40 +81,40 @@ func exists(path string) bool {
 }
 
 func checkGo(root string) ([]report.Finding, error) {
-	files, err := checks.WalkGoFiles(root)
+	files, err := goast.WalkGoFiles(root)
 	if err != nil {
 		return nil, fmt.Errorf("walk: %w", err)
 	}
 
 	var all []report.Finding
-	all = append(all, checks.BoolParam(root, files)...)
-	all = append(all, checks.CQSMismatch(root, files)...)
-	all = append(all, checks.HiddenSideEffect(root, files)...)
-	all = append(all, checks.PackageHygiene(root, files)...)
-	all = append(all, checks.NoStutter(root, files)...)
-	all = append(all, checks.OneTypePerFile(root, files)...)
-	all = append(all, checks.NoElse(root, files)...)
-	all = append(all, checks.NakedReturn(root, files)...)
-	all = append(all, checks.CtxFirstParam(root, files)...)
-	all = append(all, checks.FileLineLimit(root, files)...)
-	all = append(all, checks.NoInfraInUnitTests(root, files)...)
+	all = append(all, goast.BoolParam(root, files)...)
+	all = append(all, goast.CQSMismatch(root, files)...)
+	all = append(all, goast.HiddenSideEffect(root, files)...)
+	all = append(all, goast.PackageHygiene(root, files)...)
+	all = append(all, goast.NoStutter(root, files)...)
+	all = append(all, goast.OneTypePerFile(root, files)...)
+	all = append(all, goast.NoElse(root, files)...)
+	all = append(all, goast.NakedReturn(root, files)...)
+	all = append(all, goast.CtxFirstParam(root, files)...)
+	all = append(all, goast.FileLineLimit(root, files)...)
+	all = append(all, goast.NoInfraInUnitTests(root, files)...)
 
-	if f, ferr := checks.TestPairing(root); ferr == nil {
+	if f, ferr := goast.TestPairing(root); ferr == nil {
 		all = append(all, f...)
 	} else {
 		fmt.Fprintf(os.Stderr, "test-pairing check: %v\n", ferr)
 	}
-	if f, ferr := checks.MaxFilesPerDir(root); ferr == nil {
+	if f, ferr := goast.MaxFilesPerDir(root); ferr == nil {
 		all = append(all, f...)
 	} else {
 		fmt.Fprintf(os.Stderr, "max-files-per-dir check: %v\n", ferr)
 	}
-	if f, ferr := checks.SiblingImports(root, files); ferr == nil {
+	if f, ferr := goast.SiblingImports(root, files); ferr == nil {
 		all = append(all, f...)
 	} else {
 		fmt.Fprintf(os.Stderr, "arch check: %v\n", ferr)
 	}
-	if f, ferr := checks.GolangciLint(root, os.Getenv("AP_GO_BUILD_TAGS")); ferr == nil {
+	if f, ferr := goast.GolangciLint(root, os.Getenv("AP_GO_BUILD_TAGS")); ferr == nil {
 		all = append(all, f...)
 	} else {
 		fmt.Fprintf(os.Stderr, "golangci-lint: %v\n", ferr)
