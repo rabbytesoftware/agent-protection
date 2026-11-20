@@ -201,3 +201,10 @@ TS-PROXY-MAGIC-NUMBER:
     enforcement: lint
     rationale: Unnamed literals hide intent and make the meaning of a threshold invisible at the call site.
     fix_strategy: Hoist the literal into a named const with a descriptive identifier.
+R47:
+    id: R47
+    level: L1
+    text: A file importing 2+ sibling internal/ packages is a de facto composition root and must be named like one (container.go, wire.go, or <package-name>.go)
+    enforcement: arch
+    rationale: Wiring code that coordinates multiple siblings is architecturally significant -- it's the one place allowed to break the sibling-import rule. If it hides in an arbitrarily-named file instead of the conventional composition-root location, nobody reviewing the package structure can find it, and the exemption becomes indistinguishable from an unreviewed layering violation.
+    fix_strategy: Rename the file to container.go, wire.go, or the name of its own package, or move the wiring code into such a file.

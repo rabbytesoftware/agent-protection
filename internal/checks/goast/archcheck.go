@@ -39,14 +39,19 @@ func wiringFileHints() []string {
 	return []string{"container.go", "wire.go", "main.go", "new.go"}
 }
 
-func isWiringFile(path string) bool {
+// isWiringFile reports whether path is a conventionally-named composition
+// root: container.go/wire.go/main.go/new.go, OR the file named after its
+// own package (e.g. config.go inside package config) -- the other half of
+// rule 10's "the package's main free function lives in the file named after
+// the package" convention.
+func isWiringFile(path, packageName string) bool {
 	base := filepath.Base(path)
 	for _, hint := range wiringFileHints() {
 		if base == hint || strings.HasSuffix(base, "_"+hint) || strings.Contains(base, "container") {
 			return true
 		}
 	}
-	return false
+	return base == packageName+".go"
 }
 
 // SiblingImports flags R16: a package importing a sibling package under the
@@ -63,24 +68,46 @@ func SiblingImports(root string, files []ParsedFile) ([]report.Finding, error) {
 	return findings, nil
 }
 
-// siblingImportsInFile checks a single parsed file for R16 violations.
-// Composition roots and files outside internal/ are skipped entirely --
-// same allowlist concept as R37's (removed) DI-wiring check.
+// wiringThreshold is the number of distinct sibling packages a file must
+// import before it's treated as a de facto composition root (R47) rather
+// than an ordinary sibling-import violation (R16) per import.
+const wiringThreshold = 2
+
+// siblingImportsInFile checks a single parsed file for R16/R47 violations.
+// Conventionally-named composition roots are skipped entirely -- same
+// allowlist concept as R37's (removed) DI-wiring check. A file that is NOT
+// conventionally named but imports enough siblings to be acting as one
+// anyway is flagged once as R47 instead of once per import as R16: the
+// problem isn't N separate layering violations, it's one unlabeled
+// composition root.
 func siblingImportsInFile(root, modPath string, pf ParsedFile) []report.Finding {
-	if isWiringFile(pf.Path) {
+	if isWiringFile(pf.Path, pf.AST.Name.Name) {
 		return nil
 	}
 	importerDir := filepath.Dir(pf.Path)
 	if !isInsideInternalTree(importerDir) {
 		return nil
 	}
-	var findings []report.Finding
+	var sibFindings []report.Finding
 	for _, imp := range pf.AST.Imports {
 		if finding, ok := siblingImportFinding(root, modPath, importerDir, pf, imp); ok {
-			findings = append(findings, finding)
+			sibFindings = append(sibFindings, finding)
 		}
 	}
-	return findings
+	if len(sibFindings) >= wiringThreshold {
+		return []report.Finding{unconventionalWiringFinding(root, pf, sibFindings)}
+	}
+	return sibFindings
+}
+
+// unconventionalWiringFinding reports R47 for a file that imports enough
+// siblings to be acting as a composition root, but isn't named like one.
+func unconventionalWiringFinding(root string, pf ParsedFile, sibFindings []report.Finding) report.Finding {
+	return report.Finding{
+		Rule:     "R47",
+		Location: RelPath(root, pf.Path),
+		Snippet:  fmt.Sprintf("imports %d sibling packages (acts as a composition root) but isn't named container.go/wire.go/<package>.go", len(sibFindings)),
+	}
 }
 
 // isInsideInternalTree reports whether dir sits under an internal/ parent,

@@ -29,8 +29,8 @@ func TestSiblingImports(t *testing.T) {
 		{
 			name: "sibling business packages importing each other is flagged",
 			files: map[string]string{
-				"internal/a/a.go": "package a\nimport \"example.com/m/internal/b\"\nvar _ = b.X\n",
-				"internal/b/b.go": "package b\nfunc X() {}\n",
+				"internal/a/service.go": "package a\nimport \"example.com/m/internal/b\"\nvar _ = b.X\n",
+				"internal/b/handler.go": "package b\nfunc X() {}\n",
 			},
 			want: 1,
 		},
@@ -68,5 +68,78 @@ func TestSiblingImports(t *testing.T) {
 				t.Errorf("SiblingImports() = %d findings, want %d: %v", len(got), tc.want, got)
 			}
 		})
+	}
+}
+
+func TestSiblingImports_UnconventionallyNamedWiringFileIsFlaggedAsR47(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "example.com/m", map[string]string{
+		// Named "service.go", NOT container.go/wire.go/<pkg>.go -- but it
+		// wires 2 siblings together, so it's acting as a composition root.
+		"internal/app/service.go": "package app\nimport (\n\t\"example.com/m/internal/engine\"\n\t\"example.com/m/internal/adapter\"\n)\nvar _ = engine.X\nvar _ = adapter.Y\n",
+		"internal/engine/e.go":    "package engine\nfunc X() {}\n",
+		"internal/adapter/a.go":   "package adapter\nfunc Y() {}\n",
+	})
+	files, err := WalkGoFiles(dir)
+	if err != nil {
+		t.Fatalf("WalkGoFiles: %v", err)
+	}
+	got, err := SiblingImports(dir, files)
+	if err != nil {
+		t.Fatalf("SiblingImports: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected exactly 1 consolidated R47 finding, got %d: %v", len(got), got)
+	}
+	if got[0].Rule != "R47" {
+		t.Errorf("expected rule R47, got %q", got[0].Rule)
+	}
+}
+
+func TestSiblingImports_SingleSiblingImportIsStillOrdinaryR16(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "example.com/m", map[string]string{
+		// Imports only ONE sibling -- not acting as a composition root,
+		// just an ordinary layering violation. Still R16, not R47. Named
+		// "service.go"/"handler.go" (not after their own package) so this
+		// doesn't accidentally hit the "file named after its own package"
+		// composition-root exemption either.
+		"internal/a/service.go": "package a\nimport \"example.com/m/internal/b\"\nvar _ = b.X\n",
+		"internal/b/handler.go": "package b\nfunc X() {}\n",
+	})
+	files, err := WalkGoFiles(dir)
+	if err != nil {
+		t.Fatalf("WalkGoFiles: %v", err)
+	}
+	got, err := SiblingImports(dir, files)
+	if err != nil {
+		t.Fatalf("SiblingImports: %v", err)
+	}
+	if len(got) != 1 || got[0].Rule != "R16" {
+		t.Errorf("expected exactly 1 R16 finding, got %v", got)
+	}
+}
+
+func TestSiblingImports_FileNamedAfterOwnPackageIsExempt(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "example.com/m", map[string]string{
+		// "config.go" inside package config -- named after its own package,
+		// the other half of rule 10's "main free function lives in the
+		// file named after the package" convention. Must be exempt, same
+		// as container.go/wire.go.
+		"internal/config/config.go": "package config\nimport (\n\t\"example.com/m/internal/engine\"\n\t\"example.com/m/internal/adapter\"\n)\nvar _ = engine.X\nvar _ = adapter.Y\n",
+		"internal/engine/e.go":      "package engine\nfunc X() {}\n",
+		"internal/adapter/a.go":     "package adapter\nfunc Y() {}\n",
+	})
+	files, err := WalkGoFiles(dir)
+	if err != nil {
+		t.Fatalf("WalkGoFiles: %v", err)
+	}
+	got, err := SiblingImports(dir, files)
+	if err != nil {
+		t.Fatalf("SiblingImports: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected no findings for config.go in package config, got %v", got)
 	}
 }
