@@ -1,4 +1,4 @@
-package adapter
+package pipeline
 
 import "github.com/rabbytesoftware/agent-protection/internal/report"
 

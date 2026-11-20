@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rabbytesoftware/agent-protection/internal/checks"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/checks"
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 )
 

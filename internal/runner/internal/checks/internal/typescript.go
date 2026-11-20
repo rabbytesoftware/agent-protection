@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rabbytesoftware/agent-protection/internal/checks/tsast"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/checks/internal/tsast"
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 )
 

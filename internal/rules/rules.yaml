@@ -229,3 +229,17 @@ R49:
     enforcement: arch
     rationale: The container file is the package's entire public contract. Any additional loose file in the same directory is unreviewable implementation detail hiding in plain sight next to the interface -- it belongs in the package's own internal/ subtree (rule 15), the same way a repository package keeps only its own <name>.go exposed and pushes everything else into a nested internal/.
     fix_strategy: Move the extra file(s) into a nested internal/ subdirectory of the composition root's own package, and have the container file call into it.
+R19:
+    id: R19
+    level: L1
+    text: Nest internal/ at the lowest module that needs it -- a package imported by exactly one other internal package must live nested under that importer's own internal/ subtree, not exposed at a shallower level
+    enforcement: arch
+    rationale: A package sitting above its sole consumer's internal/ boundary is importable by anything else in the module even though nothing else uses it -- the encapsulation only exists by accident, not by Go's own visibility enforcement, and the first stray import from elsewhere quietly turns an implementation detail into a load-bearing dependency.
+    fix_strategy: Move the package under its sole importer's own internal/ subtree (e.g. importer/internal/<package>), so Go's internal/ visibility rule actually restricts it to that one consumer.
+R50:
+    id: R50
+    level: L0
+    text: A directory literally named internal may contain loose .go files only if they are declaration-only -- any file with real behavior must live in its own named subdirectory
+    enforcement: arch
+    rationale: internal/ is the visibility-boundary marker, not a package identity -- if real implementation hides directly inside it, there is no name describing what that code does, and nothing stops a second, third, unrelated concern from being dropped in beside it as loose peers. Every behaviorful piece of code needs an actual name (a subdirectory), even when it is currently the only thing there.
+    fix_strategy: Move the file into its own subdirectory named after what it does (e.g. internal/golangci.go becomes internal/golangci/golangci.go), even if it is the only file there today.

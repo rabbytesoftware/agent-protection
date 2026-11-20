@@ -1,7 +1,7 @@
 package pipeline
 
 import (
-	"github.com/rabbytesoftware/agent-protection/internal/checks/rustast"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/checks/internal/rustast"
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 )
 

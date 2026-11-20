@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rabbytesoftware/agent-protection/internal/checks/goast"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/checks/internal/goast"
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 )
 
@@ -69,6 +69,18 @@ func goFileLevelFindings(root string, files []goast.ParsedFile) []report.Finding
 		fmt.Fprintf(os.Stderr, "composition-root check: %v\n", containerErr)
 	}
 	all = append(all, containerFindings...)
+
+	exposureFindings, exposureErr := goast.SingleConsumerExposure(root, files)
+	if exposureErr != nil {
+		fmt.Fprintf(os.Stderr, "single-consumer exposure check: %v\n", exposureErr)
+	}
+	all = append(all, exposureFindings...)
+
+	looseFindings, looseErr := goast.LooseInternalFile(root)
+	if looseErr != nil {
+		fmt.Fprintf(os.Stderr, "loose-internal-file check: %v\n", looseErr)
+	}
+	all = append(all, looseFindings...)
 
 	lintFindings, lintErr := goast.GolangciLint(root, os.Getenv(buildTagsEnvVar))
 	if lintErr != nil {

@@ -233,3 +233,55 @@ func exportedStructFinding(root, containerPath string, fset *token.FileSet, ts *
 		Snippet:  fmt.Sprintf("composition root exports struct %s -- expose an interface instead", ts.Name.Name),
 	}, true
 }
+
+// LooseInternalFile flags R50: a directory literally named "internal" may
+// contain loose .go files only if they're declaration-only (shared
+// interfaces, data types) -- any file with real behavior sitting directly
+// inside it must move into its own named subdirectory. internal/ is a
+// visibility marker, not a package identity; real implementation needs an
+// actual name describing what it does.
+func LooseInternalFile(root string) ([]report.Finding, error) {
+	var findings []report.Finding
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, werr error) error {
+		if werr != nil {
+			return werr
+		}
+		if !d.IsDir() {
+			return nil
+		}
+		if d.Name() == "vendor" || d.Name() == ".git" {
+			return filepath.SkipDir
+		}
+		if d.Name() != "internal" {
+			return nil
+		}
+		findings = append(findings, looseBehaviorFileFindings(root, path)...)
+		return nil
+	})
+	return findings, err
+}
+
+// looseBehaviorFileFindings reports R50 for every non-declaration-only
+// .go file directly inside internalDir.
+func looseBehaviorFileFindings(root, internalDir string) []report.Finding {
+	entries, rerr := os.ReadDir(internalDir)
+	if rerr != nil {
+		return nil
+	}
+	var findings []report.Finding
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") || strings.HasSuffix(e.Name(), "_test.go") {
+			continue
+		}
+		filePath := filepath.Join(internalDir, e.Name())
+		if isDeclarationOnly(filePath) {
+			continue
+		}
+		findings = append(findings, report.Finding{
+			Rule:     "R50",
+			Location: RelPath(root, filePath),
+			Snippet:  "behaviorful file loose directly inside an internal/ directory -- move it into its own named subdirectory",
+		})
+	}
+	return findings
+}

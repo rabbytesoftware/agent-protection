@@ -153,3 +153,71 @@ func TestCompositionRoot_OnlyContainerFilePresentIsClean(t *testing.T) {
 		t.Errorf("expected no R49 findings when the container's own test file is the only other file present, got %v", got)
 	}
 }
+
+func TestLooseInternalFile_BehaviorfulFileLooseInInternalIsFlagged(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "example.com/m", map[string]string{
+		// golangci.go sitting directly in lint/internal/ -- the exact
+		// mistake found this session: a single file, no sibling-package
+		// pressure (R48 wouldn't trigger), yet still loose in internal/.
+		"internal/lint/internal/golangci.go": "package lint\nfunc Run() {}\n",
+	})
+	got, err := LooseInternalFile(dir)
+	if err != nil {
+		t.Fatalf("LooseInternalFile: %v", err)
+	}
+	if len(got) != 1 || got[0].Rule != "R50" {
+		t.Fatalf("expected exactly 1 R50 finding, got %v", got)
+	}
+}
+
+func TestLooseInternalFile_MultipleBehaviorfulFilesAreEachFlagged(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "example.com/m", map[string]string{
+		// func.go, go.go, rust.go, typescript.go all loose in checks/internal/
+		// -- the exact mistake found this session.
+		"internal/checks/internal/func.go":       "package pipeline\nfunc Adapt() {}\n",
+		"internal/checks/internal/go.go":          "package pipeline\nfunc CheckGo() {}\n",
+		"internal/checks/internal/rust.go":        "package pipeline\nfunc CheckRust() {}\n",
+		"internal/checks/internal/typescript.go":  "package pipeline\nfunc CheckTypeScript() {}\n",
+	})
+	got, err := LooseInternalFile(dir)
+	if err != nil {
+		t.Fatalf("LooseInternalFile: %v", err)
+	}
+	if len(got) != 4 {
+		t.Fatalf("expected 4 R50 findings (one per loose file), got %d: %v", len(got), got)
+	}
+}
+
+func TestLooseInternalFile_DeclarationOnlyFileIsExempt(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "example.com/m", map[string]string{
+		// component.go -- a pure shared interface, exactly the case that
+		// must stay allowed loose in internal/.
+		"internal/golang/internal/component.go": "package component\ntype Analyzer interface {\n\tRun(root string) error\n}\n",
+	})
+	got, err := LooseInternalFile(dir)
+	if err != nil {
+		t.Fatalf("LooseInternalFile: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected no findings for a declaration-only file, got %v", got)
+	}
+}
+
+func TestLooseInternalFile_ProperlyNestedFileIsClean(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "example.com/m", map[string]string{
+		// golangci.go now in its own subdirectory under internal/ -- the
+		// corrected structure.
+		"internal/lint/internal/golangci/golangci.go": "package golangci\nfunc Run() {}\n",
+	})
+	got, err := LooseInternalFile(dir)
+	if err != nil {
+		t.Fatalf("LooseInternalFile: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected no findings once the file is nested in its own subdirectory, got %v", got)
+	}
+}
