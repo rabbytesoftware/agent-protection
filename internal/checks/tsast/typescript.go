@@ -10,18 +10,6 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 )
 
-type eslintMessage struct {
-	RuleID   string `json:"ruleId"`
-	Line     int    `json:"line"`
-	Message  string `json:"message"`
-	Severity int    `json:"severity"`
-}
-
-type eslintFileResult struct {
-	FilePath string          `json:"filePath"`
-	Messages []eslintMessage `json:"messages"`
-}
-
 // TSESLint runs eslint directly in root (root IS the package.json/eslint
 // config directory -- one ap process, one language, one component folder).
 // Surfaces every reported issue tagged by its real rule id

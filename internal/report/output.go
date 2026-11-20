@@ -8,21 +8,9 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/rules"
 )
 
-type Finding struct {
-	Rule     string `json:"rule"`
-	Location string `json:"location"`
-	Snippet  string `json:"snippet"`
-}
-
-type RuleDoc struct {
-	Text        string `json:"text"`
-	Rationale   string `json:"rationale"`
-	FixStrategy string `json:"fix_strategy"`
-}
-
 type Output struct {
 	RuleDocs map[string]RuleDoc `json:"rule_docs"`
-	Findings []Finding           `json:"findings"`
+	Findings []Finding          `json:"findings"`
 }
 
 func Build(findings []Finding) Output {
@@ -31,7 +19,7 @@ func Build(findings []Finding) Output {
 		if _, ok := docs[f.Rule]; ok {
 			continue
 		}
-		r, known := rules.Registry[f.Rule]
+		r, known := rules.Registry()[f.Rule]
 		if !known {
 			continue
 		}

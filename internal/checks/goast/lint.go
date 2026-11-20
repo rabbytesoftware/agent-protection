@@ -10,7 +10,10 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 )
 
-var lintConfig = `version: "2"
+const generatedConfigFileMode = 0o644
+
+
+const lintConfig = `version: "2"
 linters:
   default: none
   exclusions:
@@ -49,18 +52,20 @@ linters:
       threshold: 150
 `
 
-var linterToRule = map[string]string{
-	"gocyclo":          "PROXY-COMPLEXITY",
-	"gocognit":         "PROXY-COMPLEXITY",
-	"funlen":           "PROXY-COMPLEXITY",
-	"nestif":           "PROXY-COMPLEXITY",
-	"mnd":              "PROXY-MAGIC-NUMBER",
-	"dupl":             "PROXY-DUPLICATION",
-	"gochecknoglobals": "PROXY-GLOBAL-STATE",
-	"gochecknoinits":   "R24",
-	"errcheck":         "R26",
-	"nakedret":         "R04",
-	"interfacebloat":   "R28",
+func linterToRule() map[string]string {
+	return map[string]string{
+		"gocyclo":          "PROXY-COMPLEXITY",
+		"gocognit":         "PROXY-COMPLEXITY",
+		"funlen":           "PROXY-COMPLEXITY",
+		"nestif":           "PROXY-COMPLEXITY",
+		"mnd":              "PROXY-MAGIC-NUMBER",
+		"dupl":             "PROXY-DUPLICATION",
+		"gochecknoglobals": "PROXY-GLOBAL-STATE",
+		"gochecknoinits":   "R24",
+		"errcheck":         "R26",
+		"nakedret":         "R04",
+		"interfacebloat":   "R28",
+	}
 }
 
 var lintLineRE = regexp.MustCompile(`^(.+?\.go):(\d+):(\d+): (.+) \(([a-zA-Z0-9_-]+)\)\s*$`)
@@ -73,7 +78,7 @@ var lintLineRE = regexp.MustCompile(`^(.+?\.go):(\d+):(\d+): (.+) \(([a-zA-Z0-9_
 // environment variable), not via anything baked into this tool.
 func GolangciLint(root, buildTags string) ([]report.Finding, error) {
 	cfgPath := filepath.Join(root, ".ap-lint-config.generated.yml")
-	if err := os.WriteFile(cfgPath, []byte(lintConfig), 0o644); err != nil {
+	if err := os.WriteFile(cfgPath, []byte(lintConfig), generatedConfigFileMode); err != nil {
 		return nil, fmt.Errorf("write lint config: %w", err)
 	}
 	defer func() {
@@ -104,7 +109,7 @@ func GolangciLint(root, buildTags string) ([]report.Finding, error) {
 			continue
 		}
 		linter := m[5]
-		rule, known := linterToRule[linter]
+		rule, known := linterToRule()[linter]
 		if !known {
 			continue
 		}

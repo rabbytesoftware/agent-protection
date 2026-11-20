@@ -10,6 +10,9 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 )
 
+const generatedConfigFileMode = 0o644
+
+
 // apESLintConfig is Agent Protection's OWN TypeScript manifest, generated
 // and run instead of the target repo's own eslint config -- same principle
 // as GolangciLint's generated .yml for Go. Uses only ESLint core rules plus
@@ -49,39 +52,29 @@ export default [
 ];
 `
 
-type eslintMessage2 struct {
-	RuleID   string `json:"ruleId"`
-	Line     int    `json:"line"`
-	Message  string `json:"message"`
-	Severity int    `json:"severity"`
-}
-
-type eslintFileResult2 struct {
-	FilePath string           `json:"filePath"`
-	Messages []eslintMessage2 `json:"messages"`
-}
-
-var tsRuleIDToAP = map[string]string{
-	"complexity":             "TS-PROXY-COMPLEXITY",
-	"max-depth":              "TS-PROXY-COMPLEXITY",
-	"max-lines-per-function": "TS-PROXY-COMPLEXITY",
-	"max-params":             "TS-PROXY-COMPLEXITY",
-	"no-magic-numbers":       "TS-PROXY-MAGIC-NUMBER",
-	"no-else-return":         "TS-NO-ELSE",
-	"no-lonely-if":           "TS-NO-ELSE",
-	"no-console":             "TS-NO-DEBUG-OUTPUT",
-	"no-param-reassign":      "TS-NO-PARAM-REASSIGN",
-	"no-var":                 "TS-MODERN-SYNTAX",
-	"prefer-const":           "TS-MODERN-SYNTAX",
-	"eqeqeq":                 "TS-MODERN-SYNTAX",
-	"max-classes-per-file":   "TS-ONE-TYPE-PER-FILE",
+func tsRuleIDToAP() map[string]string {
+	return map[string]string{
+		"complexity":             "TS-PROXY-COMPLEXITY",
+		"max-depth":              "TS-PROXY-COMPLEXITY",
+		"max-lines-per-function": "TS-PROXY-COMPLEXITY",
+		"max-params":             "TS-PROXY-COMPLEXITY",
+		"no-magic-numbers":       "TS-PROXY-MAGIC-NUMBER",
+		"no-else-return":         "TS-NO-ELSE",
+		"no-lonely-if":           "TS-NO-ELSE",
+		"no-console":             "TS-NO-DEBUG-OUTPUT",
+		"no-param-reassign":      "TS-NO-PARAM-REASSIGN",
+		"no-var":                 "TS-MODERN-SYNTAX",
+		"prefer-const":           "TS-MODERN-SYNTAX",
+		"eqeqeq":                 "TS-MODERN-SYNTAX",
+		"max-classes-per-file":   "TS-ONE-TYPE-PER-FILE",
+	}
 }
 
 // TSManifest runs Agent Protection's own TypeScript rules (not the target
 // repo's config) directly in root.
 func TSManifest(root string) ([]report.Finding, error) {
 	cfgPath := filepath.Join(root, ".ap-eslint-config.generated.mjs")
-	if err := os.WriteFile(cfgPath, []byte(apESLintConfig), 0o644); err != nil {
+	if err := os.WriteFile(cfgPath, []byte(apESLintConfig), generatedConfigFileMode); err != nil {
 		return nil, fmt.Errorf("write ts manifest config: %w", err)
 	}
 	defer func() {
@@ -94,7 +87,7 @@ func TSManifest(root string) ([]report.Finding, error) {
 	cmd.Dir = root
 	out, _ := cmd.CombinedOutput()
 
-	var results []eslintFileResult2
+	var results []eslintFileResult
 	if jerr := json.Unmarshal(extractJSON(out), &results); jerr != nil {
 		return nil, fmt.Errorf("ap TS manifest run produced no parseable output -- eslint/parser likely missing: %s", string(out))
 	}
@@ -102,7 +95,7 @@ func TSManifest(root string) ([]report.Finding, error) {
 	var findings []report.Finding
 	for _, f := range results {
 		for _, m := range f.Messages {
-			rule, known := tsRuleIDToAP[m.RuleID]
+			rule, known := tsRuleIDToAP()[m.RuleID]
 			if !known {
 				continue
 			}

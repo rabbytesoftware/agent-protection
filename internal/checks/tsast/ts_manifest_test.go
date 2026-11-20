@@ -13,7 +13,7 @@ func TestTSRuleIDToAP_CoversEveryRuleEnabledInTheGeneratedConfig(t *testing.T) {
 		"no-param-reassign", "no-var", "prefer-const", "eqeqeq", "max-classes-per-file",
 	}
 	for _, rule := range enabledRules {
-		if _, ok := tsRuleIDToAP[rule]; !ok {
+		if _, ok := tsRuleIDToAP()[rule]; !ok {
 			t.Errorf("rule %q is enabled in apESLintConfig but has no entry in tsRuleIDToAP", rule)
 		}
 	}

@@ -14,10 +14,12 @@ import (
 
 var rustLineRE = regexp.MustCompile(`^(.+?\.rs):(\d+):(\d+): warning: (.+)$`)
 
-var rustLintToRule = map[string]string{
-	"unwrap": "RUST-PANIC-RISK",
-	"expect": "RUST-PANIC-RISK",
-	"panic":  "RUST-PANIC-RISK",
+func rustLintToRule() map[string]string {
+	return map[string]string{
+		"unwrap": "RUST-PANIC-RISK",
+		"expect": "RUST-PANIC-RISK",
+		"panic":  "RUST-PANIC-RISK",
+	}
 }
 
 func splitLines(s string) []string {
@@ -36,7 +38,7 @@ func splitLines(s string) []string {
 }
 
 func classifyRustMessage(msg string) (string, bool) {
-	for frag, rule := range rustLintToRule {
+	for frag, rule := range rustLintToRule() {
 		if strings.Contains(msg, "`"+frag+"(") || strings.Contains(msg, "`"+frag+"_err(") ||
 			strings.Contains(msg, frag+"` should not be present") {
 			return rule, true
@@ -105,30 +107,50 @@ func findInlineTestModuleRanges(path string) [][2]int {
 	lines := strings.Split(string(b), "\n")
 	var ranges [][2]int
 	for i := 0; i < len(lines); i++ {
-		if !strings.Contains(lines[i], "#[cfg(test)]") {
-			continue
+		if r, ok := testModuleRangeStartingAt(lines, i); ok {
+			ranges = append(ranges, r)
 		}
-		// find the `mod ... {` line, usually the next non-blank line
-		j := i + 1
-		for j < len(lines) && strings.TrimSpace(lines[j]) == "" {
-			j++
-		}
-		if j >= len(lines) || !strings.Contains(lines[j], "mod ") {
-			continue
-		}
-		depth := strings.Count(lines[j], "{") - strings.Count(lines[j], "}")
-		start := j + 1
-		end := len(lines)
-		for k := j + 1; k < len(lines) && depth > 0; k++ {
-			depth += strings.Count(lines[k], "{") - strings.Count(lines[k], "}")
-			if depth <= 0 {
-				end = k + 1
-				break
-			}
-		}
-		ranges = append(ranges, [2]int{start, end})
 	}
 	return ranges
+}
+
+// testModuleRangeStartingAt reports the [startLine, endLine] range of the
+// `#[cfg(test)] mod ... { ... }` block beginning at lines[i], if any.
+func testModuleRangeStartingAt(lines []string, i int) ([2]int, bool) {
+	if !strings.Contains(lines[i], "#[cfg(test)]") {
+		return [2]int{}, false
+	}
+	j := skipBlankLines(lines, i+1)
+	if j >= len(lines) || !strings.Contains(lines[j], "mod ") {
+		return [2]int{}, false
+	}
+	start := j + 1
+	end := findModuleCloseLine(lines, j)
+	return [2]int{start, end}, true
+}
+
+// skipBlankLines returns the index of the first non-blank line at or after
+// from.
+func skipBlankLines(lines []string, from int) int {
+	j := from
+	for j < len(lines) && strings.TrimSpace(lines[j]) == "" {
+		j++
+	}
+	return j
+}
+
+// findModuleCloseLine tracks brace depth from openLine's opening brace and
+// returns the 1-indexed line number where it closes (or the file's end if
+// unterminated).
+func findModuleCloseLine(lines []string, openLine int) int {
+	depth := strings.Count(lines[openLine], "{") - strings.Count(lines[openLine], "}")
+	for k := openLine + 1; k < len(lines) && depth > 0; k++ {
+		depth += strings.Count(lines[k], "{") - strings.Count(lines[k], "}")
+		if depth <= 0 {
+			return k + 1
+		}
+	}
+	return len(lines)
 }
 
 func inAnyRange(line int, ranges [][2]int) bool {
