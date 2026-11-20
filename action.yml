@@ -1,0 +1,46 @@
+name: 'Agent Protection'
+description: 'Run the Agent Protection coding-standards gate against this component folder'
+inputs:
+  version:
+    description: 'Pinned Agent Protection release tag (read from .ap.yaml if not set)'
+    required: false
+    default: ''
+  path:
+    description: 'Component folder to check (must contain exactly one of go.mod / Cargo.toml / package.json)'
+    required: false
+    default: '.'
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve pinned version
+      id: resolve
+      shell: bash
+      run: |
+        VERSION="${{ inputs.version }}"
+        if [ -z "$VERSION" ] && [ -f "${{ inputs.path }}/.ap.yaml" ]; then
+          VERSION=$(grep '^version:' "${{ inputs.path }}/.ap.yaml" | head -1 | awk '{print $2}')
+        fi
+        if [ -z "$VERSION" ]; then
+          echo "::error::No Agent Protection version resolved -- set 'version' input or add .ap.yaml with a 'version:' key"
+          exit 1
+        fi
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+    - name: Download pinned ap binary
+      shell: bash
+      run: |
+        OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        ARCH=$(uname -m)
+        VERSION="${{ steps.resolve.outputs.version }}"
+        URL="https://github.com/rabbytesoftware/agent-protection/releases/download/${VERSION}/ap_${OS}_${ARCH}.tar.gz"
+        curl -sSL "$URL" -o /tmp/ap.tar.gz
+        tar -xzf /tmp/ap.tar.gz -C /usr/local/bin ap
+        chmod +x /usr/local/bin/ap
+
+    - name: ap check
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: |
+        TAGS=""
+        [ -f ".ap.yaml" ] && TAGS=$(grep '^go_build_tags:' .ap.yaml | head -1 | awk '{print $2}')
+        AP_GO_BUILD_TAGS="$TAGS" ap check .

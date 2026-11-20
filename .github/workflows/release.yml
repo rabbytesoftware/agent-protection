@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine bump from PR branch prefix
+        id: bump
+        run: |
+          HEAD_REF="${{ github.event.pull_request.head.ref }}"
+          PREFIX="${HEAD_REF%%/*}"
+          case "$PREFIX" in
+            fix|hotfix) BUMP=patch ;;
+            enhancement|feature) BUMP=minor ;;
+            *) BUMP=patch ;;
+          esac
+          if gh pr view "${{ github.event.pull_request.number }}" --json labels -q '.labels[].name' \
+            | grep -qx breaking-change; then
+            BUMP=major
+          fi
+          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Compute next version and tag
+        id: tag
+        run: |
+          LATEST=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          NEXT=$(./scripts/semver-next.sh "$LATEST" "${{ steps.bump.outputs.bump }}")
+          git tag "$NEXT"
+          git push origin "$NEXT"
+          echo "next=$NEXT" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        run: gh release create "${{ steps.tag.outputs.next }}" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  build:
+    needs: release
+    uses: ./.github/workflows/goreleaser.yml
