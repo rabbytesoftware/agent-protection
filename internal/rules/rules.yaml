@@ -208,3 +208,17 @@ R47:
     enforcement: arch
     rationale: Wiring code that coordinates multiple siblings is architecturally significant -- it's the one place allowed to break the sibling-import rule. If it hides in an arbitrarily-named file instead of the conventional composition-root location, nobody reviewing the package structure can find it, and the exemption becomes indistinguishable from an unreviewed layering violation.
     fix_strategy: Rename the file to container.go, wire.go, or the name of its own package, or move the wiring code into such a file.
+R48:
+    id: R48
+    level: L0
+    text: A directory with 2+ sibling internal/ child packages must itself be a package with a file named after itself, declaring at least one exported interface
+    enforcement: arch
+    rationale: A parent of multiple internal sub-packages is architecturally a component boundary -- without a named composition root exposing a contract, there's no single place for callers to go to understand or construct that component, and no enforced seam between "how this component is built" and "how it's used."
+    fix_strategy: Add a <package-name>.go file in the directory declaring an exported interface that describes how outside code interacts with the component, either by implementing orchestration directly or by exposing getters for the inner sub-package objects.
+R13:
+    id: R13
+    level: L0
+    text: Public APIs expose interfaces, never exported concrete struct types
+    enforcement: analyzer
+    rationale: An exported struct couples every caller to its exact field layout and construction details; an interface describes only the behavior a caller needs, so the implementation can change freely behind it.
+    fix_strategy: Unexport the struct, expose an interface describing its behavior instead, and return the interface from a constructor function.

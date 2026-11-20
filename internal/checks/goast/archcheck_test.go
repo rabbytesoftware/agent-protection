@@ -143,3 +143,26 @@ func TestSiblingImports_FileNamedAfterOwnPackageIsExempt(t *testing.T) {
 		t.Errorf("expected no findings for config.go in package config, got %v", got)
 	}
 }
+
+func TestIsInsideInternalTree(t *testing.T) {
+	testCases := []struct {
+		name string
+		dir  string
+		want bool
+	}{
+		{name: "absolute path nested under internal", dir: "/a/b/internal/checks/goast", want: true},
+		{name: "absolute path is internal itself", dir: "/a/b/internal", want: true},
+		{name: "relative path nested under internal -- the ap-check-dot case", dir: "internal/checks", want: true},
+		{name: "relative path is internal itself", dir: "internal", want: true},
+		{name: "relative path outside internal entirely", dir: "cmd/ap", want: false},
+		{name: "absolute path outside internal entirely", dir: "/a/b/cmd/ap", want: false},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := isInsideInternalTree(tc.dir)
+			if got != tc.want {
+				t.Errorf("isInsideInternalTree(%q) = %v, want %v", tc.dir, got, tc.want)
+			}
+		})
+	}
+}

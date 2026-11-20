@@ -28,6 +28,7 @@ func readModulePath(root string) (string, error) {
 func supportPackageNames() map[string]bool {
 	return map[string]bool{
 		"errors": true, "models": true, "dto": true, "types": true, "contracts": true,
+		"rules": true, "report": true,
 	}
 }
 
@@ -110,11 +111,23 @@ func unconventionalWiringFinding(root string, pf ParsedFile, sibFindings []repor
 	}
 }
 
-// isInsideInternalTree reports whether dir sits under an internal/ parent,
-// the only scope R16 applies to.
+// isInsideInternalTree reports whether dir is internal/, or sits anywhere
+// inside an internal/ tree, the only scope R16/R47/R48 apply to.
+//
+// This checks path SEGMENTS, not a substring with assumed leading/trailing
+// separators: a naive Contains(dir, "/internal/") check silently returns
+// false for a relative root like "." where the walked path is literally
+// "internal/checks" with no leading separator -- exactly how `ap check .`
+// is meant to be invoked. That bug would have made R16/R47/R48 dead code
+// against AP's own repo (and anything else checked via a relative path),
+// caught by dogfooding and not by any unit test using absolute temp dirs.
 func isInsideInternalTree(dir string) bool {
-	sep := string(filepath.Separator)
-	return strings.Contains(dir, sep+"internal"+sep) || strings.HasSuffix(dir, sep+"internal")
+	for _, seg := range strings.Split(filepath.ToSlash(dir), "/") {
+		if seg == "internal" {
+			return true
+		}
+	}
+	return false
 }
 
 // siblingImportFinding reports an R16 violation for a single import, or
