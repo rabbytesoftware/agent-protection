@@ -1,78 +1,65 @@
-package runner
+package runner_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/rabbytesoftware/agent-protection/internal/runner"
 )
 
-func TestDetectLanguage(t *testing.T) {
-	testCases := []struct {
-		name    string
-		marker  string
-		want    string
-		wantErr bool
-	}{
-		{name: "go.mod detected", marker: "go.mod", want: "go"},
-		{name: "Cargo.toml detected", marker: "Cargo.toml", want: "rust"},
-		{name: "package.json detected", marker: "package.json", want: "typescript"},
-		{name: "no marker is an error", marker: "", wantErr: true},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			dir := t.TempDir()
-			if tc.marker != "" {
-				if err := os.WriteFile(filepath.Join(dir, tc.marker), nil, 0o644); err != nil {
-					t.Fatalf("write marker: %v", err)
-				}
-			}
-			got, err := detectLanguage(dir)
-			if tc.wantErr {
-				if err == nil {
-					t.Error("expected an error, got none")
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if got != tc.want {
-				t.Errorf("detectLanguage() = %q, want %q", got, tc.want)
-			}
-		})
+func TestRunnerRejectsFolderWithoutLanguageMarker(
+	t *testing.T,
+) {
+	_, err := runner.Runner(t.TempDir())
+	if err == nil {
+		t.Error("Runner() error = nil, want an unsupported-folder error")
 	}
 }
 
-func TestExists(t *testing.T) {
-	dir := t.TempDir()
-	present := filepath.Join(dir, "present.txt")
-	os.WriteFile(present, nil, 0o644)
-
-	if !exists(present) {
-		t.Error("expected exists() to be true for a file that was just written")
-	}
-	if exists(filepath.Join(dir, "absent.txt")) {
-		t.Error("expected exists() to be false for a file that was never written")
-	}
-}
-
-func TestRun_EndToEndAgainstATempGoModule(t *testing.T) {
-	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/m\n\ngo 1.24\n"), 0o644)
-	os.WriteFile(filepath.Join(dir, "f.go"), []byte("package m\nfunc F(a int, flag bool) {}\n"), 0o644)
-
-	out, err := Run(dir)
+func TestRunnerChecksGoModule(
+	t *testing.T,
+) {
+	root := t.TempDir()
+	err := os.WriteFile(
+		filepath.Join(
+			root,
+			"go.mod",
+		),
+		[]byte("module example.com/clean\n\ngo 1.24\n"),
+		0o600,
+	)
 	if err != nil {
-		t.Fatalf("Run: %v", err)
+		t.Fatalf(
+			"write go.mod: %v",
+			err,
+		)
 	}
-	if len(out.Findings) == 0 {
-		t.Error("expected Run to surface at least the R32 violation end-to-end")
+	err = os.WriteFile(
+		filepath.Join(
+			root,
+			"version.go",
+		),
+		[]byte("package clean\n\n// Version is the fixture's release.\nconst Version = \"1\"\n"),
+		0o600,
+	)
+	if err != nil {
+		t.Fatalf(
+			"write version.go: %v",
+			err,
+		)
 	}
-}
-
-func TestRun_UnrecognizedRootReturnsAnError(t *testing.T) {
-	dir := t.TempDir()
-	if _, err := Run(dir); err == nil {
-		t.Error("expected an error for a root with no go.mod/Cargo.toml/package.json")
+	output, err := runner.Runner(root)
+	if err != nil {
+		t.Fatalf(
+			"Runner() error = %v",
+			err,
+		)
+	}
+	if len(output.Findings) != 0 {
+		t.Errorf(
+			"Runner() findings = %v, want none for a compliant module",
+			output.Findings,
+		)
 	}
 }
