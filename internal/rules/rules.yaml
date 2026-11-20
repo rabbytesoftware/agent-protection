@@ -243,3 +243,10 @@ R50:
     enforcement: arch
     rationale: internal/ is the visibility-boundary marker, not a package identity -- if real implementation hides directly inside it, there is no name describing what that code does, and nothing stops a second, third, unrelated concern from being dropped in beside it as loose peers. Every behaviorful piece of code needs an actual name (a subdirectory), even when it is currently the only thing there.
     fix_strategy: Move the file into its own subdirectory named after what it does (e.g. internal/golangci.go becomes internal/golangci/golangci.go), even if it is the only file there today.
+R51:
+    id: R51
+    level: L0
+    text: A directory literally named internal with exactly one child package (no siblings) has nothing to hide that child from -- merge its contents into the grandparent package, eliminating the internal/ layer entirely
+    enforcement: arch
+    rationale: internal/ exists to restrict visibility among siblings. A sole child has no sibling to be restricted from, and its real consumer (the package one level up, already the only thing that could ever reach it) sits right next to it -- the boundary is pure indirection with nothing on the other side.
+    fix_strategy: Move the child's files up to the grandparent's directory as same-package companion files (or merge into its container file directly), then remove the now-empty internal/ directory.

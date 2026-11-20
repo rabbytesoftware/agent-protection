@@ -221,3 +221,62 @@ func TestLooseInternalFile_ProperlyNestedFileIsClean(t *testing.T) {
 		t.Errorf("expected no findings once the file is nested in its own subdirectory, got %v", got)
 	}
 }
+
+func TestSoleChildMustMerge_SoleChildOfInternalIsFlagged(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "example.com/m", map[string]string{
+		// checks is the ONLY child of runner's internal/ -- the exact
+		// case found this session. A sibling top-level package keeps the
+		// module's own top-level internal/ from also being a sole child.
+		"internal/runner/internal/checks/checks.go": "package checks\nfunc New() {}\n",
+		"internal/rules/rules.go":                    "package rules\nfunc Registry() {}\n",
+	})
+	got, err := SoleChildMustMerge(dir)
+	if err != nil {
+		t.Fatalf("SoleChildMustMerge: %v", err)
+	}
+	var runnerFindings int
+	for _, f := range got {
+		if f.Location == "internal/runner/internal/checks" {
+			runnerFindings++
+		}
+	}
+	if runnerFindings != 1 {
+		t.Fatalf("expected exactly 1 R51 finding for checks, got %v", got)
+	}
+}
+
+func TestSoleChildMustMerge_MultipleSiblingsAreNotFlagged(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "example.com/m", map[string]string{
+		// golang, rust, typescript are genuine siblings -- real hiding
+		// to do, nothing should be flagged. A sibling top-level package
+		// keeps the module's own top-level internal/ from being a sole
+		// child too.
+		"internal/runner/internal/golang/golang.go":         "package golang\nfunc New() {}\n",
+		"internal/runner/internal/rust/rust.go":               "package rust\nfunc New() {}\n",
+		"internal/runner/internal/typescript/typescript.go":   "package typescript\nfunc New() {}\n",
+		"internal/rules/rules.go":                              "package rules\nfunc Registry() {}\n",
+	})
+	got, err := SoleChildMustMerge(dir)
+	if err != nil {
+		t.Fatalf("SoleChildMustMerge: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected no findings with 3 genuine siblings, got %v", got)
+	}
+}
+
+func TestSoleChildMustMerge_EmptyInternalIsNotFlagged(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "example.com/m", map[string]string{
+		"golang.go": "package example\nfunc Run() {}\n",
+	})
+	got, err := SoleChildMustMerge(dir)
+	if err != nil {
+		t.Fatalf("SoleChildMustMerge: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected no findings with no internal/ directory at all, got %v", got)
+	}
+}

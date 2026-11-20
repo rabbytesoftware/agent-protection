@@ -285,3 +285,72 @@ func looseBehaviorFileFindings(root, internalDir string) []report.Finding {
 	}
 	return findings
 }
+
+
+// SoleChildMustMerge flags R51: a directory literally named "internal"
+// with exactly one child package has no sibling to hide that child from
+// -- it should be merged directly into the grandparent package (the
+// directory one level above the internal/ marker) instead of kept as a
+// separate boundary with nothing behind it.
+func SoleChildMustMerge(root string) ([]report.Finding, error) {
+	var findings []report.Finding
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, werr error) error {
+		if werr != nil {
+			return werr
+		}
+		if !d.IsDir() || d.Name() != "internal" {
+			if d.IsDir() && (d.Name() == "vendor" || d.Name() == ".git") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		children := packageChildDirs(path)
+		if len(children) != 1 {
+			return nil
+		}
+		parent := filepath.Dir(path)
+		findings = append(findings, report.Finding{
+			Rule:     "R51",
+			Location: RelPath(root, filepath.Join(path, children[0])),
+			Snippet:  fmt.Sprintf("the only child of this internal/ directory -- merge its contents directly into %s, eliminating this internal/ layer", RelPath(root, parent)),
+		})
+		return nil
+	})
+	return findings, err
+}
+
+// packageChildDirs returns the immediate child directory names of dir that
+// themselves contain (directly or recursively) at least one .go file.
+func packageChildDirs(dir string) []string {
+	entries, rerr := os.ReadDir(dir)
+	if rerr != nil {
+		return nil
+	}
+	var children []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		childPath := filepath.Join(dir, e.Name())
+		if dirHasGoSource(childPath) || hasGoSourceBeneath(childPath) {
+			children = append(children, e.Name())
+		}
+	}
+	return children
+}
+
+// hasGoSourceBeneath reports whether dir or any directory beneath it
+// contains a .go file.
+func hasGoSourceBeneath(dir string) bool {
+	found := false
+	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, werr error) error {
+		if werr != nil || found {
+			return nil
+		}
+		if !d.IsDir() && strings.HasSuffix(d.Name(), ".go") {
+			found = true
+		}
+		return nil
+	})
+	return found
+}

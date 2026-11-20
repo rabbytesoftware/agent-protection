@@ -82,6 +82,12 @@ func goFileLevelFindings(root string, files []goast.ParsedFile) []report.Finding
 	}
 	all = append(all, looseFindings...)
 
+	mergeFindings, mergeErr := goast.SoleChildMustMerge(root)
+	if mergeErr != nil {
+		fmt.Fprintf(os.Stderr, "sole-child-must-merge check: %v\n", mergeErr)
+	}
+	all = append(all, mergeFindings...)
+
 	lintFindings, lintErr := goast.GolangciLint(root, os.Getenv(buildTagsEnvVar))
 	if lintErr != nil {
 		fmt.Fprintf(os.Stderr, "golangci-lint: %v\n", lintErr)
