@@ -112,9 +112,10 @@ func dirHasGoSource(dir string) bool {
 
 // containerFindings checks dir's composition-root file: it must exist (any
 // conventionally-named one -- container.go/wire.go/main.go/new.go, or
-// named after dir's own package, same convention R47 already recognizes)
-// and declare at least one exported interface, and must not export a
-// concrete struct type.
+// named after dir's own package, same convention R47 already recognizes),
+// declare at least one exported interface, must not export a concrete
+// struct type, and must be the ONLY loose non-test .go file directly in
+// dir -- any other implementation belongs in a nested internal/ subtree.
 func containerFindings(root, dir string) []report.Finding {
 	containerPath := findContainerFile(dir)
 	if containerPath == "" {
@@ -124,7 +125,35 @@ func containerFindings(root, dir string) []report.Finding {
 			Snippet:  fmt.Sprintf("directory has 2+ sibling internal packages but no composition root (container.go, wire.go, or %s)", filepath.Base(dir)+".go"),
 		}}
 	}
-	return interfaceExposureFindings(root, containerPath)
+	findings := interfaceExposureFindings(root, containerPath)
+	findings = append(findings, strayFileFindings(root, dir, containerPath)...)
+	return findings
+}
+
+// strayFileFindings reports R49 for every non-test .go file directly in
+// dir besides containerPath itself -- a composition-root directory may
+// contain only its own container file (plus test), never loose peers.
+func strayFileFindings(root, dir, containerPath string) []report.Finding {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var findings []report.Finding
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") || strings.HasSuffix(e.Name(), "_test.go") {
+			continue
+		}
+		path := filepath.Join(dir, e.Name())
+		if path == containerPath {
+			continue
+		}
+		findings = append(findings, report.Finding{
+			Rule:     "R49",
+			Location: RelPath(root, path),
+			Snippet:  fmt.Sprintf("loose file beside composition root %s -- move into a nested internal/ subdirectory", filepath.Base(containerPath)),
+		})
+	}
+	return findings
 }
 
 // findContainerFile returns the path of dir's composition-root file, if

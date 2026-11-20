@@ -1,4 +1,4 @@
-package checks
+package pipeline
 
 import (
 	"os"
@@ -6,14 +6,14 @@ import (
 	"testing"
 )
 
-func TestGoChecker_FindsRealViolationsInATempModule(t *testing.T) {
+func TestCheckGo_FindsRealViolationsInATempModule(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/m\n\ngo 1.24\n"), 0o644)
 	os.WriteFile(filepath.Join(dir, "f.go"), []byte("package m\nfunc F(a int, flag bool) {}\n"), 0o644)
 
-	findings, err := goChecker{}.Check(dir)
+	findings, err := CheckGo(dir)
 	if err != nil {
-		t.Fatalf("goChecker.Check: %v", err)
+		t.Fatalf("CheckGo: %v", err)
 	}
 
 	found := false
@@ -23,6 +23,6 @@ func TestGoChecker_FindsRealViolationsInATempModule(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("expected goChecker to surface the real R32 (bool param) violation, got: %v", findings)
+		t.Errorf("expected CheckGo to surface the real R32 (bool param) violation, got: %v", findings)
 	}
 }

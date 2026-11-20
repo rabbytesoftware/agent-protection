@@ -222,3 +222,10 @@ R13:
     enforcement: analyzer
     rationale: An exported struct couples every caller to its exact field layout and construction details; an interface describes only the behavior a caller needs, so the implementation can change freely behind it.
     fix_strategy: Unexport the struct, expose an interface describing its behavior instead, and return the interface from a constructor function.
+R49:
+    id: R49
+    level: L0
+    text: A composition-root directory contains no other loose non-test .go files beside its container file
+    enforcement: arch
+    rationale: The container file is the package's entire public contract. Any additional loose file in the same directory is unreviewable implementation detail hiding in plain sight next to the interface -- it belongs in the package's own internal/ subtree (rule 15), the same way a repository package keeps only its own <name>.go exposed and pushes everything else into a nested internal/.
+    fix_strategy: Move the extra file(s) into a nested internal/ subdirectory of the composition root's own package, and have the container file call into it.

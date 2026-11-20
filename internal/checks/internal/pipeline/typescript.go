@@ -1,4 +1,4 @@
-package checks
+package pipeline
 
 import (
 	"fmt"
@@ -8,9 +8,9 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 )
 
-type tsChecker struct{}
-
-func (tsChecker) Check(root string) ([]report.Finding, error) {
+// CheckTypeScript runs both the repo's own ESLint config (pass-through) and
+// AP's own universal TS manifest.
+func CheckTypeScript(root string) ([]report.Finding, error) {
 	all := tsast.TSESLint(root)
 	manifestFindings, merr := tsast.TSManifest(root)
 	if merr != nil {

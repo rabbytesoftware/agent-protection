@@ -116,3 +116,40 @@ func TestCompositionRoot_ContainerGoNamingIsAlsoRecognized(t *testing.T) {
 		t.Errorf("expected container.go to satisfy the composition-root requirement, got %v", got)
 	}
 }
+
+func TestCompositionRoot_LooseFileBesideContainerIsFlaggedR49(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "example.com/m", map[string]string{
+		"internal/checks/checks.go": "package checks\n\n// Checker runs a check.\ntype Checker interface {\n\tCheck(root string) error\n}\n",
+		// A loose implementation file sitting right beside the container,
+		// instead of nested under internal/checks/internal/ -- exactly the
+		// mistake this rule exists to catch.
+		"internal/checks/go_checker.go": "package checks\nfunc helper() {}\n",
+		"internal/checks/goast/a.go":    "package goast\nfunc A() {}\n",
+		"internal/checks/rustast/a.go":  "package rustast\nfunc A() {}\n",
+	})
+	got, err := CompositionRoot(dir)
+	if err != nil {
+		t.Fatalf("CompositionRoot: %v", err)
+	}
+	if len(got) != 1 || got[0].Rule != "R49" {
+		t.Fatalf("expected exactly 1 R49 finding for the stray file, got %v", got)
+	}
+}
+
+func TestCompositionRoot_OnlyContainerFilePresentIsClean(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "example.com/m", map[string]string{
+		"internal/checks/checks.go":    "package checks\n\n// Checker runs a check.\ntype Checker interface {\n\tCheck(root string) error\n}\n",
+		"internal/checks/checks_test.go": "package checks\nimport \"testing\"\nfunc TestX(t *testing.T) {}\n",
+		"internal/checks/goast/a.go":   "package goast\nfunc A() {}\n",
+		"internal/checks/rustast/a.go": "package rustast\nfunc A() {}\n",
+	})
+	got, err := CompositionRoot(dir)
+	if err != nil {
+		t.Fatalf("CompositionRoot: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected no R49 findings when the container's own test file is the only other file present, got %v", got)
+	}
+}

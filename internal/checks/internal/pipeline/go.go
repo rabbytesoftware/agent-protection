@@ -1,4 +1,4 @@
-package checks
+package pipeline
 
 import (
 	"fmt"
@@ -10,9 +10,9 @@ import (
 
 const buildTagsEnvVar = "AP_GO_BUILD_TAGS"
 
-type goChecker struct{}
-
-func (goChecker) Check(root string) ([]report.Finding, error) {
+// CheckGo runs every Go analyzer against root: the pure-AST rule checks,
+// the file-level structural checks, and golangci-lint.
+func CheckGo(root string) ([]report.Finding, error) {
 	files, err := goast.WalkGoFiles(root)
 	if err != nil {
 		return nil, fmt.Errorf("walk: %w", err)
