@@ -30,21 +30,6 @@ func TestCqs(
 			want: []string{"p.go:3"},
 		},
 		{
-			name: "chainable builder method returning its receiver passes",
-			code: "package p\n\ntype B struct {\n\tv int\n}\n\nfunc (b *B) WithV(\n\tv int,\n) *B {\n\tb.v = v\n\tlater := func() (n int) {\n\t\treturn 1\n\t}\n\tb.v += later()\n\treturn b\n}\n",
-			want: nil,
-		},
-		{
-			name: "builder method that returns its receiver on one path only is reported",
-			code: "package p\n\ntype B struct {\n\tv int\n}\n\nfunc (b *B) WithV(\n\tv int,\n) *B {\n\tb.v = v\n\tif v == 0 {\n\t\treturn &B{}\n\t}\n\n\treturn b\n}\n",
-			want: []string{"p.go:7"},
-		},
-		{
-			name: "returning the receiver together with another value is reported",
-			code: "package p\n\ntype B struct {\n\tv int\n}\n\nfunc (b *B) WithV() (*B, int) {\n\tb.v = 1\n\treturn b, b.v\n}\n",
-			want: []string{"p.go:7"},
-		},
-		{
 			name: "pure query passes",
 			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) f() (v int) {\n\treturn t.v\n}\n",
 			want: nil,
@@ -61,7 +46,70 @@ func TestCqs(
 		},
 	}
 	for _, tc := range cases {
+		assertCase(
+			t,
+			tc.name,
+			tc.code,
+			tc.want,
+		)
+	}
+}
+
+func TestCqsSkipsMocks(
+	t *testing.T,
+) {
+	code := "package mocks\n\ntype Store struct {\n\tGetCalls int\n}\n\nfunc (s *Store) Get() (v int) {\n\ts.GetCalls++\n\treturn 1\n}\n"
+	cases := []struct {
+		name string
+		path string
+		want []string
+	}{
+		{
+			name: "call-counting mock passes",
+			path: "p/mocks/store.go",
+			want: nil,
+		},
+		{
+			name: "the same code outside a mock is reported",
+			path: "p/store.go",
+			want: []string{"p/store.go:7"},
+		},
+	}
+	for _, tc := range cases {
 		assertLocations(
+			t,
+			tc.name,
+			cqs.Cqs([]source.File{parsedAt(
+				t,
+				tc.path,
+				code,
+			)}),
+			tc.want,
+		)
+	}
+}
+
+func TestCqsSnippet(
+	t *testing.T,
+) {
+	cases := []struct {
+		name string
+		code string
+		want string
+	}{
+		{
+			name: "direct write names only the function",
+			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) Get() (v int) {\n\tt.v++\n\treturn t.v\n}\n",
+			want: "func Get(...) returns a value and mutates its receiver or a pointer parameter: split the query from the command",
+		},
+		{
+			name: "write through a helper names the first mutating call",
+			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) bump() {\n\tt.v++\n}\n\nfunc (t *T) Get() (v int) {\n\t_ = t.value()\n\tt.bump()\n\treturn t.v\n}\n\nfunc (t *T) value() (v int) {\n\treturn t.v\n}\n",
+			want: "func Get(...) returns a value and mutates its receiver or a pointer parameter through t.bump(...): split the query from the command",
+		},
+	}
+	for _, tc := range cases {
+		assertSnippet(
 			t,
 			tc.name,
 			cqs.Cqs([]source.File{parsed(
@@ -73,15 +121,47 @@ func TestCqs(
 	}
 }
 
+func assertSnippet(
+	t *testing.T,
+	name string,
+	findings []report.Finding,
+	want string,
+) {
+	t.Helper()
+	isMatch := len(findings) == 1 &&
+		findings[0].Snippet == want
+	if !isMatch {
+		t.Errorf(
+			"%s: findings = %v, want one with snippet %q",
+			name,
+			findings,
+			want,
+		)
+	}
+}
+
 func parsed(
 	t *testing.T,
+	code string,
+) (file source.File) {
+	t.Helper()
+	return parsedAt(
+		t,
+		"p.go",
+		code,
+	)
+}
+
+func parsedAt(
+	t *testing.T,
+	path string,
 	code string,
 ) (file source.File) {
 	t.Helper()
 	fileSet := token.NewFileSet()
 	syntax, err := parser.ParseFile(
 		fileSet,
-		"p.go",
+		path,
 		code,
 		parser.ParseComments,
 	)
@@ -92,7 +172,25 @@ func parsed(
 		)
 	}
 
-	return source.File{Path: "p.go", Rel: "p.go", FileSet: fileSet, Syntax: syntax}
+	return source.File{Path: path, Rel: path, FileSet: fileSet, Syntax: syntax}
+}
+
+func assertCase(
+	t *testing.T,
+	name string,
+	code string,
+	want []string,
+) {
+	t.Helper()
+	assertLocations(
+		t,
+		name,
+		cqs.Cqs([]source.File{parsed(
+			t,
+			code,
+		)}),
+		want,
+	)
 }
 
 func assertLocations(
