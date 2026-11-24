@@ -22,7 +22,7 @@ func TestMaxfilesperdir(
 	}{
 		{name: "eight files pass", directory: "pkg", count: 8, want: nil},
 		{name: "nine files are reported at the directory", directory: "pkg", count: 9, want: []string{"R46 pkg"}},
-		{name: "root is exempt", directory: ".", count: 9, want: nil},
+		{name: "root is capped like any directory", directory: ".", count: 9, want: []string{"R46 ."}},
 	}
 	for _, tc := range cases {
 		assertFindings(

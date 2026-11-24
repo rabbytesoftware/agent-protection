@@ -33,19 +33,19 @@ R04:
 R07:
     id: R07
     level: L0
-    text: "No inline comments and no comments on unexported symbols; every exported symbol has a doc comment that says more than its name"
+    text: "No comments, in any language: no inline comments, no doc comments, no TODOs, no license headers, no suppression comments"
     enforcement: analyzer
-    rationale: "Names carry what code does; a comment that restates it drifts out of date and adds noise. Exported symbols are the contract other packages read, so they and only they are documented."
-    fix_strategy: "Delete the comment and rename the symbol until it explains itself; add a doc comment describing behavior and contract to every exported symbol. Deprecation notes and spec links are the only other comments allowed. A doc comment made only of the name's own words (inflected or not, plus the receiver type's) and filler such as returns, the, satisfies the interface or test double restates the name: replace it with what a caller cannot read off the name, such as what it returns on failure, what it blocks on or what it leaves untouched."
-    not_a_fix: "Bulk-deleting comments without renaming anything so the code no longer explains itself; one-line doc comments that merely restate the name (// Name does X., // Run runs.); moving the explanation into string literals or identifiers like todoFixThis; exporting a symbol only so its comment is allowed."
+    rationale: "A comment is where code gets justified instead of fixed. Every comment you are about to write means the code is not clean yet: a vague name, a function doing too much, tangled logic. The code you leave must be enough for the next agent or human to understand what is happening. A good function is one that needs no comment at all."
+    fix_strategy: "Delete the comment, then make the code carry the meaning: rename the function, variable or type after what it does or holds; extract the step the comment described into a function whose name says it; replace a magic value with a named constant; split a function that needs explaining. Why a change was made goes in the commit message or PR description. Only machine-read directives stay: Go //go:build, //go:embed, //go:generate, //line, the cgo preamble and // Output: in Example tests; TypeScript /// <reference> and /*#__PURE__*/."
+    not_a_fix: "Deleting the comment and leaving the code as unclear as before; moving the explanation into a string literal, a log message, a sentence-shaped identifier (thisIsNeededBecause), a notes file beside the code, or a fake directive (//go:note); disabling the rule."
 R08:
     id: R08
     level: L1
-    text: "One type per file, named after the type; a composition root file (<package>.go, container.go, wire.go) may hold its one type under any name"
+    text: "One type per file, named after the type; only container.go may hold its one type under another name"
     enforcement: analyzer
-    rationale: "A file with multiple types has no single, name-matched home, making it harder for both agents and humans to find or size any one type's code. R47 requires a file that wires sibling packages to carry a composition root name, so the type doing that wiring lives there."
-    fix_strategy: "Split into one file per type, named after that type. If the type's file imports 2+ sibling internal/ packages, keep it in the composition root file (<package>.go, container.go or wire.go) instead of renaming it after the type."
-    not_a_fix: "Hiding the second type as a type alias, an anonymous struct in a var, or a type declared inside a function; naming the file after one type while helpers that belong to another type stay in it."
+    rationale: "A file with several types has no name-matched home, so neither agents nor humans can find or size one type's code. container.go is the one exception because it is the module's single, conventionally named wiring point."
+    fix_strategy: "Split into one file per type, named after that type in snake_case. A type that only exists to wire a module's internal packages lives in container.go."
+    not_a_fix: "Hiding the second type as a type alias, an anonymous struct in a var, or a type declared inside a function; naming the file after one type while another type's helpers stay in it; renaming the file container.go to host an unrelated type."
 R11:
     id: R11
     level: L1
@@ -65,19 +65,35 @@ R12:
 R13:
     id: R13
     level: L0
-    text: Public APIs expose interfaces, never exported concrete struct types
+    text: "Public APIs expose interfaces: an exported struct with pointer-receiver methods is an implementation and stays unexported"
     enforcement: analyzer
-    rationale: An exported struct couples every caller to its exact field layout and construction details; an interface describes only the behavior a caller needs, so the implementation can change freely behind it.
-    fix_strategy: Unexport the struct, expose an interface describing its behavior instead, and return the interface from a constructor function.
-    not_a_fix: "Returning an exported alias or exported pointer type of the same struct; wrapping the struct in an interface whose methods hand back the concrete struct; declaring an interface that mirrors every field as a getter and setter so the field layout is still the contract."
+    rationale: "An exported implementation struct couples every caller to its fields and construction; an interface describes only the behavior a caller needs, so the implementation can change freely behind it."
+    fix_strategy: "Unexport the struct, declare the interface its callers need, and return that interface from the constructor (in container.go when the struct lives below a module). Plain value types with value-receiver methods may stay exported."
+    not_a_fix: "Switching to value receivers while still mutating through pointer fields; returning an exported alias of the struct; an interface whose methods hand back the concrete struct; mirroring every field as getter and setter."
+R14:
+    id: R14
+    level: L0
+    text: "A public package or module directory exposes only its API: exported interfaces, the types and constants its signatures use, Err sentinels and error types; entry functions live in container.go and only delegate"
+    enforcement: arch
+    rationale: "A module's contract is its directory and its assembly is its container.go. Implementation in a public package, the root, or beside a container couples every caller to it, cannot be swapped, and turns the directory into a dumping ground no file cap or naming rule can keep in order."
+    fix_strategy: "Move every method, unexported function, unexported type and package variable into a package under this directory's internal/, named for what it does. Keep here only the interface the outside world uses, the types and errors in its signatures, and container.go, whose exported functions construct the internal implementation and return the interface. If an entry function needs a loop, switch or branch, that logic belongs in the internal package it calls. Run ap guide for the full module shape."
+    not_a_fix: "Exporting helpers so they look like API; turning methods into exported functions; moving the implementation into a public sibling package (models, store, engine) or an example or test-support package; hiding logic in func literals or exported vars; putting the implementation in container.go."
+R15:
+    id: R15
+    level: L1
+    text: "Nothing outside a module imports a package below that module's directory; outsiders import the module itself"
+    enforcement: arch
+    rationale: "A module's API is its directory. Reaching into its subpackages (M/models, M/options) from outside couples callers to its internals and bypasses its container, so the module can no longer change shape without breaking them."
+    fix_strategy: "Import M and use what its API exposes. If callers need a type that lives below M, move that type into M's own API."
+    not_a_fix: "Copying the type into the importer; re-exporting the deep package through a pass-through file; moving the importer inside M only so the import becomes local."
 R16:
     id: R16
     level: L1
-    text: Sibling internal packages never import each other
+    text: "Siblings form one layer: a package may import a sibling (same parent directory, in any tree) only if that sibling imports no sibling of its own"
     enforcement: arch
-    rationale: Two packages at the same layer importing each other is undeclared coupling that makes the dependency graph impossible to reason about and blocks independent evolution of either package.
-    fix_strategy: Extract the shared contract into a third, lower package that both siblings depend on, or merge the two packages if they are genuinely one responsibility.
-    not_a_fix: "Copy-pasting the shared code into both siblings so they drift apart; routing the import through a third package that only re-exports the sibling; replacing the import with a string-keyed registry, reflection or any plumbing that keeps the same coupling hidden."
+    rationale: "Packages that share a parent are one layer. When siblings import siblings that import siblings, the directory hides a dependency chain nobody can see from the tree, and the parent's container.go stops being where the wiring is."
+    fix_strategy: "Declare the interface you need in the consuming package and let the parent's container.go pass the implementation in. Foundation or vocabulary siblings that import no sibling may be imported directly."
+    not_a_fix: "Moving the import into a file named after the package or into the child's own container.go; renaming the imported package models or contracts; nesting one sibling under the other only to break the edge; duplicating the code."
 R19:
     id: R19
     level: L1
@@ -209,35 +225,27 @@ R44:
 R46:
     id: R46
     level: L0
-    text: A directory (excluding project root) holds at most 8 non-test source files
+    text: "A directory, the project root included, holds at most 8 non-test source files"
     enforcement: script
-    rationale: A directory with too many files is a package doing too much work; this is the directory-level analog of a per-file line cap.
-    fix_strategy: Split into subdirectories by responsibility, never just to get under the count.
-    not_a_fix: "Moving files into arbitrary subdirectories (part1, more, extra) to get under the count; merging unrelated files into one larger file; inventing packages that have no responsibility of their own."
+    rationale: "A directory with too many files is a package doing too much; this is the directory-level analog of a per-file line cap. The root is no exception: a crowded root is the most visible mess in a library."
+    fix_strategy: "Split into subpackages by responsibility, under internal/, never just to get under the count."
+    not_a_fix: "Moving files into arbitrary subdirectories (part1, more, extra) to get under the count; splitting one concept into look-alike packages (dispatch and dispatcher, mocks and mockbuses); merging unrelated files into one larger file; inventing packages that have no responsibility of their own."
 R47:
     id: R47
-    level: L1
-    text: A file importing 2+ sibling internal/ packages is a de facto composition root and must be named like one (container.go, wire.go, or <package-name>.go)
+    level: L0
+    text: "A package that imports 2 or more of its siblings is doing its parent's wiring; only the parent's container.go wires siblings together"
     enforcement: arch
-    rationale: Wiring code that coordinates multiple siblings is architecturally significant -- it's the one place allowed to break the sibling-import rule. If it hides in an arbitrarily-named file instead of the conventional composition-root location, nobody reviewing the package structure can find it, and the exemption becomes indistinguishable from an unreviewed layering violation.
-    fix_strategy: Rename the file to container.go, wire.go, or the name of its own package, or move the wiring code into such a file.
-    not_a_fix: "Dropping one sibling import by duplicating its code or routing it through a re-exporting package; renaming an unrelated file to container.go or wire.go so the wiring hides among other logic; splitting the wiring across files that each import only one sibling."
+    rationale: "Wiring siblings together is composition, and composition belongs in exactly one findable place: the parent's container.go. A child importing several siblings is a hidden composition root, usually behind a pass-through parent."
+    fix_strategy: "Move the construction into the parent's container.go. Give the child a constructor that takes interfaces the child declares, and have container.go pass the siblings' implementations in."
+    not_a_fix: "Renaming the child's file container.go; splitting the child so each piece imports one sibling; routing the imports through a vocabulary package."
 R48:
     id: R48
     level: L0
-    text: "A directory with 2+ sibling internal/ child packages must itself be a package with a file named after itself, exposing an exported interface or an exported entry function named after the package"
+    text: "A package with internal/ children has a container.go, and only container.go imports that package's internal/ children"
     enforcement: arch
-    rationale: "A parent of multiple internal sub-packages is a component boundary; without one named entry point there is no single place for callers to go to understand or use the component."
-    fix_strategy: "Add a <package-name>.go file that exposes the component either as an exported interface (when it holds state) or as a package-level function named after the package (when it is stateless, rule 11)."
-    not_a_fix: "Adding an entry file with a placeholder interface or a no-op function named after the package; inventing wrapper packages (ports, api) only to move child packages out of the parent; merging unrelated children into one package just to drop below two."
-R49:
-    id: R49
-    level: L0
-    text: A composition-root directory contains no other loose non-test .go files beside its container file
-    enforcement: arch
-    rationale: The container file is the package's entire public contract. Any additional loose file in the same directory is unreviewable implementation detail hiding in plain sight next to the interface -- it belongs in the package's own internal/ subtree (rule 15), the same way a repository package keeps only its own <name>.go exposed and pushes everything else into a nested internal/.
-    fix_strategy: Move the extra file(s) into a nested internal/ subdirectory of the composition root's own package, and have the container file call into it.
-    not_a_fix: "Inventing packages (ports, api, types) beside the root only to move the loose files away from it; renaming a loose file so it looks like a test or mock; inlining every extra file into the container file so it becomes the dumping ground."
+    rationale: "container.go is where a human or agent looks to see how a module is assembled. If another file imports the internals, or there is no container, the assembly is scattered and cannot be found."
+    fix_strategy: "Create container.go in the module directory, construct the internal packages there, and keep every other file in the directory to API declarations."
+    not_a_fix: "An empty container.go beside files that still import internals; a container.go that forwards to a child doing the real wiring; moving internals up into the module directory to avoid importing them."
 R50:
     id: R50
     level: L0
@@ -294,6 +302,46 @@ R56:
     rationale: "Extracting a block into a helper only helps when the helper's name explains the block. runHandler, makeCallback, wrap, implSendCreate or handler2 beside handler move code without naming it, so the reader still has to open the body, and the line, depth and paragraph limits are met in form while the readability they protect is lost."
     fix_strategy: "Rename after the specific behavior or value: what the function decides, returns or causes, or the role the closure plays in its caller (recordDelivery, failAfterFirstAttempt). When several closures differ only by a number, name what each one does differently. Exported names, main, init and a lone role word such as handler or run are left alone."
     not_a_fix: "Renaming to another content-free word; swapping the number for a letter or a synonym (handlerB, otherHandler); exporting the name to skip the check; inlining the block back as an unnamed closure argument."
+R57:
+    id: R57
+    level: L1
+    text: "Vocabulary packages (models, model, contracts, contract, types, dto, ports, api, options, entities, schema) hold declarations only: types, constants and errors, no functions or methods beyond Error, Unwrap, Is, As and String"
+    enforcement: arch
+    rationale: "A package named for vocabulary is imported freely by many packages. Behavior hidden there spreads into every importer without the layering, tests and container behavior needs."
+    fix_strategy: "Move each function or method into the package whose behavior it is, under internal/, and keep the vocabulary package to declarations."
+    not_a_fix: "Renaming the package to dodge the list; turning methods into func-typed fields or exported vars holding closures; moving the behavior into init."
+R58:
+    id: R58
+    level: L1
+    text: "Sibling packages do not split one concept: no sibling package name is a prefix of another (dispatch and dispatcher, mock and mockbuses)"
+    enforcement: arch
+    rationale: "Look-alike sibling names mean one responsibility was cut in two, usually to get under a file cap, and readers cannot tell which half to open."
+    fix_strategy: "Merge the two packages, or rename each after the distinct thing it provides."
+    not_a_fix: "Renaming one with a synonym that hides the split while the split stays; nesting one inside the other unchanged."
+R59:
+    id: R59
+    level: L1
+    text: "Package names are unique within a module, package main excepted"
+    enforcement: arch
+    rationale: "Two packages named models or core force aliases at every import site (esmodels, procmodels) and make the name say nothing about what the package provides."
+    fix_strategy: "Rename each package after the specific thing it provides."
+    not_a_fix: "Adding a suffix or number (models2, coremodels); keeping the names and aliasing the imports."
+R60:
+    id: R60
+    level: L1
+    text: "An internal interface is used, not only embedded: no interface that is only ever embedded in other interfaces, and no interface that only re-embeds one other"
+    enforcement: analyzer
+    rationale: "Splitting an interface into role interfaces nothing depends on games the small-interface rule: the method set is unchanged, only scattered across names readers must chase."
+    fix_strategy: "Inline the embedded interface's methods into the interface that uses it, or depend on the small interface where it really narrows what a consumer needs. Use a re-embedded interface directly."
+    not_a_fix: "Adding a dummy parameter or variable of the role interface type only to count as a use."
+R61:
+    id: R61
+    level: L1
+    text: "Production code never imports an example package"
+    enforcement: arch
+    rationale: "Example trees are exempt from the API-only shape because nothing depends on them. Importing one from library code turns that exemption into a hiding place for implementation."
+    fix_strategy: "Move what the library needs out of the example tree into the module's internal/."
+    not_a_fix: "Renaming the example directory; copying the example package into the library unchanged."
 PROXY-COMPLEXITY:
     id: PROXY-COMPLEXITY
     level: L0

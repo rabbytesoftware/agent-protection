@@ -59,7 +59,7 @@ func directoryFindings(
 	directory string,
 	count int,
 ) (findings []report.Finding, err error) {
-	isWithinLimit := directory == filepath.Clean(root) || count <= maxFiles
+	isWithinLimit := count <= maxFiles
 	if isWithinLimit {
 		return nil,
 			nil
