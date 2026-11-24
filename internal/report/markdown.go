@@ -184,10 +184,11 @@ func heading(
 	}
 
 	return fmt.Sprintf(
-		"\n#### %s: %s\n**Fix:** %s\n\n",
+		"\n#### %s: %s\n**Fix:** %s\n**Not a fix:** %s\n\n",
 		rule,
 		doc.Text,
 		doc.FixStrategy,
+		doc.NotAFix,
 	)
 }
 

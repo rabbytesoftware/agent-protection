@@ -27,7 +27,7 @@ func TestOutputMarkdown(
 		},
 		{
 			findings:   []report.Finding{{Rule: "R32", Location: "a.go:1", Snippet: "flag"}},
-			want:       []string{"1 violation across 1 rule", "| R32 | 1 |", "#### R32: No boolean flag"},
+			want:       []string{"1 violation across 1 rule", "| R32 | 1 |", "#### R32: No boolean flag", "\n**Not a fix:** Replacing the bool"},
 			wantAbsent: []string{"Showing"},
 		},
 		{

@@ -25,6 +25,12 @@ never one process scanning a whole multi-language monorepo.
 ap check .
 ```
 
+Each violated rule is reported once with what it requires, why (WHY), how
+to fix it (FIX), and which changes silence it without fixing it (NOT A
+FIX), such as deleting comments instead of renaming symbols, or splitting
+an interface into pieces no consumer asks for. Agents follow the report
+text, so the report also says what does not count as a fix.
+
 See `.ap.yaml.example` for the one config file a consuming repo owns.
 
 In GitHub Actions, use the composite action. On pull requests it keeps one
