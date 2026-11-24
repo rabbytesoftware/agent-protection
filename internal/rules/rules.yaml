@@ -43,7 +43,7 @@ R08:
 R11:
     id: R11
     level: L1
-    text: "A stateless type is a package-level function named after the package, not a struct"
+    text: "A stateless type is a package-level function named after the package, not a struct (mocks excluded)"
     enforcement: analyzer
     rationale: "An empty struct with methods carries no state, so the type adds a constructor, a receiver and an indirection that a plain function does not need."
     fix_strategy: "Delete the struct and expose the behavior as a package-level function named after the package (vault.Vault, deptree.Deptree)."
@@ -162,7 +162,7 @@ R41:
 R42:
     id: R42
     level: L3
-    text: Every non-test source file has exactly one corresponding _test.go file
+    text: Every non-test, non-mock source file has exactly one corresponding _test.go file
     enforcement: script
     rationale: A source file with no test file has unverified behavior by construction; this is the floor, not a strong guarantee of quality.
     fix_strategy: Add a _test.go file covering at least the exported surface of the source file.

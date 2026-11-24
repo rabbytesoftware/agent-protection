@@ -130,6 +130,27 @@ func TestIsSharedSupport(
 	}
 }
 
+func TestIsMock(
+	t *testing.T,
+) {
+	cases := map[string]bool{
+		"internal/mocks/bus.go":  true,
+		"store/fakes/clock.go":   true,
+		"store/bus_mock.go":      true,
+		"store/FakeClock.go":     true,
+		"internal/bus/bus.go":    false,
+		"internal/remote/sms.go": false,
+	}
+	for path, want := range cases {
+		assertBool(
+			t,
+			"IsMock("+path+")",
+			source.IsMock(path),
+			want,
+		)
+	}
+}
+
 func TestIsCompositionRoot(
 	t *testing.T,
 ) {

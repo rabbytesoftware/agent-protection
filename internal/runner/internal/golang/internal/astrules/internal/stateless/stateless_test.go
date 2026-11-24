@@ -26,6 +26,11 @@ func TestStateless(
 			want:  []string{"R11 p/a.go:3"},
 		},
 		{
+			name:  "empty mock with methods and a constructor passes",
+			files: map[string]string{"p/mocks/bus.go": "package mocks\n\ntype Bus struct{}\n\nfunc New() *Bus {\n\treturn &Bus{}\n}\n\nfunc (b *Bus) Publish() {\n}\n"},
+			want:  nil,
+		},
+		{
 			name:  "method declared in a sibling file of the same package is reported",
 			files: map[string]string{"p/a.go": "package p\n\ntype service struct{}\n", "p/b.go": "package p\n\nfunc (s *service) Run() {\n}\n"},
 			want:  []string{"R11 p/a.go:3"},

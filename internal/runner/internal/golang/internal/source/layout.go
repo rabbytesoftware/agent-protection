@@ -117,6 +117,22 @@ func IsSharedSupport(
 	)
 }
 
+// IsMock reports whether rel, a path relative to the checked root, is a
+// test double: its file name or one of its directories mentions mock or
+// fake. Mocks exist only to stand in for real code in tests, so they have
+// no tests of their own and keep the shape the interface they fake needs.
+func IsMock(
+	rel string,
+) (isMock bool) {
+	return slices.ContainsFunc(
+		strings.Split(
+			filepath.ToSlash(rel),
+			"/",
+		),
+		mentionsMock,
+	)
+}
+
 // IsCompositionRoot reports whether the file at path is conventionally
 // named as a composition root: container.go, wire.go, main.go, new.go, or
 // the file named after its own package.
@@ -205,6 +221,19 @@ func isNotSourceEntry(
 	entry os.DirEntry,
 ) (excluded bool) {
 	return !isSourceEntry(entry)
+}
+
+func mentionsMock(
+	segment string,
+) (mentions bool) {
+	lower := strings.ToLower(segment)
+	return strings.Contains(
+		lower,
+		"mock",
+	) || strings.Contains(
+		lower,
+		"fake",
+	)
 }
 
 func sharedSupportNames() (names []string) {

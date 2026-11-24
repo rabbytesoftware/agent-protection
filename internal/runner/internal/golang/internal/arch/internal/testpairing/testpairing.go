@@ -21,8 +21,8 @@ const (
 
 // Testpairing pairs source and test files one to one. Every source file
 // with behavior needs an x_test.go beside it, and every test file needs the
-// x.go it is named after. Declaration-only and generated sources need no
-// test of their own.
+// x.go it is named after. Declaration-only, generated and mock sources
+// need no test of their own.
 func Testpairing(
 	root string,
 ) (findings []report.Finding, err error) {
@@ -167,6 +167,14 @@ func missingTestFindings(
 	path string,
 	tests []string,
 ) (findings []report.Finding) {
+	location := source.RelPath(
+		root,
+		path,
+	)
+	if source.IsMock(location) {
+		return nil
+	}
+
 	test := strings.TrimSuffix(
 		path,
 		goExtension,
@@ -179,11 +187,8 @@ func missingTestFindings(
 	}
 
 	return []report.Finding{{
-		Rule: missingTestRule,
-		Location: source.RelPath(
-			root,
-			path,
-		),
+		Rule:     missingTestRule,
+		Location: location,
 		Snippet: fmt.Sprintf(
 			"no %s beside it",
 			filepath.Base(test),
