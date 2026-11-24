@@ -166,3 +166,16 @@ func assertFindings(
 		)
 	}
 }
+
+func TestTestpairingRejectsMissingRoot(
+	t *testing.T,
+) {
+	missing := filepath.Join(
+		t.TempDir(),
+		"missing",
+	)
+	_, err := testpairing.Testpairing(missing)
+	if err == nil {
+		t.Error("Testpairing() error = nil, want one for a missing root")
+	}
+}

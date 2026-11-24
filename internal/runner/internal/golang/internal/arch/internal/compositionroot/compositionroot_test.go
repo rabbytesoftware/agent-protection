@@ -249,3 +249,19 @@ func assertFindings(
 		)
 	}
 }
+
+func TestCompositionrootRejectsMissingRoot(
+	t *testing.T,
+) {
+	missing := filepath.Join(
+		t.TempDir(),
+		"missing",
+	)
+	_, err := compositionroot.Compositionroot(
+		missing,
+		nil,
+	)
+	if err == nil {
+		t.Error("Compositionroot() error = nil, want one for a missing root")
+	}
+}

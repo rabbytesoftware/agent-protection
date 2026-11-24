@@ -203,3 +203,19 @@ func assertFindings(
 		)
 	}
 }
+
+func TestSiblingimportsRejectsMissingRoot(
+	t *testing.T,
+) {
+	missing := filepath.Join(
+		t.TempDir(),
+		"missing",
+	)
+	_, err := siblingimports.Siblingimports(
+		missing,
+		nil,
+	)
+	if err == nil {
+		t.Error("Siblingimports() error = nil, want one for a missing root")
+	}
+}
