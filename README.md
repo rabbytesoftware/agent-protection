@@ -27,6 +27,24 @@ ap check .
 
 See `.ap.yaml.example` for the one config file a consuming repo owns.
 
+In GitHub Actions, use the composite action. On pull requests it keeps one
+comment per component up to date: the violation count, a collapsed section
+with the per-rule breakdown and the findings, and a link to the run, whose
+`ap-report-*` artifact holds the full `ap-report.json`.
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write
+steps:
+  - uses: actions/checkout@v4
+  - uses: rabbytesoftware/agent-protection@v0.1.0
+    with:
+      path: services/api
+```
+
+`ap markdown ap-report.json` prints that same comment body locally.
+
 ## Status
 
 Go: 32 analyzer and architecture rules plus the golangci-lint proxies,

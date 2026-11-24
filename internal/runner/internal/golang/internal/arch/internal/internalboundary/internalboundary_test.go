@@ -194,3 +194,16 @@ func assertFindings(
 		)
 	}
 }
+
+func TestInternalboundaryRejectsMissingRoot(
+	t *testing.T,
+) {
+	missing := filepath.Join(
+		t.TempDir(),
+		"missing",
+	)
+	_, err := internalboundary.Internalboundary(missing)
+	if err == nil {
+		t.Error("Internalboundary() error = nil, want one for a missing root")
+	}
+}

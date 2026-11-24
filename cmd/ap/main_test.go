@@ -2,30 +2,134 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 )
 
-func TestRootArgument(
+func TestRun(
+	t *testing.T,
+) {
+	t.Chdir(t.TempDir())
+	clean := t.TempDir()
+	writeFile(
+		t,
+		filepath.Join(
+			clean,
+			"go.mod",
+		),
+		"module example.com/clean\n\ngo 1.24\n",
+	)
+	writeFile(
+		t,
+		filepath.Join(
+			clean,
+			"version.go",
+		),
+		"package clean\n\n// Version is the fixture's release.\nconst Version = \"1\"\n",
+	)
+	failing := t.TempDir()
+	writeFile(
+		t,
+		filepath.Join(
+			failing,
+			"go.mod",
+		),
+		"module example.com/failing\n\ngo 1.24\n",
+	)
+	writeFile(
+		t,
+		filepath.Join(
+			failing,
+			"version.go",
+		),
+		"package failing\n\nconst Version = \"1\"\n",
+	)
+	cases := []struct {
+		arguments []string
+		wantCode  int
+	}{
+		{arguments: []string{"ap"}, wantCode: usageExitCode},
+		{arguments: []string{"ap", "check", t.TempDir()}, wantCode: findingsExitCode},
+		{arguments: []string{"ap", "check", clean}, wantCode: cleanExitCode},
+		{arguments: []string{"ap", "check", failing}, wantCode: findingsExitCode},
+		{arguments: []string{"ap", "markdown", reportPath}, wantCode: cleanExitCode},
+	}
+	for _, tc := range cases {
+		assertRun(
+			t,
+			tc.arguments,
+			tc.wantCode,
+		)
+	}
+}
+
+func TestCommandArguments(
 	t *testing.T,
 ) {
 	cases := []struct {
-		arguments []string
-		wantRoot  string
-		wantErr   bool
+		arguments   []string
+		wantCommand string
+		wantTarget  string
+		wantErr     bool
 	}{
-		{arguments: []string{"ap", "check", "."}, wantRoot: "."},
+		{arguments: []string{"ap", "check", "."}, wantCommand: "check", wantTarget: "."},
+		{arguments: []string{"ap", "markdown", "ap-report.json"}, wantCommand: "markdown", wantTarget: "ap-report.json"},
 		{arguments: []string{"ap", "check"}, wantErr: true},
 		{arguments: []string{"ap", "lint", "."}, wantErr: true},
 		{arguments: []string{"ap", "check", ".", "extra"}, wantErr: true},
 	}
 	for _, tc := range cases {
-		assertRootArgument(
+		assertCommandArguments(
 			t,
 			tc.arguments,
-			tc.wantRoot,
+			tc.wantCommand,
+			tc.wantTarget,
 			tc.wantErr,
+		)
+	}
+}
+
+func TestMarkdown(
+	t *testing.T,
+) {
+	directory := t.TempDir()
+	valid := filepath.Join(
+		directory,
+		"valid.json",
+	)
+	invalid := filepath.Join(
+		directory,
+		"invalid.json",
+	)
+	missing := filepath.Join(
+		directory,
+		"missing.json",
+	)
+	writeFile(
+		t,
+		valid,
+		`{"rule_docs":{},"findings":[]}`,
+	)
+	writeFile(
+		t,
+		invalid,
+		"not json",
+	)
+	cases := []struct {
+		path     string
+		wantCode int
+	}{
+		{path: valid, wantCode: cleanExitCode},
+		{path: invalid, wantCode: findingsExitCode},
+		{path: missing, wantCode: findingsExitCode},
+	}
+	for _, tc := range cases {
+		assertMarkdownCode(
+			t,
+			tc.path,
+			tc.wantCode,
 		)
 	}
 }
@@ -67,23 +171,76 @@ func TestExitCode(
 	}
 }
 
-func assertRootArgument(
+func assertRun(
 	t *testing.T,
 	arguments []string,
-	wantRoot string,
+	wantCode int,
+) {
+	t.Helper()
+	code := run(arguments)
+	if code != wantCode {
+		t.Errorf(
+			"run(%v) = %d, want %d",
+			arguments,
+			code,
+			wantCode,
+		)
+	}
+}
+
+func assertCommandArguments(
+	t *testing.T,
+	arguments []string,
+	wantCommand string,
+	wantTarget string,
 	wantErr bool,
 ) {
 	t.Helper()
-	root, err := rootArgument(arguments)
-	isMismatch := root != wantRoot || (err != nil) != wantErr
+	command, target, err := commandArguments(arguments)
+	isMismatch := command != wantCommand || target != wantTarget || (err != nil) != wantErr
 	if isMismatch {
 		t.Errorf(
-			"rootArgument(%v) = %q, %v; want %q, error %v",
+			"commandArguments(%v) = %q, %q, %v; want %q, %q, error %v",
 			arguments,
-			root,
+			command,
+			target,
 			err,
-			wantRoot,
+			wantCommand,
+			wantTarget,
 			wantErr,
 		)
+	}
+}
+
+func assertMarkdownCode(
+	t *testing.T,
+	path string,
+	wantCode int,
+) {
+	t.Helper()
+	code := markdown(path)
+	if code != wantCode {
+		t.Errorf(
+			"markdown(%q) = %d, want %d",
+			path,
+			code,
+			wantCode,
+		)
+	}
+}
+
+func writeFile(
+	t *testing.T,
+	path string,
+	content string,
+) {
+	t.Helper()
+	err := os.WriteFile(
+		path,
+		[]byte(content),
+		reportFileMode,
+	)
+	if err != nil {
+		t.Fatal(err)
 	}
 }

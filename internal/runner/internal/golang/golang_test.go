@@ -47,6 +47,38 @@ func TestGolang(
 	}
 }
 
+func TestGolangErrors(
+	t *testing.T,
+) {
+	missing := filepath.Join(
+		t.TempDir(),
+		"missing",
+	)
+	withoutLinter := t.TempDir()
+	writeFile(
+		t,
+		filepath.Join(
+			withoutLinter,
+			"go.mod",
+		),
+		"module example.com/fixture\n\ngo 1.24\n",
+	)
+	cases := []struct {
+		root string
+		path string
+	}{
+		{root: missing, path: os.Getenv("PATH")},
+		{root: withoutLinter, path: t.TempDir()},
+	}
+	for _, tc := range cases {
+		assertGolangError(
+			t,
+			tc.root,
+			tc.path,
+		)
+	}
+}
+
 func assertContains(
 	t *testing.T,
 	got []string,
@@ -61,6 +93,26 @@ func assertContains(
 			"Golang() rules = %v, want %s among them",
 			got,
 			want,
+		)
+	}
+}
+
+func assertGolangError(
+	t *testing.T,
+	root string,
+	path string,
+) {
+	t.Helper()
+	t.Setenv(
+		"PATH",
+		path,
+	)
+	_, err := golang.Golang(root)
+	if err == nil {
+		t.Errorf(
+			"Golang(%s) with PATH %s: error = nil, want one",
+			root,
+			path,
 		)
 	}
 }

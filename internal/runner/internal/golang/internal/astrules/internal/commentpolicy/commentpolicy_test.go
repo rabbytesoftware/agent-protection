@@ -201,6 +201,35 @@ type Base struct{}
 			want: []string{"R07 p.go:9", "R07 p.go:11"},
 		},
 		{
+			name: "embedded field docs follow the embedded type's export",
+			path: "p.go",
+			code: `package p
+
+import "strings"
+
+// T embeds several kinds of types.
+type T struct {
+	// Builder is exported through its selector.
+	*strings.Builder
+	// Pair is an exported generic.
+	Pair[int, string]
+	// List is an exported generic.
+	List[int]
+	// pair is an unexported generic.
+	*pair[int, string]
+}
+
+// Pair holds two values.
+type Pair[A any, B any] struct{}
+
+// List holds values.
+type List[A any] struct{}
+
+type pair[A any, B any] struct{}
+`,
+			want: []string{"R07 p.go:13"},
+		},
+		{
 			name: "exported interface method docs pass and the rest are reported",
 			path: "p.go",
 			code: `package p

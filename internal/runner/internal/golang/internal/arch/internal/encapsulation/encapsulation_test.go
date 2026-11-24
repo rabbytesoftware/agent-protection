@@ -187,3 +187,19 @@ func assertFindings(
 		)
 	}
 }
+
+func TestEncapsulationRejectsMissingRoot(
+	t *testing.T,
+) {
+	missing := filepath.Join(
+		t.TempDir(),
+		"missing",
+	)
+	_, err := encapsulation.Encapsulation(
+		missing,
+		nil,
+	)
+	if err == nil {
+		t.Error("Encapsulation() error = nil, want one for a missing root")
+	}
+}
