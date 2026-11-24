@@ -130,9 +130,9 @@ R26:
     id: R26
     level: L1
     text: Never ignore an error; wrap with %w and compare with errors.Is/As
-    enforcement: lint
-    rationale: A silently discarded error is a silently discarded failure -- the single most common way real bugs get masked in Go.
-    fix_strategy: Check the error; wrap it with context via %w if propagating.
+    enforcement: analyzer
+    rationale: "A silently discarded error is a silently discarded failure -- the single most common way real bugs get masked in Go. Checking an error and then returning, continuing or substituting a fallback without using it hides the failure just as _ = does."
+    fix_strategy: "Return the error wrapped with context via %w, or hand it to a reporter; replacing it with a zero value or a bare sentinel still drops it."
     not_a_fix: "Wrappers like saveBestEffort or swallowPanic that check the error and drop it; checking err and then returning silently or returning nil; assigning to _ or to a variable nobody reads; functions like ids.New() that return \"\" or a zero value on failure instead of an error; logging the error and carrying on as if the call succeeded."
 R27:
     id: R27
