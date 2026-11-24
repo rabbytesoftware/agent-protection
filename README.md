@@ -31,6 +31,22 @@ FIX), such as deleting comments instead of renaming symbols, or splitting
 an interface into pieces no consumer asks for. Agents follow the report
 text, so the report also says what does not count as a fix.
 
+The three pure-layout Go rules can be repaired automatically instead of by
+hand: one parameter per line (R01), one argument per line (R52) and
+paragraph layout (R55).
+
+```sh
+ap fix .
+```
+
+`ap fix` rewrites, in place, the same source and test files `ap check`
+reads, and only the ones those three rules flag. It moves line breaks and
+nothing else: the syntax tree keeps its shape, comments stay, the result is
+gofmt-clean, and a second run changes nothing. It prints every rewritten
+file and how many there were, and exits non-zero on a parse or write
+error. It supports Go only; a Cargo.toml or package.json component is
+refused. Every other rule still needs a human, so run `ap check .` after it.
+
 See `.ap.yaml.example` for the one config file a consuming repo owns.
 
 In GitHub Actions, use the composite action. On pull requests it keeps one

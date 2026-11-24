@@ -63,3 +63,17 @@ func Astrules(
 		noinfraintests.Noinfraintests(tests),
 	)
 }
+
+// Edits returns the edits that bring file in line with the layout rules ap
+// fix repairs: one parameter per line (R01), one argument per line (R52) and
+// paragraph layout (R55). The edits only move line breaks, so they never
+// change what the code means.
+func Edits(
+	file source.File,
+) (edits []source.Edit) {
+	return slices.Concat(
+		paramperline.Edits(file),
+		argumentperline.Edits(file),
+		paragraph.Edits(file),
+	)
+}

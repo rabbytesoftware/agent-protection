@@ -1,6 +1,7 @@
 package astrules_test
 
 import (
+	"go/format"
 	"go/parser"
 	"go/token"
 	"slices"
@@ -59,6 +60,77 @@ func TestAstrulesAppliesLayoutRulesToTests(
 		findings,
 		[]string{"R01", "R03"},
 	)
+}
+
+func TestEdits(
+	t *testing.T,
+) {
+	file := parsedContent(
+		t,
+		"package p\n\nfunc f(a int, b int) {\n\tif a > b {\n\t}\n\tg(a, b)\n}\n",
+	)
+	edits := astrules.Edits(file)
+	formatted, err := format.Source(source.Splice(
+		file.Content,
+		edits,
+	))
+	if err != nil {
+		t.Fatalf(
+			"format edited code: %v",
+			err,
+		)
+	}
+
+	remaining := astrules.Astrules(
+		[]source.File{parsedContent(
+			t,
+			string(formatted),
+		)},
+		nil,
+	)
+	for _, finding := range remaining {
+		assertNotLayout(
+			t,
+			finding,
+		)
+	}
+}
+
+func assertNotLayout(
+	t *testing.T,
+	finding report.Finding,
+) {
+	t.Helper()
+	if slices.Contains(
+		[]string{"R01", "R52", "R55"},
+		finding.Rule,
+	) {
+		t.Errorf(
+			"Edits() left %s at %s",
+			finding.Rule,
+			finding.Location,
+		)
+	}
+}
+
+func parsedContent(
+	t *testing.T,
+	code string,
+) (file source.File) {
+	t.Helper()
+	file, err := source.Parse(
+		"",
+		"p.go",
+		[]byte(code),
+	)
+	if err != nil {
+		t.Fatalf(
+			"parse fixture: %v",
+			err,
+		)
+	}
+
+	return file
 }
 
 func assertRules(

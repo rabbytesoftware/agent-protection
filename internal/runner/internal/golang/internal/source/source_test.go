@@ -1,6 +1,7 @@
 package source_test
 
 import (
+	"os"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -99,6 +100,71 @@ func TestSourceReportsUnparsableFiles(
 	_, err := source.Source(root)
 	if err == nil {
 		t.Error("Source() error = nil, want a parse error")
+	}
+}
+
+func TestSourceReportsUnreadableFiles(
+	t *testing.T,
+) {
+	root := t.TempDir()
+	path := filepath.Join(
+		root,
+		"locked.go",
+	)
+	writeFile(
+		t,
+		path,
+		"package locked\n",
+	)
+	err := os.Chmod(
+		path,
+		0,
+	)
+	if err != nil {
+		t.Fatalf(
+			"chmod: %v",
+			err,
+		)
+	}
+
+	_, err = source.Source(root)
+	if err == nil {
+		t.Error("Source() error = nil, want a read error")
+	}
+}
+
+func TestParse(
+	t *testing.T,
+) {
+	content := []byte("package p\n")
+	file, err := source.Parse(
+		"root",
+		"root/dir/p.go",
+		content,
+	)
+	if err != nil {
+		t.Fatalf(
+			"Parse() error = %v",
+			err,
+		)
+	}
+
+	isMismatch := file.Rel != "dir/p.go" || string(file.Content) != string(content)
+	if isMismatch {
+		t.Errorf(
+			"Parse() = Rel %q Content %q, want dir/p.go and the parsed content",
+			file.Rel,
+			file.Content,
+		)
+	}
+
+	_, err = source.Parse(
+		"root",
+		"root/dir/p.go",
+		[]byte("package\n"),
+	)
+	if err == nil {
+		t.Error("Parse() error = nil, want a parse error")
 	}
 }
 

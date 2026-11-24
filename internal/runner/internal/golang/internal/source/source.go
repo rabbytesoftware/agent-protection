@@ -107,6 +107,36 @@ func RelPath(
 	return rel
 }
 
+// Parse parses content as the Go file at path, which findings report
+// relative to root.
+func Parse(
+	root string,
+	path string,
+	content []byte,
+) (file File, err error) {
+	fileSet := token.NewFileSet()
+	syntax, err := parser.ParseFile(
+		fileSet,
+		path,
+		content,
+		parser.ParseComments,
+	)
+	if err != nil {
+		return File{},
+			fmt.Errorf(
+				"parse %s: %w",
+				path,
+				err,
+			)
+	}
+
+	return File{Path: path, Rel: RelPath(
+			root,
+			path,
+		), FileSet: fileSet, Syntax: syntax, Content: content},
+		nil
+}
+
 // IsTest reports whether path names a _test.go file.
 func IsTest(
 	path string,
@@ -196,27 +226,21 @@ func parse(
 	root string,
 	path string,
 ) (file File, err error) {
-	fileSet := token.NewFileSet()
-	syntax, err := parser.ParseFile(
-		fileSet,
-		path,
-		nil,
-		parser.ParseComments,
-	)
+	content, err := os.ReadFile(path)
 	if err != nil {
 		return File{},
 			fmt.Errorf(
-				"parse %s: %w",
+				"read %s: %w",
 				path,
 				err,
 			)
 	}
 
-	return File{Path: path, Rel: RelPath(
-			root,
-			path,
-		), FileSet: fileSet, Syntax: syntax},
-		nil
+	return Parse(
+		root,
+		path,
+		content,
+	)
 }
 
 func isNotHandWrittenSource(

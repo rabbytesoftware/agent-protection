@@ -90,6 +90,80 @@ func TestRunnerDispatchesByLanguageMarker(
 	}
 }
 
+func TestFix(
+	t *testing.T,
+) {
+	module := t.TempDir()
+	writeExecutable(
+		t,
+		filepath.Join(
+			module,
+			"go.mod",
+		),
+		"module example.com/fixture\n\ngo 1.24\n",
+	)
+	writeExecutable(
+		t,
+		filepath.Join(
+			module,
+			"pair.go",
+		),
+		"package fixture\n\nfunc pair(a int, b int) {\n}\n",
+	)
+	changed, err := runner.Fix(module)
+	isMismatch := err != nil || len(changed) != 1
+	if isMismatch {
+		t.Errorf(
+			"Fix() = %v, %v, want pair.go rewritten",
+			changed,
+			err,
+		)
+	}
+}
+
+func TestFixRejectsOtherLanguages(
+	t *testing.T,
+) {
+	for _, marker := range []string{"Cargo.toml", "package.json"} {
+		assertFixRefuses(
+			t,
+			marker,
+		)
+	}
+}
+
+func assertFixRefuses(
+	t *testing.T,
+	marker string,
+) {
+	t.Helper()
+	root := t.TempDir()
+	writeExecutable(
+		t,
+		filepath.Join(
+			root,
+			marker,
+		),
+		"",
+	)
+	_, err := runner.Fix(root)
+	if err == nil {
+		t.Errorf(
+			"Fix() with %s error = nil, want ap fix to refuse it",
+			marker,
+		)
+	}
+}
+
+func TestFixRejectsFolderWithoutLanguageMarker(
+	t *testing.T,
+) {
+	_, err := runner.Fix(t.TempDir())
+	if err == nil {
+		t.Error("Fix() error = nil, want an unsupported-folder error")
+	}
+}
+
 func assertDispatch(
 	t *testing.T,
 	marker string,

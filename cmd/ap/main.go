@@ -12,6 +12,7 @@ import (
 
 const (
 	checkCommand      = "check"
+	fixCommand        = "fix"
 	markdownCommand   = "markdown"
 	reportPath        = "ap-report.json"
 	reportFileMode    = 0o644
@@ -19,7 +20,7 @@ const (
 	findingsExitCode  = 1
 	usageExitCode     = 2
 	expectedArguments = 3
-	usage             = "usage: ap check <root-dir> | ap markdown <ap-report.json>"
+	usage             = "usage: ap check <root-dir> | ap fix <root-dir> | ap markdown <ap-report.json>"
 )
 
 func main() {
@@ -38,8 +39,11 @@ func run(
 		return usageExitCode
 	}
 
-	if command == markdownCommand {
+	switch command {
+	case markdownCommand:
 		return markdown(target)
+	case fixCommand:
+		return fix(target)
 	}
 
 	return check(target)
@@ -51,6 +55,7 @@ func commandArguments(
 	isKnownCommand := len(arguments) == expectedArguments && slices.Contains(
 		[]string{
 			checkCommand,
+			fixCommand,
 			markdownCommand,
 		},
 		arguments[1],
@@ -91,6 +96,30 @@ func check(
 
 	fmt.Print(output.Text())
 	return exitCode(output)
+}
+
+func fix(
+	root string,
+) (code int) {
+	changed, err := runner.Fix(root)
+	for _, path := range changed {
+		fmt.Println(path)
+	}
+
+	fmt.Printf(
+		"files changed: %d\n",
+		len(changed),
+	)
+	if err != nil {
+		fmt.Fprintf(
+			os.Stderr,
+			"fix failed: %v\n",
+			err,
+		)
+		return findingsExitCode
+	}
+
+	return cleanExitCode
 }
 
 func markdown(

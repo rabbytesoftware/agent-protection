@@ -2,8 +2,7 @@ package source_test
 
 import (
 	"go/ast"
-	"go/parser"
-	"go/token"
+	"slices"
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
@@ -43,17 +42,39 @@ func TestFileColumn(
 	}
 }
 
+func TestFileOffsets(
+	t *testing.T,
+) {
+	file := parsedFile(
+		t,
+		"package p\n\nfunc f() {\n}\n",
+	)
+	declaration := source.Nodes[*ast.FuncDecl](file.Syntax)[0]
+	offsets := []int{
+		file.Offset(declaration.Pos()),
+		file.LineOffset(3),
+		file.LineOffset(4),
+	}
+	if !slices.Equal(
+		offsets,
+		[]int{11, 11, 22},
+	) {
+		t.Errorf(
+			"offsets = %v, want [11 11 22]",
+			offsets,
+		)
+	}
+}
+
 func parsedFile(
 	t *testing.T,
 	code string,
 ) (file source.File) {
 	t.Helper()
-	fileSet := token.NewFileSet()
-	syntax, err := parser.ParseFile(
-		fileSet,
-		"p.go",
-		code,
-		parser.ParseComments,
+	file, err := source.Parse(
+		"",
+		"dir/p.go",
+		[]byte(code),
 	)
 	if err != nil {
 		t.Fatalf(
@@ -62,5 +83,5 @@ func parsedFile(
 		)
 	}
 
-	return source.File{Path: "p.go", Rel: "dir/p.go", FileSet: fileSet, Syntax: syntax}
+	return file
 }

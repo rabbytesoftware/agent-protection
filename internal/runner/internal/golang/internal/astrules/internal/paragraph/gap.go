@@ -12,13 +12,18 @@ func blankBetween(
 	from token.Pos,
 	to token.Pos,
 ) (blank bool) {
-	gap := lineOf(
-		file,
-		to,
-	) - lineOf(
+	return len(blankLines(
 		file,
 		from,
-	) - 1
+		to,
+	)) > 0
+}
+
+func blankLines(
+	file source.File,
+	from token.Pos,
+	to token.Pos,
+) (lines []int) {
 	commented := map[int]bool{}
 	for _, group := range file.Syntax.Comments {
 		markLines(
@@ -32,7 +37,23 @@ func blankBetween(
 		)
 	}
 
-	return gap > len(commented)
+	first := lineOf(
+		file,
+		from,
+	) + 1
+	last := lineOf(
+		file,
+		to,
+	) - 1
+	for line := first; line <= last; line++ {
+		lines = appendUnmarked(
+			lines,
+			commented,
+			line,
+		)
+	}
+
+	return lines
 }
 
 func groupLines(
@@ -78,6 +99,21 @@ func markLines(
 	for _, line := range lines {
 		marked[line] = true
 	}
+}
+
+func appendUnmarked(
+	lines []int,
+	marked map[int]bool,
+	line int,
+) (unmarked []int) {
+	if marked[line] {
+		return lines
+	}
+
+	return append(
+		lines,
+		line,
+	)
 }
 
 func lineOf(

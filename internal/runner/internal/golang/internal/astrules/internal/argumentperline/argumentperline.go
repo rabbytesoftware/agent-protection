@@ -75,13 +75,16 @@ func hasArgumentPerLine(
 		file,
 		call.Lparen,
 	)}
-	for _, argument := range call.Args {
+	for _, extent := range argumentExtents(call) {
 		spans = append(
 			spans,
-			argumentSpan(
+			span{first: lineOf(
 				file,
-				argument,
-			),
+				extent.Start,
+			), last: lineOf(
+				file,
+				extent.End,
+			)},
 		)
 	}
 
@@ -96,19 +99,6 @@ func hasArgumentPerLine(
 		gaps(spans),
 		isCollapsed,
 	)
-}
-
-func argumentSpan(
-	file source.File,
-	argument ast.Expr,
-) (extent span) {
-	return span{first: lineOf(
-		file,
-		argument.Pos(),
-	), last: lineOf(
-		file,
-		argument.End(),
-	)}
 }
 
 func gaps(
