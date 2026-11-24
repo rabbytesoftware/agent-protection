@@ -189,17 +189,5 @@ func startsWithOutput(
 func isProseComment(
 	comment *ast.Comment,
 ) (prose bool) {
-	prose = true
-	for _, prefix := range directivePrefixes() {
-		prose = prose && !strings.HasPrefix(
-			comment.Text,
-			prefix,
-		)
-	}
-
-	return prose
-}
-
-func directivePrefixes() (prefixes []string) {
-	return []string{"//go:", "//line ", "//export ", "//extern ", "// +build"}
+	return !isDirective(comment.Text)
 }

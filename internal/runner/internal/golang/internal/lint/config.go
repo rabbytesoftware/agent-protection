@@ -3,11 +3,6 @@ package lint
 const config = `version: "2"
 linters:
   default: none
-  exclusions:
-    paths:
-      - "docs/"
-      - "generated/"
-      - "gen/"
   enable:
     - gocyclo
     - gocognit
