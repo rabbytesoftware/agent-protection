@@ -21,8 +21,9 @@ const (
 
 // Testpairing pairs source and test files one to one. Every source file
 // with behavior needs an x_test.go beside it, and every test file needs the
-// x.go it is named after. Declaration-only, generated and mock sources
-// need no test of their own.
+// x.go it is named after; x_bench_test.go and x_integration_test.go also
+// pair with x.go. Declaration-only, generated and mock sources need no
+// test of their own.
 func Testpairing(
 	root string,
 ) (findings []report.Finding, err error) {
@@ -201,16 +202,15 @@ func orphanTestFindings(
 	test string,
 	paths []string,
 ) (findings []report.Finding) {
-	path := strings.TrimSuffix(
-		test,
-		testSuffix,
-	) + goExtension
-	if slices.Contains(
+	candidates := pairedSources(test)
+	if containsAny(
 		paths,
-		path,
+		candidates,
 	) {
 		return nil
 	}
+
+	path := candidates[0]
 
 	return []report.Finding{{
 		Rule: orphanTestRule,
@@ -223,6 +223,62 @@ func orphanTestFindings(
 			filepath.Base(path),
 		),
 	}}
+}
+
+func pairedSources(
+	test string,
+) (sources []string) {
+	stem := strings.TrimSuffix(
+		test,
+		testSuffix,
+	)
+	sources = []string{stem + goExtension}
+	for _, kind := range testKinds() {
+		sources = appendKindSource(
+			sources,
+			stem,
+			kind,
+		)
+	}
+
+	return sources
+}
+
+func appendKindSource(
+	sources []string,
+	stem string,
+	kind string,
+) (candidates []string) {
+	trimmed, isKind := strings.CutSuffix(
+		stem,
+		kind,
+	)
+	if !isKind {
+		return sources
+	}
+
+	return append(
+		sources,
+		trimmed+goExtension,
+	)
+}
+
+func containsAny(
+	paths []string,
+	candidates []string,
+) (found bool) {
+	for _, candidate := range candidates {
+		found = found || slices.Contains(
+			paths,
+			candidate,
+		)
+	}
+
+	return found
+}
+
+func testKinds() (kinds []string) {
+	return []string{"_bench", "_integration"}
 }
 
 func isExempt(

@@ -141,7 +141,7 @@ R32:
 R33:
     id: R33
     level: L0
-    text: 'Command-Query Separation: a function either mutates state or returns a value, never both'
+    text: 'Command-Query Separation: a function either mutates state or returns a value, never both (a chainable method returning its own receiver is a command)'
     enforcement: analyzer
     rationale: Mixing "tell me something" and "change something" in one call makes call sites unpredictable and hard to reason about.
     fix_strategy: Split into a Compute/Get query function (no mutation) and a separate Set/Apply/Update command function (no return value beyond error).
@@ -169,7 +169,7 @@ R42:
 R43:
     id: R43
     level: L3
-    text: "No free test files: every _test.go file has a matching source file beside it"
+    text: "No free test files: every _test.go file has a matching source file beside it (x_bench_test.go and x_integration_test.go match x.go)"
     enforcement: arch
     rationale: "Tests grouped by feature or into catch-all files have no single home, so nobody can tell which source file is covered by what."
     fix_strategy: "Move each test into the _test.go file named after the source file it exercises, then delete the free test file."

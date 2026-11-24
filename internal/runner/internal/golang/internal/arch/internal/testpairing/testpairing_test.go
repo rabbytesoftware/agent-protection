@@ -54,6 +54,16 @@ func TestTestpairing(
 			want:  []string{"R43 x/misc_test.go"},
 		},
 		{
+			name:  "benchmark and integration test files pair with their source",
+			files: map[string]string{"x/a.go": behavior, "x/a_test.go": unitTest, "x/a_bench_test.go": unitTest, "x/a_integration_test.go": unitTest},
+			want:  nil,
+		},
+		{
+			name:  "benchmark test without its source is reported",
+			files: map[string]string{"x/a_bench_test.go": unitTest},
+			want:  []string{"R43 x/a_bench_test.go"},
+		},
+		{
 			name:  "integration test without its source is reported",
 			files: map[string]string{"x/integration_test.go": "//go:build integration\n\npackage x_test\n"},
 			want:  []string{"R43 x/integration_test.go"},
