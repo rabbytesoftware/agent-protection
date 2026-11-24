@@ -12,7 +12,21 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
+      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
       - run: go build -o bin/ap ./cmd/ap
       - name: ap checks itself (dogfooding)
         run: ./bin/ap check .
       - run: go test ./...
+
+  branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Branch prefix decides the release bump
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [[ "$HEAD_REF" =~ ^(feature|enhancement|fix|hotfix|chore|docs|ci|refactor|test)/[a-z0-9._-]+$ ]]; then
+            exit 0
+          fi
+          echo "::error::Branch '$HEAD_REF' must be <prefix>/<name> with prefix one of: feature, enhancement (minor), fix, hotfix (patch), chore, docs, ci, refactor, test (no release). Add the 'breaking-change' label for a major bump."
+          exit 1

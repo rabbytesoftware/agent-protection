@@ -16,6 +16,13 @@ dockers:
       - "ghcr.io/rabbytesoftware/agent-protection:{{ .Tag }}"
       - "ghcr.io/rabbytesoftware/agent-protection:latest"
     dockerfile: Dockerfile
+    extra_files:
+      - go.mod
+      - go.sum
+      - cmd
+      - internal
+changelog:
+  use: github-native
 release:
   github:
     owner: rabbytesoftware

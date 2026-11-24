@@ -3,56 +3,95 @@ package report
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
-
-	"github.com/rabbytesoftware/agent-protection/internal/rules"
+	"slices"
+	"strings"
 )
 
+// Output is the final report of one run: every finding, plus the
+// explanation of each distinct violated rule keyed by rule ID.
 type Output struct {
 	RuleDocs map[string]RuleDoc `json:"rule_docs"`
 	Findings []Finding          `json:"findings"`
 }
 
-func Build(findings []Finding) Output {
-	docs := map[string]RuleDoc{}
-	for _, f := range findings {
-		if _, ok := docs[f.Rule]; ok {
-			continue
-		}
-		r, known := rules.Registry()[f.Rule]
-		if !known {
-			continue
-		}
-		docs[f.Rule] = RuleDoc{Text: r.Text, Rationale: r.Rationale, FixStrategy: r.FixStrategy}
-	}
-	sort.Slice(findings, func(i, j int) bool {
-		if findings[i].Rule != findings[j].Rule {
-			return findings[i].Rule < findings[j].Rule
-		}
-		return findings[i].Location < findings[j].Location
-	})
-	return Output{RuleDocs: docs, Findings: findings}
-}
-
-func (o Output) JSON() (string, error) {
-	b, err := json.MarshalIndent(o, "", "  ")
+// JSON renders the report as indented JSON, the machine-readable form
+// written to ap-report.json for agents and CI to consume.
+func (o Output) JSON() (document string, err error) {
+	encoded, err := json.MarshalIndent(
+		o,
+		"",
+		"  ",
+	)
 	if err != nil {
-		return "", fmt.Errorf("marshal report: %w", err)
+		return "",
+			fmt.Errorf(
+				"marshal report: %w",
+				err,
+			)
 	}
-	return string(b), nil
+	return string(encoded),
+		nil
 }
 
-func (o Output) Text() string {
-	out := ""
-	seen := map[string]bool{}
-	for _, f := range o.Findings {
-		if !seen[f.Rule] {
-			seen[f.Rule] = true
-			doc := o.RuleDocs[f.Rule]
-			out += fmt.Sprintf("\n=== %s: %s ===\nWHY: %s\nFIX: %s\n\n", f.Rule, doc.Text, doc.Rationale, doc.FixStrategy)
-		}
-		out += fmt.Sprintf("  x %s  %s\n", f.Location, f.Snippet)
+// Text renders the report for a terminal: one section per violated rule,
+// headed by its explanation, listing every location that violates it,
+// followed by a one-line total.
+func (o Output) Text() (text string) {
+	var builder strings.Builder
+	for _, rule := range o.violatedRules() {
+		builder.WriteString(o.section(rule))
 	}
-	out += fmt.Sprintf("\n%d findings across %d unique rules\n", len(o.Findings), len(o.RuleDocs))
-	return out
+	fmt.Fprintf(
+		&builder,
+		"\n%d findings across %d unique rules\n",
+		len(o.Findings),
+		len(o.RuleDocs),
+	)
+	return builder.String()
+}
+
+func (o Output) violatedRules() (ids []string) {
+	for _, finding := range o.Findings {
+		ids = append(
+			ids,
+			finding.Rule,
+		)
+	}
+	return slices.Compact(ids)
+}
+
+func (o Output) section(
+	rule string,
+) (section string) {
+	doc := o.RuleDocs[rule]
+	var builder strings.Builder
+	fmt.Fprintf(
+		&builder,
+		"\n=== %s: %s ===\nWHY: %s\nFIX: %s\n\n",
+		rule,
+		doc.Text,
+		doc.Rationale,
+		doc.FixStrategy,
+	)
+	for _, finding := range o.Findings {
+		builder.WriteString(entry(
+			finding,
+			rule,
+		))
+	}
+	return builder.String()
+}
+
+func entry(
+	finding Finding,
+	rule string,
+) (line string) {
+	if finding.Rule != rule {
+		return ""
+	}
+	return fmt.Sprintf(
+		"  x %s  %s\n",
+		finding.Location,
+		finding.Snippet,
+	)
 }

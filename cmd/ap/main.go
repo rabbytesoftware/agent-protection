@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -9,40 +10,77 @@ import (
 )
 
 const (
-	minArgCount       = 3
-	rootArgIndex      = 2
+	checkCommand      = "check"
+	reportPath        = "ap-report.json"
 	reportFileMode    = 0o644
+	cleanExitCode     = 0
+	findingsExitCode  = 1
 	usageExitCode     = 2
-	checkFailExitCode = 1
+	expectedArguments = 3
 )
 
-// main is a thin CLI shell: parse arguments, delegate everything else to
-// the runner package (AP's real composition root), print and exit.
 func main() {
-	if len(os.Args) < minArgCount || os.Args[1] != "check" {
-		fmt.Fprintln(os.Stderr, "usage: ap check <root-dir>")
+	root, err := rootArgument(os.Args)
+	if err != nil {
+		fmt.Fprintln(
+			os.Stderr,
+			err,
+		)
 		os.Exit(usageExitCode)
 	}
-	root := os.Args[rootArgIndex]
-
-	out, err := runner.Run(root)
+	output, err := runner.Runner(root)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "check failed: %v\n", err)
-		os.Exit(checkFailExitCode)
+		fmt.Fprintf(
+			os.Stderr,
+			"check failed: %v\n",
+			err,
+		)
+		os.Exit(findingsExitCode)
 	}
-
-	writeReportAndExit(out)
+	err = writeReport(output)
+	if err != nil {
+		fmt.Fprintf(
+			os.Stderr,
+			"write report: %v\n",
+			err,
+		)
+		os.Exit(findingsExitCode)
+	}
+	fmt.Print(output.Text())
+	os.Exit(exitCode(output))
 }
 
-// writeReportAndExit writes the report to ap-report.json, prints it, and
-// exits non-zero if any findings were reported.
-func writeReportAndExit(out report.Output) {
-	j, _ := out.JSON()
-	if werr := os.WriteFile("ap-report.json", []byte(j), reportFileMode); werr != nil {
-		fmt.Fprintf(os.Stderr, "write report: %v\n", werr)
+func rootArgument(
+	arguments []string,
+) (root string, err error) {
+	isCheckInvocation := len(arguments) == expectedArguments && arguments[1] == checkCommand
+	if !isCheckInvocation {
+		return "",
+			errors.New("usage: ap check <root-dir>")
 	}
-	fmt.Print(out.Text())
-	if len(out.Findings) > 0 {
-		os.Exit(checkFailExitCode)
+	return arguments[2],
+		nil
+}
+
+func writeReport(
+	output report.Output,
+) (err error) {
+	document, err := output.JSON()
+	if err != nil {
+		return err
 	}
+	return os.WriteFile(
+		reportPath,
+		[]byte(document),
+		reportFileMode,
+	)
+}
+
+func exitCode(
+	output report.Output,
+) (code int) {
+	if len(output.Findings) > 0 {
+		return findingsExitCode
+	}
+	return cleanExitCode
 }

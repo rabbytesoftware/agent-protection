@@ -29,14 +29,20 @@ See `.ap.yaml.example` for the one config file a consuming repo owns.
 
 ## Status
 
-Go: 16 rules, validated against 3 independent real codebases across
-several false-positive-hunting rounds.
-Rust: unwrap/expect/panic-risk detection, validated against 2 codebases
-(inline `#[cfg(test)]` module exclusion fixed).
-TypeScript: complexity/magic-number/no-else/no-debug-output/no-param-reassign/
-modern-syntax/one-class-per-file proxies via ESLint core rules, validated
-against 2 codebases. No custom structural checks yet (an attempted
-boolean-flag-param check was cut after two failed implementations).
+Go: 32 analyzer and architecture rules plus the golangci-lint proxies,
+covering the full Rabbyte Go manifest wherever a rule is mechanically
+checkable: one parameter per line (R01), at most two indentation levels
+(R02), guard clauses with no else (R03), named results and no naked
+returns (R04), the comment policy (R07), one type per file (R08),
+stateless types as functions (R11, R12), interfaces over exported structs
+(R13), package layering and internal/ boundaries (R16, R19, R47-R51),
+naming (R21-R23), no panic (R27), 1:1 test files (R42, R43), file and
+directory size caps (R44, R46). Agent Protection passes its own gate.
+Rust: unwrap/expect/panic-risk detection through clippy, excluding inline
+`#[cfg(test)]` modules.
+TypeScript: complexity, magic-number, no-else, no-debug-output,
+no-param-reassign, modern-syntax and one-class-per-file proxies via ESLint
+core rules.
 
 No rule has ever been weakened or carve-out'd to pass on a specific repo;
 a repo failing a rule means the repo needs fixing, not the manifest.

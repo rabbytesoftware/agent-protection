@@ -5,59 +5,77 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/checks"
 	"github.com/rabbytesoftware/agent-protection/internal/report"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/rust"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/typescript"
 )
 
-// Run is AP's top-level dispatcher: detect root's language, hand off to
-// the matching checks.Checker, and build the final report.
-func Run(root string) (report.Output, error) {
-	lang, err := detectLanguage(root)
+const (
+	goMarker         = "go.mod"
+	rustMarker       = "Cargo.toml"
+	typescriptMarker = "package.json"
+)
+
+// Runner checks the single-language component at root against its rule set
+// and returns the report. The language comes from the marker file directly
+// inside root: go.mod, Cargo.toml or package.json, in that order.
+func Runner(
+	root string,
+) (output report.Output, err error) {
+	check, err := checkFor(root)
 	if err != nil {
-		return report.Output{}, err
+		return report.Output{},
+			err
 	}
-	checker, err := checkerFor(lang)
+	findings, err := check(root)
 	if err != nil {
-		return report.Output{}, err
+		return report.Output{},
+			err
 	}
-	findings, err := checker.Check(root)
-	if err != nil {
-		return report.Output{}, err
-	}
-	return report.Build(findings), nil
+	return report.Report(findings)
 }
 
-// checkerFor returns the checks.Checker for lang.
-func checkerFor(lang string) (checks.Checker, error) {
-	switch lang {
-	case "go":
-		return checks.GoChecker(), nil
-	case "rust":
-		return checks.RustChecker(), nil
-	case "typescript":
-		return checks.TypeScriptChecker(), nil
+func checkFor(
+	root string,
+) (check func(string) ([]report.Finding, error), err error) {
+	switch {
+	case hasMarker(
+		root,
+		goMarker,
+	):
+		return golang.Golang,
+			nil
+	case hasMarker(
+		root,
+		rustMarker,
+	):
+		return rust.Rust,
+			nil
+	case hasMarker(
+		root,
+		typescriptMarker,
+	):
+		return typescript.Typescript,
+			nil
 	}
-	return nil, fmt.Errorf("unsupported language: %s", lang)
+	return nil,
+		fmt.Errorf(
+			"no %s, %s or %s directly in %s: point ap at a single-language component folder",
+			goMarker,
+			rustMarker,
+			typescriptMarker,
+			root,
+		)
 }
 
-// detectLanguage looks only at root itself (one ap process = one component
-// folder = one language, matching how this is wired per-repo in CI: a
-// separate job runs `ap check .` inside api/, inside desktop/src-tauri/,
-// inside web/ -- never one process scanning a whole multi-language monorepo).
-func detectLanguage(root string) (string, error) {
-	if exists(filepath.Join(root, "go.mod")) {
-		return "go", nil
-	}
-	if exists(filepath.Join(root, "Cargo.toml")) {
-		return "rust", nil
-	}
-	if exists(filepath.Join(root, "package.json")) {
-		return "typescript", nil
-	}
-	return "", fmt.Errorf("no go.mod, Cargo.toml, or package.json found directly in %s -- point ap at the single-language component folder itself", root)
-}
-
-func exists(path string) bool {
-	_, err := os.Stat(path)
+func hasMarker(
+	root string,
+	marker string,
+) (present bool) {
+	_, err := os.Stat(filepath.Join(
+		root,
+		marker,
+	))
 	return err == nil
 }

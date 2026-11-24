@@ -1,31 +1,17 @@
-PROXY-COMPLEXITY:
-    id: PROXY-COMPLEXITY
+R01:
+    id: R01
     level: L0
-    text: Function exceeds complexity/length/nesting budget (proxy for SRP / does-one-thing)
-    enforcement: lint
-    rationale: A function under complexity, length and nesting budgets is structurally incapable of doing many unrelated things.
-    fix_strategy: Extract named helper functions per branch/step; replace nested conditionals with early returns.
-PROXY-DUPLICATION:
-    id: PROXY-DUPLICATION
+    text: "One parameter per line, always: opening paren on the func line, every parameter on its own line, closing paren on its own line"
+    enforcement: analyzer
+    rationale: "A signature with one parameter per line diffs cleanly when parameters are added, removed or reordered, and reads the same way in every function regardless of length."
+    fix_strategy: "Break the parameter list so the opening paren ends the func line, each parameter sits on its own line with a trailing comma, and the closing paren starts its own line."
+R02:
+    id: R02
     level: L0
-    text: Code block duplicated 3+ times above a token threshold
-    enforcement: lint
-    rationale: Two occurrences can be coincidental; three is a pattern, and the point past which drift between copies becomes a real risk.
-    fix_strategy: Extract the duplicated block into a shared helper, parameterizing the differences.
-PROXY-GLOBAL-STATE:
-    id: PROXY-GLOBAL-STATE
-    level: L1
-    text: Mutable package-level variable
-    enforcement: lint
-    rationale: Package-level mutable state is implicit, shared, and hard to reason about under concurrency or testing.
-    fix_strategy: Pass the state explicitly through a constructor/struct field instead.
-PROXY-MAGIC-NUMBER:
-    id: PROXY-MAGIC-NUMBER
-    level: L0
-    text: Unnamed numeric/string literal used outside a const declaration
-    enforcement: lint
-    rationale: Unnamed literals hide intent and make the meaning of a threshold invisible at the call site.
-    fix_strategy: Hoist the literal into a named const with a descriptive identifier.
+    text: "Maximum 2 indentation levels inside a function body"
+    enforcement: analyzer
+    rationale: "Code nested three levels deep forces the reader to hold several conditions in mind at once; the depth itself is the signal that a step deserves its own name."
+    fix_strategy: "Extract the inner block into a named function or method, filter collections with slices.DeleteFunc or slices.ContainsFunc, or invert conditions into guard clauses."
 R03:
     id: R03
     level: L1
@@ -36,10 +22,17 @@ R03:
 R04:
     id: R04
     level: L1
-    text: Named returns instead of var in the body; never naked return
+    text: "Named returns instead of var in the body; never naked return"
     enforcement: analyzer
-    rationale: A naked return on a named-result function hides what's actually being returned at the call site that matters most -- the function's exit.
-    fix_strategy: Write the explicit `return value, err` even though the names are declared in the signature.
+    rationale: "A var declared only to be returned duplicates what a named result already declares, and a naked return hides what is actually returned at the exit that matters most."
+    fix_strategy: "Declare the value as a named result and drop the var, and always write the explicit return values even though the names are declared in the signature."
+R07:
+    id: R07
+    level: L0
+    text: "No inline comments and no comments on unexported symbols; every exported symbol has a doc comment"
+    enforcement: analyzer
+    rationale: "Names carry what code does; a comment that restates it drifts out of date and adds noise. Exported symbols are the contract other packages read, so they and only they are documented."
+    fix_strategy: "Delete the comment and rename the symbol until it explains itself; add a doc comment describing behavior and contract to every exported symbol. Deprecation notes and spec links are the only other comments allowed."
 R08:
     id: R08
     level: L1
@@ -47,6 +40,27 @@ R08:
     enforcement: analyzer
     rationale: A file with multiple types has no single, name-matched home, making it harder for both agents and humans to find or size any one type's code.
     fix_strategy: Split into one file per type, named after that type.
+R11:
+    id: R11
+    level: L1
+    text: "A stateless type is a package-level function named after the package, not a struct"
+    enforcement: analyzer
+    rationale: "An empty struct with methods carries no state, so the type adds a constructor, a receiver and an indirection that a plain function does not need."
+    fix_strategy: "Delete the struct and expose the behavior as a package-level function named after the package (vault.Vault, deptree.Deptree)."
+R12:
+    id: R12
+    level: L1
+    text: "NewXxx constructors only when there is real state to initialize"
+    enforcement: analyzer
+    rationale: "A constructor that returns an empty struct implies initialization that does not exist and invites callers to depend on a type that should not be there."
+    fix_strategy: "Remove the constructor and the empty struct, and call the package-level function directly."
+R13:
+    id: R13
+    level: L0
+    text: Public APIs expose interfaces, never exported concrete struct types
+    enforcement: analyzer
+    rationale: An exported struct couples every caller to its exact field layout and construction details; an interface describes only the behavior a caller needs, so the implementation can change freely behind it.
+    fix_strategy: Unexport the struct, expose an interface describing its behavior instead, and return the interface from a constructor function.
 R16:
     id: R16
     level: L1
@@ -54,6 +68,13 @@ R16:
     enforcement: arch
     rationale: Two packages at the same layer importing each other is undeclared coupling that makes the dependency graph impossible to reason about and blocks independent evolution of either package.
     fix_strategy: Extract the shared contract into a third, lower package that both siblings depend on, or merge the two packages if they are genuinely one responsibility.
+R19:
+    id: R19
+    level: L1
+    text: Nest internal/ at the lowest module that needs it -- a package imported by exactly one other internal package must live nested under that importer's own internal/ subtree, not exposed at a shallower level
+    enforcement: arch
+    rationale: A package sitting above its sole consumer's internal/ boundary is importable by anything else in the module even though nothing else uses it -- the encapsulation only exists by accident, not by Go's own visibility enforcement, and the first stray import from elsewhere quietly turns an implementation detail into a load-bearing dependency.
+    fix_strategy: Move the package under its sole importer's own internal/ subtree (e.g. importer/internal/<package>), so Go's internal/ visibility rule actually restricts it to that one consumer.
 R21:
     id: R21
     level: L1
@@ -71,7 +92,7 @@ R22:
 R23:
     id: R23
     level: L1
-    text: No naming stutter (vault.Vault is the one allowed exception)
+    text: No naming stutter; the one allowed exception is a type or entry function named exactly after its package (vault.Vault, noelse.Noelse)
     enforcement: analyzer
     rationale: pkg.PkgThing repeats information the caller already has from the package qualifier -- it's noise at every call site.
     fix_strategy: Drop the repeated package name from the type name.
@@ -96,6 +117,13 @@ R26:
     enforcement: lint
     rationale: A silently discarded error is a silently discarded failure -- the single most common way real bugs get masked in Go.
     fix_strategy: Check the error; wrap it with context via %w if propagating.
+R27:
+    id: R27
+    level: L1
+    text: "No panic outside package main"
+    enforcement: analyzer
+    rationale: "A library that panics takes the decision to crash away from its caller; errors are values the caller can handle, log or wrap."
+    fix_strategy: "Return an error wrapped with context via %w instead of panicking, and let main decide whether startup failure is fatal."
 R28:
     id: R28
     level: L1
@@ -138,10 +166,17 @@ R42:
     enforcement: script
     rationale: A source file with no test file has unverified behavior by construction; this is the floor, not a strong guarantee of quality.
     fix_strategy: Add a _test.go file covering at least the exported surface of the source file.
+R43:
+    id: R43
+    level: L3
+    text: "No free test files: every _test.go file has a matching source file beside it"
+    enforcement: arch
+    rationale: "Tests grouped by feature or into catch-all files have no single home, so nobody can tell which source file is covered by what."
+    fix_strategy: "Move each test into the _test.go file named after the source file it exercises, then delete the free test file."
 R44:
     id: R44
     level: L3
-    text: Source files stay under 500-600 lines
+    text: Source files stay at or under 500 lines
     enforcement: script
     rationale: A file this long is a sign the abstraction is wrong, not that it needs a bigger limit.
     fix_strategy: Split by responsibility, not by line count.
@@ -152,6 +187,90 @@ R46:
     enforcement: script
     rationale: A directory with too many files is a package doing too much work; this is the directory-level analog of a per-file line cap.
     fix_strategy: Split into subdirectories by responsibility, never just to get under the count.
+R47:
+    id: R47
+    level: L1
+    text: A file importing 2+ sibling internal/ packages is a de facto composition root and must be named like one (container.go, wire.go, or <package-name>.go)
+    enforcement: arch
+    rationale: Wiring code that coordinates multiple siblings is architecturally significant -- it's the one place allowed to break the sibling-import rule. If it hides in an arbitrarily-named file instead of the conventional composition-root location, nobody reviewing the package structure can find it, and the exemption becomes indistinguishable from an unreviewed layering violation.
+    fix_strategy: Rename the file to container.go, wire.go, or the name of its own package, or move the wiring code into such a file.
+R48:
+    id: R48
+    level: L0
+    text: "A directory with 2+ sibling internal/ child packages must itself be a package with a file named after itself, exposing an exported interface or an exported entry function named after the package"
+    enforcement: arch
+    rationale: "A parent of multiple internal sub-packages is a component boundary; without one named entry point there is no single place for callers to go to understand or use the component."
+    fix_strategy: "Add a <package-name>.go file that exposes the component either as an exported interface (when it holds state) or as a package-level function named after the package (when it is stateless, rule 11)."
+R49:
+    id: R49
+    level: L0
+    text: A composition-root directory contains no other loose non-test .go files beside its container file
+    enforcement: arch
+    rationale: The container file is the package's entire public contract. Any additional loose file in the same directory is unreviewable implementation detail hiding in plain sight next to the interface -- it belongs in the package's own internal/ subtree (rule 15), the same way a repository package keeps only its own <name>.go exposed and pushes everything else into a nested internal/.
+    fix_strategy: Move the extra file(s) into a nested internal/ subdirectory of the composition root's own package, and have the container file call into it.
+R50:
+    id: R50
+    level: L0
+    text: A directory literally named internal may contain loose .go files only if they are declaration-only -- any file with real behavior must live in its own named subdirectory
+    enforcement: arch
+    rationale: internal/ is the visibility-boundary marker, not a package identity -- if real implementation hides directly inside it, there is no name describing what that code does, and nothing stops a second, third, unrelated concern from being dropped in beside it as loose peers. Every behaviorful piece of code needs an actual name (a subdirectory), even when it is currently the only thing there.
+    fix_strategy: Move the file into its own subdirectory named after what it does (e.g. internal/golangci.go becomes internal/golangci/golangci.go), even if it is the only file there today.
+R51:
+    id: R51
+    level: L0
+    text: A directory literally named internal with exactly one child package (no siblings) has nothing to hide that child from -- merge its contents into the grandparent package, eliminating the internal/ layer entirely
+    enforcement: arch
+    rationale: internal/ exists to restrict visibility among siblings. A sole child has no sibling to be restricted from, and its real consumer (the package one level up, already the only thing that could ever reach it) sits right next to it -- the boundary is pure indirection with nothing on the other side.
+    fix_strategy: Move the child's files up to the grandparent's directory as same-package companion files (or merge into its container file directly), then remove the now-empty internal/ directory.
+R52:
+    id: R52
+    level: L0
+    text: "A call with two or more arguments puts every argument on its own line"
+    enforcement: analyzer
+    rationale: "One argument per line makes every input of a call visible at a glance and keeps diffs to one line per changed argument, the same way R01 does for signatures."
+    fix_strategy: "Break after the opening paren, put each argument on its own line with a trailing comma, and put the closing paren on its own line; calls with zero or one argument stay inline."
+R53:
+    id: R53
+    level: L0
+    text: "An if condition joining several conditions with && or || puts each condition on its own line"
+    enforcement: analyzer
+    rationale: "A compound condition on one line hides how many separate facts the branch depends on; one condition per line makes each one readable and reviewable on its own."
+    fix_strategy: "End each line with the && or || operator and start the next condition on a new line, including conditions inside parentheses, or extract the whole condition into a named boolean (rule 5)."
+R54:
+    id: R54
+    level: L0
+    text: "A return statement with two or more values puts every value after the first on its own line"
+    enforcement: analyzer
+    rationale: "One value per line makes each returned value visible at the exit of the function, the same way R52 does for call arguments."
+    fix_strategy: "Keep the first value on the return line (Go ends a bare return at the line break), end it with a comma, and put each following value on its own line."
+PROXY-COMPLEXITY:
+    id: PROXY-COMPLEXITY
+    level: L0
+    text: Function exceeds complexity/length/nesting budget (proxy for SRP / does-one-thing)
+    enforcement: lint
+    rationale: A function under complexity, length and nesting budgets is structurally incapable of doing many unrelated things.
+    fix_strategy: Extract named helper functions per branch/step; replace nested conditionals with early returns.
+PROXY-DUPLICATION:
+    id: PROXY-DUPLICATION
+    level: L0
+    text: Code block duplicated 3+ times above a token threshold
+    enforcement: lint
+    rationale: Two occurrences can be coincidental; three is a pattern, and the point past which drift between copies becomes a real risk.
+    fix_strategy: Extract the duplicated block into a shared helper, parameterizing the differences.
+PROXY-GLOBAL-STATE:
+    id: PROXY-GLOBAL-STATE
+    level: L1
+    text: Mutable package-level variable
+    enforcement: lint
+    rationale: Package-level mutable state is implicit, shared, and hard to reason about under concurrency or testing.
+    fix_strategy: Pass the state explicitly through a constructor/struct field instead.
+PROXY-MAGIC-NUMBER:
+    id: PROXY-MAGIC-NUMBER
+    level: L0
+    text: Unnamed numeric/string literal used outside a const declaration
+    enforcement: lint
+    rationale: Unnamed literals hide intent and make the meaning of a threshold invisible at the call site.
+    fix_strategy: Hoist the literal into a named const with a descriptive identifier.
 TS-MODERN-SYNTAX:
     id: TS-MODERN-SYNTAX
     level: L1
@@ -201,52 +320,3 @@ TS-PROXY-MAGIC-NUMBER:
     enforcement: lint
     rationale: Unnamed literals hide intent and make the meaning of a threshold invisible at the call site.
     fix_strategy: Hoist the literal into a named const with a descriptive identifier.
-R47:
-    id: R47
-    level: L1
-    text: A file importing 2+ sibling internal/ packages is a de facto composition root and must be named like one (container.go, wire.go, or <package-name>.go)
-    enforcement: arch
-    rationale: Wiring code that coordinates multiple siblings is architecturally significant -- it's the one place allowed to break the sibling-import rule. If it hides in an arbitrarily-named file instead of the conventional composition-root location, nobody reviewing the package structure can find it, and the exemption becomes indistinguishable from an unreviewed layering violation.
-    fix_strategy: Rename the file to container.go, wire.go, or the name of its own package, or move the wiring code into such a file.
-R48:
-    id: R48
-    level: L0
-    text: A directory with 2+ sibling internal/ child packages must itself be a package with a file named after itself, declaring at least one exported interface
-    enforcement: arch
-    rationale: A parent of multiple internal sub-packages is architecturally a component boundary -- without a named composition root exposing a contract, there's no single place for callers to go to understand or construct that component, and no enforced seam between "how this component is built" and "how it's used."
-    fix_strategy: Add a <package-name>.go file in the directory declaring an exported interface that describes how outside code interacts with the component, either by implementing orchestration directly or by exposing getters for the inner sub-package objects.
-R13:
-    id: R13
-    level: L0
-    text: Public APIs expose interfaces, never exported concrete struct types
-    enforcement: analyzer
-    rationale: An exported struct couples every caller to its exact field layout and construction details; an interface describes only the behavior a caller needs, so the implementation can change freely behind it.
-    fix_strategy: Unexport the struct, expose an interface describing its behavior instead, and return the interface from a constructor function.
-R49:
-    id: R49
-    level: L0
-    text: A composition-root directory contains no other loose non-test .go files beside its container file
-    enforcement: arch
-    rationale: The container file is the package's entire public contract. Any additional loose file in the same directory is unreviewable implementation detail hiding in plain sight next to the interface -- it belongs in the package's own internal/ subtree (rule 15), the same way a repository package keeps only its own <name>.go exposed and pushes everything else into a nested internal/.
-    fix_strategy: Move the extra file(s) into a nested internal/ subdirectory of the composition root's own package, and have the container file call into it.
-R19:
-    id: R19
-    level: L1
-    text: Nest internal/ at the lowest module that needs it -- a package imported by exactly one other internal package must live nested under that importer's own internal/ subtree, not exposed at a shallower level
-    enforcement: arch
-    rationale: A package sitting above its sole consumer's internal/ boundary is importable by anything else in the module even though nothing else uses it -- the encapsulation only exists by accident, not by Go's own visibility enforcement, and the first stray import from elsewhere quietly turns an implementation detail into a load-bearing dependency.
-    fix_strategy: Move the package under its sole importer's own internal/ subtree (e.g. importer/internal/<package>), so Go's internal/ visibility rule actually restricts it to that one consumer.
-R50:
-    id: R50
-    level: L0
-    text: A directory literally named internal may contain loose .go files only if they are declaration-only -- any file with real behavior must live in its own named subdirectory
-    enforcement: arch
-    rationale: internal/ is the visibility-boundary marker, not a package identity -- if real implementation hides directly inside it, there is no name describing what that code does, and nothing stops a second, third, unrelated concern from being dropped in beside it as loose peers. Every behaviorful piece of code needs an actual name (a subdirectory), even when it is currently the only thing there.
-    fix_strategy: Move the file into its own subdirectory named after what it does (e.g. internal/golangci.go becomes internal/golangci/golangci.go), even if it is the only file there today.
-R51:
-    id: R51
-    level: L0
-    text: A directory literally named internal with exactly one child package (no siblings) has nothing to hide that child from -- merge its contents into the grandparent package, eliminating the internal/ layer entirely
-    enforcement: arch
-    rationale: internal/ exists to restrict visibility among siblings. A sole child has no sibling to be restricted from, and its real consumer (the package one level up, already the only thing that could ever reach it) sits right next to it -- the boundary is pure indirection with nothing on the other side.
-    fix_strategy: Move the child's files up to the grandparent's directory as same-package companion files (or merge into its container file directly), then remove the now-empty internal/ directory.
