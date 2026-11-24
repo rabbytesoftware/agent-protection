@@ -51,6 +51,8 @@ func TestRun(
 		wantCode  int
 	}{
 		{arguments: []string{"ap"}, wantCode: usageExitCode},
+		{arguments: []string{"ap", "guide"}, wantCode: cleanExitCode},
+		{arguments: []string{"ap", "guide", "extra"}, wantCode: usageExitCode},
 		{arguments: []string{"ap", "check", t.TempDir()}, wantCode: findingsExitCode},
 		{arguments: []string{"ap", "check", clean}, wantCode: cleanExitCode},
 		{arguments: []string{"ap", "check", failing}, wantCode: findingsExitCode},

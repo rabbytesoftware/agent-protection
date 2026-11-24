@@ -12,6 +12,7 @@ const (
 	cleanVerdict    = "### Agent Protection: no violations\n"
 	verdictFormat   = "### Agent Protection: %s across %s\n\n"
 	truncatedFormat = "\n_Showing %d of %d findings. The full list is in the ap-report artifact of this run._\n"
+	guidePointer    = "\nRun `ap guide` for the architecture these rules enforce. Fix by design: every rule's NOT A FIX is checked too.\n"
 )
 
 func (o Output) Markdown() (document string) {
@@ -36,6 +37,7 @@ func (o Output) Markdown() (document string) {
 	builder.WriteString(o.breakdown())
 	builder.WriteString(o.listing())
 	builder.WriteString("\n</details>\n")
+	builder.WriteString(guidePointer)
 	return builder.String()
 }
 

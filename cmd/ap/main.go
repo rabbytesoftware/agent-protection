@@ -6,6 +6,7 @@ import (
 	"os"
 	"slices"
 
+	"github.com/rabbytesoftware/agent-protection/internal/guide"
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner"
 )
@@ -14,13 +15,15 @@ const (
 	checkCommand      = "check"
 	fixCommand        = "fix"
 	markdownCommand   = "markdown"
+	guideCommand      = "guide"
+	guideArguments    = 2
 	reportPath        = "ap-report.json"
 	reportFileMode    = 0o644
 	cleanExitCode     = 0
 	findingsExitCode  = 1
 	usageExitCode     = 2
 	expectedArguments = 3
-	usage             = "usage: ap check <root-dir> | ap fix <root-dir> | ap markdown <ap-report.json>"
+	usage             = "usage: ap check <root-dir> | ap fix <root-dir> | ap markdown <ap-report.json> | ap guide"
 )
 
 func main() {
@@ -30,6 +33,12 @@ func main() {
 func run(
 	arguments []string,
 ) (code int) {
+	isGuide := len(arguments) == guideArguments && arguments[1] == guideCommand
+	if isGuide {
+		fmt.Print(guide.Guide())
+		return cleanExitCode
+	}
+
 	command, target, err := commandArguments(arguments)
 	if err != nil {
 		fmt.Fprintln(
@@ -95,7 +104,12 @@ func check(
 	}
 
 	fmt.Print(output.Text())
-	return exitCode(output)
+	code = exitCode(output)
+	if code != cleanExitCode {
+		fmt.Print("\n" + guide.Guide())
+	}
+
+	return code
 }
 
 func fix(
