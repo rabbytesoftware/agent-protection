@@ -2,30 +2,77 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 )
 
-func TestRootArgument(
+func TestCommandArguments(
 	t *testing.T,
 ) {
 	cases := []struct {
-		arguments []string
-		wantRoot  string
-		wantErr   bool
+		arguments   []string
+		wantCommand string
+		wantTarget  string
+		wantErr     bool
 	}{
-		{arguments: []string{"ap", "check", "."}, wantRoot: "."},
+		{arguments: []string{"ap", "check", "."}, wantCommand: "check", wantTarget: "."},
+		{arguments: []string{"ap", "markdown", "ap-report.json"}, wantCommand: "markdown", wantTarget: "ap-report.json"},
 		{arguments: []string{"ap", "check"}, wantErr: true},
 		{arguments: []string{"ap", "lint", "."}, wantErr: true},
 		{arguments: []string{"ap", "check", ".", "extra"}, wantErr: true},
 	}
 	for _, tc := range cases {
-		assertRootArgument(
+		assertCommandArguments(
 			t,
 			tc.arguments,
-			tc.wantRoot,
+			tc.wantCommand,
+			tc.wantTarget,
 			tc.wantErr,
+		)
+	}
+}
+
+func TestMarkdown(
+	t *testing.T,
+) {
+	directory := t.TempDir()
+	valid := filepath.Join(
+		directory,
+		"valid.json",
+	)
+	invalid := filepath.Join(
+		directory,
+		"invalid.json",
+	)
+	missing := filepath.Join(
+		directory,
+		"missing.json",
+	)
+	writeFile(
+		t,
+		valid,
+		`{"rule_docs":{},"findings":[]}`,
+	)
+	writeFile(
+		t,
+		invalid,
+		"not json",
+	)
+	cases := []struct {
+		path     string
+		wantCode int
+	}{
+		{path: valid, wantCode: cleanExitCode},
+		{path: invalid, wantCode: findingsExitCode},
+		{path: missing, wantCode: findingsExitCode},
+	}
+	for _, tc := range cases {
+		assertMarkdownCode(
+			t,
+			tc.path,
+			tc.wantCode,
 		)
 	}
 }
@@ -67,23 +114,59 @@ func TestExitCode(
 	}
 }
 
-func assertRootArgument(
+func assertCommandArguments(
 	t *testing.T,
 	arguments []string,
-	wantRoot string,
+	wantCommand string,
+	wantTarget string,
 	wantErr bool,
 ) {
 	t.Helper()
-	root, err := rootArgument(arguments)
-	isMismatch := root != wantRoot || (err != nil) != wantErr
+	command, target, err := commandArguments(arguments)
+	isMismatch := command != wantCommand || target != wantTarget || (err != nil) != wantErr
 	if isMismatch {
 		t.Errorf(
-			"rootArgument(%v) = %q, %v; want %q, error %v",
+			"commandArguments(%v) = %q, %q, %v; want %q, %q, error %v",
 			arguments,
-			root,
+			command,
+			target,
 			err,
-			wantRoot,
+			wantCommand,
+			wantTarget,
 			wantErr,
 		)
+	}
+}
+
+func assertMarkdownCode(
+	t *testing.T,
+	path string,
+	wantCode int,
+) {
+	t.Helper()
+	code := markdown(path)
+	if code != wantCode {
+		t.Errorf(
+			"markdown(%q) = %d, want %d",
+			path,
+			code,
+			wantCode,
+		)
+	}
+}
+
+func writeFile(
+	t *testing.T,
+	path string,
+	content string,
+) {
+	t.Helper()
+	err := os.WriteFile(
+		path,
+		[]byte(content),
+		reportFileMode,
+	)
+	if err != nil {
+		t.Fatal(err)
 	}
 }

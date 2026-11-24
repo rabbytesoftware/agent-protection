@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner"
@@ -11,16 +12,18 @@ import (
 
 const (
 	checkCommand      = "check"
+	markdownCommand   = "markdown"
 	reportPath        = "ap-report.json"
 	reportFileMode    = 0o644
 	cleanExitCode     = 0
 	findingsExitCode  = 1
 	usageExitCode     = 2
 	expectedArguments = 3
+	usage             = "usage: ap check <root-dir> | ap markdown <ap-report.json>"
 )
 
 func main() {
-	root, err := rootArgument(os.Args)
+	command, target, err := commandArguments(os.Args)
 	if err != nil {
 		fmt.Fprintln(
 			os.Stderr,
@@ -28,6 +31,35 @@ func main() {
 		)
 		os.Exit(usageExitCode)
 	}
+	if command == markdownCommand {
+		os.Exit(markdown(target))
+	}
+	os.Exit(check(target))
+}
+
+func commandArguments(
+	arguments []string,
+) (command string, target string, err error) {
+	isKnownCommand := len(arguments) == expectedArguments && slices.Contains(
+		[]string{
+			checkCommand,
+			markdownCommand,
+		},
+		arguments[1],
+	)
+	if !isKnownCommand {
+		return "",
+			"",
+			errors.New(usage)
+	}
+	return arguments[1],
+		arguments[2],
+		nil
+}
+
+func check(
+	root string,
+) (code int) {
 	output, err := runner.Runner(root)
 	if err != nil {
 		fmt.Fprintf(
@@ -35,7 +67,7 @@ func main() {
 			"check failed: %v\n",
 			err,
 		)
-		os.Exit(findingsExitCode)
+		return findingsExitCode
 	}
 	err = writeReport(output)
 	if err != nil {
@@ -44,22 +76,34 @@ func main() {
 			"write report: %v\n",
 			err,
 		)
-		os.Exit(findingsExitCode)
+		return findingsExitCode
 	}
 	fmt.Print(output.Text())
-	os.Exit(exitCode(output))
+	return exitCode(output)
 }
 
-func rootArgument(
-	arguments []string,
-) (root string, err error) {
-	isCheckInvocation := len(arguments) == expectedArguments && arguments[1] == checkCommand
-	if !isCheckInvocation {
-		return "",
-			errors.New("usage: ap check <root-dir>")
+func markdown(
+	path string,
+) (code int) {
+	document, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Fprintf(
+			os.Stderr,
+			"read report: %v\n",
+			err,
+		)
+		return findingsExitCode
 	}
-	return arguments[2],
-		nil
+	output, err := report.Decode(document)
+	if err != nil {
+		fmt.Fprintln(
+			os.Stderr,
+			err,
+		)
+		return findingsExitCode
+	}
+	fmt.Print(output.Markdown())
+	return cleanExitCode
 }
 
 func writeReport(

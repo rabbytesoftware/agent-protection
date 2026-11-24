@@ -1,5 +1,5 @@
 name: 'Agent Protection'
-description: 'Run the Agent Protection coding-standards gate against this component folder'
+description: 'Run the Agent Protection coding-standards gate against this component folder and report the result on the pull request'
 inputs:
   version:
     description: 'Pinned Agent Protection release tag (read from .ap.yaml if not set)'
@@ -9,11 +9,24 @@ inputs:
     description: 'Component folder to check (must contain exactly one of go.mod / Cargo.toml / package.json)'
     required: false
     default: '.'
+  binary:
+    description: 'Absolute path to an ap binary to use instead of downloading the pinned release'
+    required: false
+    default: ''
+  comment:
+    description: 'Post or update a pull request comment with the violation count and the full report (needs pull-requests: write)'
+    required: false
+    default: 'true'
+  token:
+    description: 'Token used to post the pull request comment'
+    required: false
+    default: ${{ github.token }}
 runs:
   using: 'composite'
   steps:
     - name: Resolve pinned version
       id: resolve
+      if: inputs.binary == ''
       shell: bash
       run: |
         VERSION="${{ inputs.version }}"
@@ -27,6 +40,7 @@ runs:
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
     - name: Download pinned ap binary
+      if: inputs.binary == ''
       shell: bash
       run: |
         OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -41,10 +55,55 @@ runs:
         tar -xzf /tmp/ap.tar.gz -C /usr/local/bin ap
         chmod +x /usr/local/bin/ap
 
+    - name: Install golangci-lint for Go components
+      if: hashFiles(format('{0}/go.mod', inputs.path)) != ''
+      shell: bash
+      run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+
     - name: ap check
+      id: check
       shell: bash
       working-directory: ${{ inputs.path }}
+      env:
+        AP_BINARY: ${{ inputs.binary }}
+        COMPONENT: ${{ inputs.path }}
       run: |
+        AP="${AP_BINARY:-ap}"
         TAGS=""
         [ -f ".ap.yaml" ] && TAGS=$(grep '^go_build_tags:' .ap.yaml | head -1 | awk '{print $2}')
-        AP_GO_BUILD_TAGS="$TAGS" ap check .
+        set +e
+        AP_GO_BUILD_TAGS="$TAGS" "$AP" check .
+        EXIT_CODE=$?
+        set -e
+        NAME="ap-report-$(tr -c 'A-Za-z0-9._\n-' '-' <<< "$COMPONENT")"
+        {
+          echo "ap=$(command -v "$AP")"
+          echo "exit-code=$EXIT_CODE"
+          echo "artifact=$NAME"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Upload the full report
+      if: always() && steps.check.outputs.artifact != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.check.outputs.artifact }}
+        path: ${{ inputs.path }}/ap-report.json
+        if-no-files-found: ignore
+
+    - name: Comment on the pull request
+      if: always() && inputs.comment == 'true' && steps.check.outputs.exit-code != '' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')
+      continue-on-error: true
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        "${{ github.action_path }}/scripts/pr-comment.sh" \
+          "${{ steps.check.outputs.ap }}" \
+          ap-report.json \
+          "${{ steps.check.outputs.exit-code }}" \
+          "${{ inputs.path }}"
+
+    - name: Gate on the result
+      shell: bash
+      run: exit "${{ steps.check.outputs.exit-code }}"
