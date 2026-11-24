@@ -3,8 +3,6 @@ package cqs
 import (
 	"go/ast"
 	"slices"
-
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
 const (
@@ -29,7 +27,7 @@ func callableOf(
 		declaration: declaration,
 		pointers:    pointerPositions(declaration),
 		types:       namedTypes(declaration),
-		calls:       source.Nodes[*ast.CallExpr](declaration.Body),
+		calls:       liveNodes[*ast.CallExpr](declaration.Body),
 	}
 }
 

@@ -22,7 +22,10 @@ const (
 // must either answer a question or change state, never both. Mutation is a
 // write through the pointer (assignment, increment, delete, clear or copy)
 // or handing the pointer to a function or method of the same package that
-// mutates it, so moving the write into a helper hides nothing. A chainable
+// mutates it, so moving the write into a helper hides nothing. A func
+// literal counts only when it runs during the call: invoked, deferred,
+// started as a goroutine or passed as an argument; one that is returned,
+// stored or sent mutates later, not now. A chainable
 // method, whose every return hands back its own receiver, is a command:
 // the receiver it returns is no answer, only the next link. Mocks are
 // skipped: a test double keeps the signature of the interface it fakes and

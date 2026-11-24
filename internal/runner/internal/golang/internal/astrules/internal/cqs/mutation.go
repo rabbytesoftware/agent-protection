@@ -3,8 +3,6 @@ package cqs
 import (
 	"go/ast"
 	"slices"
-
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
 func directPositions(
@@ -41,14 +39,14 @@ func writtenRoots(
 	body *ast.BlockStmt,
 ) (names []string) {
 	targets := []ast.Expr{}
-	for _, assignment := range source.Nodes[*ast.AssignStmt](body) {
+	for _, assignment := range liveNodes[*ast.AssignStmt](body) {
 		targets = append(
 			targets,
 			assignment.Lhs...,
 		)
 	}
 
-	for _, increment := range source.Nodes[*ast.IncDecStmt](body) {
+	for _, increment := range liveNodes[*ast.IncDecStmt](body) {
 		targets = append(
 			targets,
 			increment.X,
@@ -56,7 +54,7 @@ func writtenRoots(
 	}
 
 	for _, call := range slices.DeleteFunc(
-		source.Nodes[*ast.CallExpr](body),
+		liveNodes[*ast.CallExpr](body),
 		isNotBuiltinWrite,
 	) {
 		targets = append(
