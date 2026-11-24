@@ -33,10 +33,10 @@ R04:
 R07:
     id: R07
     level: L0
-    text: "No inline comments and no comments on unexported symbols; every exported symbol has a doc comment"
+    text: "No inline comments and no comments on unexported symbols; every exported symbol has a doc comment that says more than its name"
     enforcement: analyzer
     rationale: "Names carry what code does; a comment that restates it drifts out of date and adds noise. Exported symbols are the contract other packages read, so they and only they are documented."
-    fix_strategy: "Delete the comment and rename the symbol until it explains itself; add a doc comment describing behavior and contract to every exported symbol. Deprecation notes and spec links are the only other comments allowed."
+    fix_strategy: "Delete the comment and rename the symbol until it explains itself; add a doc comment describing behavior and contract to every exported symbol. Deprecation notes and spec links are the only other comments allowed. A doc comment made only of the name's own words (inflected or not, plus the receiver type's) and filler such as returns, the, satisfies the interface or test double restates the name: replace it with what a caller cannot read off the name, such as what it returns on failure, what it blocks on or what it leaves untouched."
     not_a_fix: "Bulk-deleting comments without renaming anything so the code no longer explains itself; one-line doc comments that merely restate the name (// Name does X., // Run runs.); moving the explanation into string literals or identifiers like todoFixThis; exporting a symbol only so its comment is allowed."
 R08:
     id: R08
@@ -286,6 +286,14 @@ R55:
     rationale: "Each step of a function (a statement plus the guard that checks it) reads as one paragraph, and the blank line after a closing brace marks where the next step begins. Fixed positions keep the layout mechanical instead of a matter of taste."
     fix_strategy: "Add one blank line after the closing brace of every if, for, switch, select or bare block that is not the last statement of its block; remove the blank line between an assignment and the if that checks the value it assigned; remove blank lines right after an opening brace or right before a closing one."
     not_a_fix: "Reordering statements or moving a block to the end of its function only so no blank line is required; wrapping a step in a func literal or bare block to hide its boundary; adding the blank line but leaving unrelated statements glued into one paragraph."
+R56:
+    id: R56
+    level: L0
+    text: "Functions, methods, types and named closures carry a name that says what they do; no name made only of content-free words, opened by a content-free prefix, or told apart from a sibling only by a number"
+    enforcement: analyzer
+    rationale: "Extracting a block into a helper only helps when the helper's name explains the block. runHandler, makeCallback, wrap, implSendCreate or handler2 beside handler move code without naming it, so the reader still has to open the body, and the line, depth and paragraph limits are met in form while the readability they protect is lost."
+    fix_strategy: "Rename after the specific behavior or value: what the function decides, returns or causes, or the role the closure plays in its caller (recordDelivery, failAfterFirstAttempt). When several closures differ only by a number, name what each one does differently. Exported names, main, init and a lone role word such as handler or run are left alone."
+    not_a_fix: "Renaming to another content-free word; swapping the number for a letter or a synonym (handlerB, otherHandler); exporting the name to skip the check; inlining the block back as an unnamed closure argument."
 PROXY-COMPLEXITY:
     id: PROXY-COMPLEXITY
     level: L0

@@ -53,14 +53,15 @@ steps:
 
 ## Status
 
-Go: 32 analyzer and architecture rules plus the golangci-lint proxies,
+Go: 33 analyzer and architecture rules plus the golangci-lint proxies,
 covering the full Rabbyte Go manifest wherever a rule is mechanically
 checkable: one parameter per line (R01), at most two indentation levels
 (R02), guard clauses with no else (R03), named results and no naked
-returns (R04), the comment policy (R07), one type per file (R08),
+returns (R04), the comment policy, including doc comments that only
+restate the name (R07), one type per file (R08),
 stateless types as functions (R11, R12), interfaces over exported structs
 (R13), package layering and internal/ boundaries (R16, R19, R47-R51),
-naming (R21-R23), no panic (R27), 1:1 test files (R42, R43), file and
+naming (R21-R23), no content-free or numbered helper names (R56), no panic (R27), 1:1 test files (R42, R43), file and
 directory size caps (R44, R46), and paragraph layout: a blank line after every closed block, checks attached to what they check (R55). Agent Protection passes its own gate.
 Rust: unwrap/expect/panic-risk detection through clippy, excluding inline
 `#[cfg(test)]` modules.

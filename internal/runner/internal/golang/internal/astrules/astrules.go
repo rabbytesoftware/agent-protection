@@ -11,6 +11,7 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/cqs"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/ctxfirstparam"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/filelinelimit"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/genericname"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/maxdepth"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/namedreturn"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/noelse"
@@ -48,6 +49,7 @@ func Astrules(
 		commentpolicy.Commentpolicy(everyFile),
 		noelse.Noelse(everyFile),
 		namedreturn.Namedreturn(everyFile),
+		genericname.Genericname(everyFile),
 		boolparam.Boolparam(files),
 		cqs.Cqs(files),
 		sideeffect.Sideeffect(files),

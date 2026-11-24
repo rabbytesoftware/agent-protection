@@ -39,6 +39,8 @@ const (
 // exported declaration, field or interface method, except directives,
 // build or generated headers, deprecations and spec links, and every
 // exported declaration missing one. Test functions need no doc comment.
+// A doc comment whose every word is filler or a word of the documented
+// name (or its receiver type) only restates that name and is reported too.
 func Commentpolicy(
 	files []source.File,
 ) (findings []report.Finding) {
@@ -70,9 +72,15 @@ func fileFindings(
 	for _, decl := range file.Syntax.Decls {
 		findings = append(
 			findings,
-			undocumentedFindings(
-				file,
-				decl,
+			slices.Concat(
+				undocumentedFindings(
+					file,
+					decl,
+				),
+				restatingFindings(
+					file,
+					decl,
+				),
 			)...,
 		)
 	}
