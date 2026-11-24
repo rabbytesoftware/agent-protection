@@ -126,30 +126,19 @@ func TestIsInternalDirectory(
 	}
 }
 
-func TestIsSharedSupport(
-	t *testing.T,
-) {
-	cases := map[string]bool{"internal/report": true, "internal/errors": true, "internal/runner": false}
-	for dir, want := range cases {
-		assertBool(
-			t,
-			"IsSharedSupport("+dir+")",
-			source.IsSharedSupport(dir),
-			want,
-		)
-	}
-}
-
 func TestIsMock(
 	t *testing.T,
 ) {
 	cases := map[string]bool{
-		"internal/mocks/bus.go":  true,
-		"store/fakes/clock.go":   true,
-		"store/bus_mock.go":      true,
-		"store/FakeClock.go":     true,
-		"internal/bus/bus.go":    false,
-		"internal/remote/sms.go": false,
+		"internal/mocks/bus.go":   true,
+		"store/fakes/clock.go":    true,
+		"store/bus_mock.go":       true,
+		"store/fake_clock.go":     true,
+		"store/mocks.go":          true,
+		"store/FakeClock.go":      false,
+		"internal/mockbuses/b.go": false,
+		"internal/bus/bus.go":     false,
+		"internal/remote/sms.go":  false,
 	}
 	for path, want := range cases {
 		assertBool(
@@ -161,10 +150,42 @@ func TestIsMock(
 	}
 }
 
+func TestIsExample(
+	t *testing.T,
+) {
+	cases := map[string]bool{"example/commands/c.go": true, "examples/x.go": true, "internal/exampler/x.go": false}
+	for path, want := range cases {
+		assertBool(
+			t,
+			"IsExample("+path+")",
+			source.IsExample(path),
+			want,
+		)
+	}
+}
+
+func TestIsModule(
+	t *testing.T,
+) {
+	sources := []string{"a/internal/b", "c", "d/internalized"}
+	cases := map[string]bool{"a": true, "c": false, "d": false, "a/internal/b": false}
+	for dir, want := range cases {
+		assertBool(
+			t,
+			"IsModule("+dir+")",
+			source.IsModule(
+				dir,
+				sources,
+			),
+			want,
+		)
+	}
+}
+
 func TestIsCompositionRoot(
 	t *testing.T,
 ) {
-	cases := map[string]bool{"x/container.go": true, "x/wire.go": true, "x/arch.go": true, "x/helpers.go": false}
+	cases := map[string]bool{"x/container.go": true, "x/main.go": false, "x/wire.go": false, "x/arch.go": false, "x/helpers.go": false}
 	for path, want := range cases {
 		assertBool(
 			t,

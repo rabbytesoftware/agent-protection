@@ -216,5 +216,5 @@ func isNotExposed(
 		source.IsInternalDirectory,
 	)
 	isBehindOneBoundary := len(segments)-len(outsideBoundaries) == 1
-	return !isBehindOneBoundary || source.IsSharedSupport(imported)
+	return !isBehindOneBoundary
 }

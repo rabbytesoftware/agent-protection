@@ -69,12 +69,12 @@ func TestEncapsulation(
 			want: nil,
 		},
 		{
-			name: "shared support package with one importer passes",
+			name: "a package named like shared support with one importer is reported",
 			files: map[string]string{
 				"internal/a/a.go":      "package a\n\nimport \"example.com/m/internal/report\"\n\nvar _ = report.X\n",
 				"internal/report/r.go": "package report\n\nfunc X() {}\n",
 			},
-			want: nil,
+			want: []string{"R19 internal/report"},
 		},
 	}
 	for _, tc := range cases {

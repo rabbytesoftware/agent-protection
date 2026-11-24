@@ -124,7 +124,7 @@ func isSibling(
 	imported string,
 ) (sibling bool) {
 	sharesParent := path.Dir(importer) == path.Dir(imported)
-	return sharesParent && source.IsInternalTree(imported) && !source.IsSharedSupport(imported)
+	return sharesParent && source.IsInternalTree(imported)
 }
 
 func isExempt(

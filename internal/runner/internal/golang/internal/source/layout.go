@@ -14,6 +14,9 @@ import (
 const (
 	internalDirectory = "internal"
 	moduleDirective   = "module "
+	containerFile     = "container.go"
+	mainFile          = "main.go"
+	mainPackage       = "main"
 )
 
 const CompositionRootThreshold = 2
@@ -102,25 +105,51 @@ func IsInternalDirectory(
 	return filepath.Base(dir) == internalDirectory
 }
 
-func IsSharedSupport(
-	dir string,
-) (shared bool) {
-	return slices.Contains(
-		sharedSupportNames(),
-		filepath.Base(dir),
-	)
-}
-
 func IsMock(
 	rel string,
 ) (isMock bool) {
+	segments := strings.Split(
+		filepath.ToSlash(rel),
+		"/",
+	)
+	last := len(segments) - 1
+	return slices.ContainsFunc(
+		segments[:last],
+		isMockDirectory,
+	) || isMockFileName(strings.TrimSuffix(
+		segments[last],
+		goExtension,
+	))
+}
+
+func IsExample(
+	rel string,
+) (isExample bool) {
 	return slices.ContainsFunc(
 		strings.Split(
 			filepath.ToSlash(rel),
 			"/",
 		),
-		mentionsMock,
+		isExampleDirectory,
 	)
+}
+
+func IsModule(
+	dir string,
+	sourceDirectories []string,
+) (isModule bool) {
+	prefix := filepath.Join(
+		dir,
+		internalDirectory,
+	) + string(filepath.Separator)
+	for _, sourceDirectory := range sourceDirectories {
+		isModule = isModule || strings.HasPrefix(
+			sourceDirectory,
+			prefix,
+		)
+	}
+
+	return isModule
 }
 
 func IsCompositionRoot(
@@ -128,10 +157,7 @@ func IsCompositionRoot(
 	packageName string,
 ) (isRoot bool) {
 	base := filepath.Base(path)
-	return slices.Contains(
-		compositionRootNames(),
-		base,
-	) || base == packageName+goExtension
+	return base == containerFile || base == mainFile && packageName == mainPackage
 }
 
 func HasSource(
@@ -212,23 +238,42 @@ func isNotSourceEntry(
 	return !isSourceEntry(entry)
 }
 
-func mentionsMock(
+func isMockDirectory(
 	segment string,
-) (mentions bool) {
-	lower := strings.ToLower(segment)
-	return strings.Contains(
-		lower,
-		"mock",
-	) || strings.Contains(
-		lower,
-		"fake",
+) (matches bool) {
+	return slices.Contains(
+		[]string{"mock", "mocks", "fake", "fakes"},
+		segment,
 	)
 }
 
-func sharedSupportNames() (names []string) {
-	return []string{"errors", "models", "dto", "types", "contracts", "rules", "report"}
+func isExampleDirectory(
+	segment string,
+) (matches bool) {
+	return slices.Contains(
+		[]string{"example", "examples", "_examples"},
+		segment,
+	)
 }
 
-func compositionRootNames() (names []string) {
-	return []string{"container.go", "wire.go", "main.go", "new.go"}
+func isMockFileName(
+	stem string,
+) (matches bool) {
+	return isMockDirectory(stem) ||
+		strings.HasPrefix(
+			stem,
+			"mock_",
+		) ||
+		strings.HasPrefix(
+			stem,
+			"fake_",
+		) ||
+		strings.HasSuffix(
+			stem,
+			"_mock",
+		) ||
+		strings.HasSuffix(
+			stem,
+			"_fake",
+		)
 }

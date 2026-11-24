@@ -51,10 +51,10 @@ func TestOnetypeperfile(
 			want: nil,
 		},
 		{
-			name: "single type in the file named after the package passes",
+			name: "single type in the file named after the package is reported",
 			path: "p.go",
 			code: "package p\n\ntype Output struct{}\n",
-			want: nil,
+			want: []string{"p.go:3"},
 		},
 		{
 			name: "single type in container.go passes",
@@ -63,10 +63,10 @@ func TestOnetypeperfile(
 			want: nil,
 		},
 		{
-			name: "single type in wire.go passes",
+			name: "single type in wire.go is reported",
 			path: "wire.go",
 			code: "package p\n\ntype aggregatePool struct{}\n",
-			want: nil,
+			want: []string{"wire.go:3"},
 		},
 		{
 			name: "type local to a function body is not counted",
