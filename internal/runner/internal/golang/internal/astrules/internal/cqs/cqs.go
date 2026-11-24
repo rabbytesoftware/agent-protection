@@ -27,7 +27,10 @@ const (
 // started as a goroutine or passed as an argument; one that is returned,
 // stored or sent mutates later, not now. A chainable
 // method, whose every return hands back its own receiver, is a command:
-// the receiver it returns is no answer, only the next link. Mocks are
+// the receiver it returns is no answer, only the next link. So is a
+// function that returns only a value it created itself and handed to the
+// state it changes, such as the id of a subscription it registers: that
+// value is the receipt of the command, not an answer read from state. Mocks are
 // skipped: a test double keeps the signature of the interface it fakes and
 // exists to record the calls made on it.
 func Cqs(
@@ -128,6 +131,13 @@ func mixedSnippet(
 	mixed callable,
 	effects map[string][]int,
 ) (snippet string) {
+	if returnsCreatedValue(
+		mixed,
+		effects,
+	) {
+		return ""
+	}
+
 	name := mixed.declaration.Name.Name
 	if len(directPositions(mixed)) > 0 {
 		return fmt.Sprintf(
