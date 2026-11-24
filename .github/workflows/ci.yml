@@ -4,6 +4,17 @@ on:
   pull_request:
 
 jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+      - name: Tests with the 95% coverage minimum
+        run: ./scripts/coverage.sh 95
+
   self-check:
     runs-on: ubuntu-latest
     permissions:
@@ -14,10 +25,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
-      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
       - run: go build -o bin/ap ./cmd/ap
-      - name: Tests with the 95% coverage minimum
-        run: ./scripts/coverage.sh 95
       - name: ap checks itself (dogfooding the action)
         uses: ./
         with:
