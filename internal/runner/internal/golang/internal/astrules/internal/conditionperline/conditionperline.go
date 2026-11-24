@@ -14,10 +14,6 @@ const (
 	snippet = "if condition joins several conditions on one line: end each line with && or || and put the next condition on its own line"
 )
 
-// Conditionperline reports every if statement whose condition joins two
-// conditions with && or || on the same line. Each joined condition must
-// start on a later line than the one before it ends, with the operator
-// closing the previous line.
 func Conditionperline(
 	files []source.File,
 ) (findings []report.Finding) {

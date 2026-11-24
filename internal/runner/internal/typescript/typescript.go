@@ -6,10 +6,6 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/typescript/internal/passthrough"
 )
 
-// Typescript checks the TypeScript component at root twice over: once
-// with the repo's own eslint config and once with Agent Protection's own
-// rule set, and returns both sets of findings. It fails as soon as either
-// eslint run fails.
 func Typescript(
 	root string,
 ) (findings []report.Finding, err error) {

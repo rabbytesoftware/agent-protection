@@ -24,10 +24,6 @@ const (
 	textGroup
 )
 
-// Clippy runs cargo clippy over the crate at root with the unwrap, expect
-// and panic lints enabled and returns every warning they raise, skipping
-// files whose path mentions "test". It fails when cargo cannot start,
-// exits non-zero, or reports a line number that is not an integer.
 func Clippy(
 	root string,
 ) (warnings []Warning, err error) {

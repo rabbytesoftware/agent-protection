@@ -15,10 +15,6 @@ const (
 	configFileMode = 0o644
 )
 
-// Manifest runs eslint over root with Agent Protection's own TypeScript
-// rule set in place of the repo's config, and maps every message from one
-// of those rules to its rule ID. The generated config is removed again
-// afterwards. It fails when eslint cannot run or report.
 func Manifest(
 	root string,
 ) (findings []report.Finding, err error) {

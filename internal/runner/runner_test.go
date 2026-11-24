@@ -41,7 +41,7 @@ func TestRunnerChecksGoModule(
 			root,
 			"version.go",
 		),
-		[]byte("package clean\n\n// Version is the fixture's release.\nconst Version = \"1\"\n"),
+		[]byte("package clean\n\nconst Version = \"1\"\n"),
 		0o600,
 	)
 	if err != nil {

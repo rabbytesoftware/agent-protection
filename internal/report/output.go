@@ -7,15 +7,11 @@ import (
 	"strings"
 )
 
-// Output is the final report of one run: every finding, plus the
-// explanation of each distinct violated rule keyed by rule ID.
 type Output struct {
 	RuleDocs map[string]RuleDoc `json:"rule_docs"`
 	Findings []Finding          `json:"findings"`
 }
 
-// JSON renders the report as indented JSON, the machine-readable form
-// written to ap-report.json for agents and CI to consume.
 func (o Output) JSON() (document string, err error) {
 	encoded, err := json.MarshalIndent(
 		o,
@@ -34,9 +30,6 @@ func (o Output) JSON() (document string, err error) {
 		nil
 }
 
-// Text renders the report for a terminal: one section per violated rule,
-// headed by its explanation, listing every location that violates it,
-// followed by a one-line total.
 func (o Output) Text() (text string) {
 	var builder strings.Builder
 	for _, rule := range o.violatedRules() {

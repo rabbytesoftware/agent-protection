@@ -14,9 +14,6 @@ const (
 	mainPackage = "main"
 )
 
-// Nopanic reports every call to the builtin panic outside package main:
-// library code hands failures back to its caller as errors and leaves the
-// decision to crash to the program's entry point.
 func Nopanic(
 	files []source.File,
 ) (findings []report.Finding) {

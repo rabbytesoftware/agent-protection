@@ -16,11 +16,8 @@ const (
 	moduleDirective   = "module "
 )
 
-// CompositionRootThreshold is the number of distinct sibling packages a
-// file must import before it acts as a composition root.
 const CompositionRootThreshold = 2
 
-// ModulePath reads the module path declared by root's go.mod.
 func ModulePath(
 	root string,
 ) (modulePath string, err error) {
@@ -62,10 +59,6 @@ func ModulePath(
 		nil
 }
 
-// IsDeclarationOnly reports whether the Go file at path declares no
-// functions or methods, meaning it holds only types, constants and
-// variables and has no behavior of its own. It fails when the file cannot
-// be parsed.
 func IsDeclarationOnly(
 	path string,
 ) (declarationOnly bool, err error) {
@@ -91,8 +84,6 @@ func IsDeclarationOnly(
 		nil
 }
 
-// IsInternalTree reports whether dir is an internal/ directory or sits
-// anywhere beneath one.
 func IsInternalTree(
 	dir string,
 ) (inside bool) {
@@ -105,16 +96,12 @@ func IsInternalTree(
 	)
 }
 
-// IsInternalDirectory reports whether dir is itself named internal.
 func IsInternalDirectory(
 	dir string,
 ) (isInternal bool) {
 	return filepath.Base(dir) == internalDirectory
 }
 
-// IsSharedSupport reports whether dir is a shared vocabulary package
-// (errors, models, dto, types, contracts, rules, report) that any package
-// may import regardless of layering.
 func IsSharedSupport(
 	dir string,
 ) (shared bool) {
@@ -124,10 +111,6 @@ func IsSharedSupport(
 	)
 }
 
-// IsMock reports whether rel, a path relative to the checked root, is a
-// test double: its file name or one of its directories mentions mock or
-// fake. Mocks exist only to stand in for real code in tests, so they have
-// no tests of their own and keep the shape the interface they fake needs.
 func IsMock(
 	rel string,
 ) (isMock bool) {
@@ -140,9 +123,6 @@ func IsMock(
 	)
 }
 
-// IsCompositionRoot reports whether the file at path is conventionally
-// named as a composition root: container.go, wire.go, main.go, new.go, or
-// the file named after its own package.
 func IsCompositionRoot(
 	path string,
 	packageName string,
@@ -154,8 +134,6 @@ func IsCompositionRoot(
 	) || base == packageName+goExtension
 }
 
-// HasSource reports whether dir directly contains at least one non-test
-// .go file. It fails when dir cannot be read.
 func HasSource(
 	dir string,
 ) (hasSource bool, err error) {
@@ -176,8 +154,6 @@ func HasSource(
 		nil
 }
 
-// Entries returns the paths of the non-test .go files directly
-// inside dir.
 func Entries(
 	dir string,
 ) (paths []string, err error) {

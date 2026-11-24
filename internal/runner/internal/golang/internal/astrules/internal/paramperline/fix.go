@@ -6,9 +6,6 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
-// Edits returns the line breaks that give every parameter of every
-// signature Paramperline checks its own line. Names sharing a type are
-// split onto their own lines but keep sharing it, so only layout changes.
 func Edits(
 	file source.File,
 ) (edits []source.Edit) {

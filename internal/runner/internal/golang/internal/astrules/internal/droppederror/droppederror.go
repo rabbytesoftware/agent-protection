@@ -11,13 +11,6 @@ import (
 
 const rule = "R26"
 
-// Droppederror reports failures that are observed and then dropped (R26):
-// an error compared with nil whose if block leaves without using it, an
-// error or recovered panic assigned to the blank identifier, and a
-// recover() whose value is discarded or only compared with nil. With no
-// type checker, an error is a variable named err or ending in Err, one
-// declared as error, or one bound to the error result of a function or
-// method declared in the same directory.
 func Droppederror(
 	files []source.File,
 ) (findings []report.Finding) {

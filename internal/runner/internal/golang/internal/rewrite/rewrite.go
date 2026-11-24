@@ -14,12 +14,6 @@ const (
 	fileMode  = 0o644
 )
 
-// Rewrite rewrites in place every file that edits finds something to change
-// in, and returns their paths relative to root. Such a file is formatted,
-// edited and formatted again, pass after pass, until edits returns nothing.
-// Files edits leaves alone are never written. A file that fails to format,
-// settle or be written is reported in the joined error without stopping the
-// others.
 func Rewrite(
 	root string,
 	files []source.File,

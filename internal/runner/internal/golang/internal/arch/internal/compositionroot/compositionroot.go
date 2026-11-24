@@ -20,10 +20,6 @@ const (
 	looseRule   = "R49"
 )
 
-// Compositionroot checks every component directory: a directory inside an
-// internal/ tree with at least two child packages, counting those under its
-// own internal/. Its composition-root file must expose an exported interface
-// or a function named after the package, export no struct, and stand alone.
 func Compositionroot(
 	root string,
 	files []source.File,

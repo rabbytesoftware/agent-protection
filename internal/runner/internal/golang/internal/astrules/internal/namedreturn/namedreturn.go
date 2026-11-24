@@ -12,10 +12,6 @@ import (
 
 const rule = "R04"
 
-// Namedreturn reports two ways a function hides what it returns: a bare
-// return in a function with named results, and a var declared in the body
-// only to be returned by name, which belongs in the result list instead.
-// Each function and function literal is judged on its own statements.
 func Namedreturn(
 	files []source.File,
 ) (findings []report.Finding) {

@@ -7,10 +7,6 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
-// Edits returns the edits that restore the paragraph layout Paragraph
-// checks: a blank line after every closed block a statement directly
-// follows, and no blank line between an assignment and the if checking it
-// or at the start or end of a block. Comment lines are never touched.
 func Edits(
 	file source.File,
 ) (edits []source.Edit) {

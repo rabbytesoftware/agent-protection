@@ -19,10 +19,6 @@ const (
 	vowels          = "aeiou"
 )
 
-// Words splits text into lowercase words. Runs of letters and digits are
-// cut again at camelCase humps, at the end of an acronym and at every
-// letter-digit edge, so HTTPServer yields http and server, and handler2
-// yields handler and 2. Everything else separates words.
 func Words(
 	text string,
 ) (words []string) {
@@ -39,10 +35,6 @@ func Words(
 	return words
 }
 
-// Stem reduces an English word to a crude root so that its inflections
-// compare equal: reads, reader and reading all become read, created and
-// creates both become creat. A suffix is only stripped while three letters
-// remain, and the root is meant for comparing words, never for showing them.
 func Stem(
 	word string,
 ) (root string) {

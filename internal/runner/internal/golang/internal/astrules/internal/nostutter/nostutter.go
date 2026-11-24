@@ -12,10 +12,6 @@ import (
 
 const rule = "R23"
 
-// Nostutter reports every exported top-level type or function whose name
-// repeats its package name, such as vault.VaultManager (R23). A name equal
-// to the package name (vault.Vault, noelse.Noelse) is allowed, because a
-// package's stateless entry point is named after the package itself.
 func Nostutter(
 	files []source.File,
 ) (findings []report.Finding) {

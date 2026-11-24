@@ -1,9 +1,7 @@
 package commentpolicy
 
 import (
-	"fmt"
 	"go/ast"
-	"go/token"
 	"slices"
 	"strings"
 
@@ -12,35 +10,15 @@ import (
 )
 
 const (
-	rule              = "R07"
-	commentSnippet    = "%s: only exported declarations carry comments, as their doc comment; delete it and let names carry the meaning"
-	missingDocSnippet = "exported %s has no doc comment"
-	directivePrefix   = "//go:"
-	lineDirective     = "//line "
-	nolintPrefix      = "//nolint"
-	legacyBuildPrefix = "// +build"
-	generatedPrefix   = "// Code generated "
-	generatedSuffix   = " DO NOT EDIT."
-	lineComment       = "//"
-	blockOpening      = "/*"
-	blockClosing      = "*/"
-	deprecatedPrefix  = "Deprecated:"
-	plainLink         = "http://"
-	secureLink        = "https://"
-	testPrefix        = "Test"
-	benchmarkPrefix   = "Benchmark"
-	fuzzPrefix        = "Fuzz"
-	examplePrefix     = "Example"
-	testingPackage    = "testing"
-	newline           = "\n"
+	rule            = "R07"
+	snippet         = "comment: delete it and make the code say it through names and structure"
+	cgoImport       = `"C"`
+	examplePrefix   = "Example"
+	outputMarker    = "Output:"
+	unorderedMarker = "Unordered output:"
+	lineMarker      = "//"
 )
 
-// Commentpolicy reports every comment that is not the doc comment of an
-// exported declaration, field or interface method, except directives,
-// build or generated headers, deprecations and spec links, and every
-// exported declaration missing one. Test functions need no doc comment.
-// A doc comment whose every word is filler or a word of the documented
-// name (or its receiver type) only restates that name and is reported too.
 func Commentpolicy(
 	files []source.File,
 ) (findings []report.Finding) {
@@ -57,30 +35,14 @@ func Commentpolicy(
 func fileFindings(
 	file source.File,
 ) (findings []report.Finding) {
-	allowed := allowedDocs(file)
+	exempt := exemptGroups(file)
 	for _, group := range file.Syntax.Comments {
 		findings = append(
 			findings,
 			groupFindings(
 				file,
-				allowed,
 				group,
-			)...,
-		)
-	}
-
-	for _, decl := range file.Syntax.Decls {
-		findings = append(
-			findings,
-			slices.Concat(
-				undocumentedFindings(
-					file,
-					decl,
-				),
-				restatingFindings(
-					file,
-					decl,
-				),
+				exempt,
 			)...,
 		)
 	}
@@ -90,50 +52,43 @@ func fileFindings(
 
 func groupFindings(
 	file source.File,
-	allowed []*ast.CommentGroup,
 	group *ast.CommentGroup,
+	exempt []*ast.CommentGroup,
 ) (findings []report.Finding) {
-	isPermitted := slices.Contains(
-		allowed,
+	isProse := !slices.Contains(
+		exempt,
 		group,
-	) || isFileHeader(
-		file.Syntax,
-		group,
-	) || !slices.ContainsFunc(
+	) && slices.ContainsFunc(
 		group.List,
-		isRestricted,
+		isProseComment,
 	)
-	isSuppression := slices.ContainsFunc(
-		group.List,
-		isNolint,
-	)
-	if isPermitted &&
-		!isSuppression {
+	if !isProse {
 		return nil
 	}
 
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(group),
-		Snippet: fmt.Sprintf(
-			commentSnippet,
-			strings.Split(
-				group.List[0].Text,
-				newline,
-			)[0],
-		),
+		Snippet:  snippet,
 	}}
 }
 
-func allowedDocs(
+func exemptGroups(
 	file source.File,
 ) (groups []*ast.CommentGroup) {
-	for _, decl := range file.Syntax.Decls {
+	for _, declaration := range file.Syntax.Decls {
 		groups = append(
 			groups,
-			declDocs(
+			cgoPreamble(declaration)...,
+		)
+	}
+
+	for _, function := range source.Nodes[*ast.FuncDecl](file.Syntax) {
+		groups = append(
+			groups,
+			exampleOutputs(
 				file,
-				decl,
+				function,
 			)...,
 		)
 	}
@@ -141,274 +96,110 @@ func allowedDocs(
 	return groups
 }
 
-func declDocs(
-	file source.File,
-	decl ast.Decl,
+func cgoPreamble(
+	declaration ast.Decl,
 ) (groups []*ast.CommentGroup) {
-	switch typed := decl.(type) {
-	case *ast.FuncDecl:
-		return funcDocs(
-			file,
-			typed,
-		)
-	case *ast.GenDecl:
-		return genDeclDocs(typed)
-	}
-
-	return nil
-}
-
-func funcDocs(
-	file source.File,
-	decl *ast.FuncDecl,
-) (groups []*ast.CommentGroup) {
-	if !needsDoc(
-		file,
-		decl,
-	) {
+	general, isGeneral := declaration.(*ast.GenDecl)
+	isCgo := isGeneral && general.Doc != nil && slices.ContainsFunc(
+		source.Nodes[*ast.ImportSpec](general),
+		importsC,
+	)
+	if !isCgo {
 		return nil
 	}
 
-	return []*ast.CommentGroup{decl.Doc}
+	return []*ast.CommentGroup{general.Doc}
 }
 
-func genDeclDocs(
-	decl *ast.GenDecl,
+func importsC(
+	spec *ast.ImportSpec,
+) (matches bool) {
+	return spec.Path.Value == cgoImport
+}
+
+func exampleOutputs(
+	file source.File,
+	function *ast.FuncDecl,
 ) (groups []*ast.CommentGroup) {
-	groups = memberDocs(decl)
-	if !slices.ContainsFunc(
-		decl.Specs,
-		isExportedSpec,
+	isExample := source.IsTest(file.Path) &&
+		function.Recv == nil &&
+		function.Body != nil &&
+		strings.HasPrefix(
+			function.Name.Name,
+			examplePrefix,
+		)
+	if !isExample {
+		return nil
+	}
+
+	for _, group := range file.Syntax.Comments {
+		groups = appendOutput(
+			groups,
+			group,
+			function.Body,
+		)
+	}
+
+	return groups
+}
+
+func appendOutput(
+	groups []*ast.CommentGroup,
+	group *ast.CommentGroup,
+	body *ast.BlockStmt,
+) (extended []*ast.CommentGroup) {
+	if !isOutputWithin(
+		group,
+		body,
 	) {
 		return groups
 	}
 
-	groups = append(
+	return append(
 		groups,
-		decl.Doc,
+		group,
 	)
-	for _, spec := range decl.Specs {
-		groups = append(
-			groups,
-			exportedSpecDoc(spec),
-		)
-	}
-
-	return groups
 }
 
-func memberDocs(
-	decl *ast.GenDecl,
-) (groups []*ast.CommentGroup) {
-	for _, structType := range source.Nodes[*ast.StructType](decl) {
-		groups = append(
-			groups,
-			fieldDocs(structType.Fields)...,
-		)
-	}
-
-	for _, interfaceType := range source.Nodes[*ast.InterfaceType](decl) {
-		groups = append(
-			groups,
-			fieldDocs(interfaceType.Methods)...,
-		)
-	}
-
-	return groups
-}
-
-func fieldDocs(
-	fields *ast.FieldList,
-) (groups []*ast.CommentGroup) {
-	for _, field := range slices.DeleteFunc(
-		slices.Clone(fields.List),
-		isUnexportedField,
-	) {
-		groups = append(
-			groups,
-			field.Doc,
-		)
-	}
-
-	return groups
-}
-
-func isExportedSpec(
-	spec ast.Spec,
-) (exported bool) {
-	return exportedName(spec) != ""
-}
-
-func exportedSpecDoc(
-	spec ast.Spec,
-) (doc *ast.CommentGroup) {
-	if !isExportedSpec(spec) {
-		return nil
-	}
-
-	return specDoc(spec)
-}
-
-func specDoc(
-	spec ast.Spec,
-) (doc *ast.CommentGroup) {
-	switch typed := spec.(type) {
-	case *ast.TypeSpec:
-		return typed.Doc
-	case *ast.ValueSpec:
-		return typed.Doc
-	}
-
-	return nil
-}
-
-func exportedName(
-	spec ast.Spec,
-) (name string) {
-	switch typed := spec.(type) {
-	case *ast.TypeSpec:
-		return firstExported([]*ast.Ident{typed.Name})
-	case *ast.ValueSpec:
-		return firstExported(typed.Names)
-	}
-
-	return ""
-}
-
-func firstExported(
-	names []*ast.Ident,
-) (name string) {
-	index := slices.IndexFunc(
-		names,
-		(*ast.Ident).IsExported,
-	)
-	if index < 0 {
-		return ""
-	}
-
-	return names[index].Name
-}
-
-func isUnexportedField(
-	field *ast.Field,
-) (unexported bool) {
-	if len(field.Names) > 0 {
-		return firstExported(field.Names) == ""
-	}
-
-	return !token.IsExported(embeddedName(field.Type))
-}
-
-func embeddedName(
-	expr ast.Expr,
-) (name string) {
-	switch typed := expr.(type) {
-	case *ast.Ident:
-		return typed.Name
-	case *ast.SelectorExpr:
-		return typed.Sel.Name
-	case *ast.StarExpr:
-		return embeddedName(typed.X)
-	case *ast.IndexExpr:
-		return embeddedName(typed.X)
-	case *ast.IndexListExpr:
-		return embeddedName(typed.X)
-	}
-
-	return ""
-}
-
-func hasDoc(
+func isOutputWithin(
 	group *ast.CommentGroup,
-) (documented bool) {
-	return group != nil && slices.ContainsFunc(
-		group.List,
-		isProse,
-	)
+	body *ast.BlockStmt,
+) (within bool) {
+	return group.Pos() > body.Lbrace &&
+		group.End() < body.Rbrace &&
+		startsWithOutput(group)
 }
 
-func isFileHeader(
-	syntax *ast.File,
+func startsWithOutput(
 	group *ast.CommentGroup,
-) (isHeader bool) {
-	isBeforePackage := group.End() < syntax.Package
-	isHeaderContent := isGeneratedMarker(group.List[0]) || !slices.ContainsFunc(
-		group.List,
-		isNotBuildConstraint,
-	)
-	return isBeforePackage && isHeaderContent
-}
-
-func isGeneratedMarker(
-	comment *ast.Comment,
-) (isMarker bool) {
-	return strings.HasPrefix(
-		comment.Text,
-		generatedPrefix,
-	) && strings.HasSuffix(
-		comment.Text,
-		generatedSuffix,
-	)
-}
-
-func isNotBuildConstraint(
-	comment *ast.Comment,
-) (notConstraint bool) {
-	return !isDirective(comment) && !strings.HasPrefix(
-		comment.Text,
-		legacyBuildPrefix,
-	)
-}
-
-func isRestricted(
-	comment *ast.Comment,
-) (restricted bool) {
-	body := strings.TrimSpace(strings.TrimSuffix(
-		strings.TrimPrefix(
-			strings.TrimPrefix(
-				comment.Text,
-				lineComment,
-			),
-			blockOpening,
-		),
-		blockClosing,
+) (matches bool) {
+	first := strings.TrimSpace(strings.TrimPrefix(
+		group.List[0].Text,
+		lineMarker,
 	))
-	isLink := strings.Contains(
-		comment.Text,
-		plainLink,
-	) || strings.Contains(
-		comment.Text,
-		secureLink,
+	return strings.HasPrefix(
+		first,
+		outputMarker,
+	) || strings.HasPrefix(
+		first,
+		unorderedMarker,
 	)
-	return !isDirective(comment) && !strings.HasPrefix(
-		body,
-		deprecatedPrefix,
-	) && !isLink
 }
 
-func isProse(
+func isProseComment(
 	comment *ast.Comment,
 ) (prose bool) {
-	return !isDirective(comment)
+	prose = true
+	for _, prefix := range directivePrefixes() {
+		prose = prose && !strings.HasPrefix(
+			comment.Text,
+			prefix,
+		)
+	}
+
+	return prose
 }
 
-func isDirective(
-	comment *ast.Comment,
-) (directive bool) {
-	return strings.HasPrefix(
-		comment.Text,
-		directivePrefix,
-	) || strings.HasPrefix(
-		comment.Text,
-		lineDirective,
-	)
-}
-
-func isNolint(
-	comment *ast.Comment,
-) (suppression bool) {
-	return strings.HasPrefix(
-		comment.Text,
-		nolintPrefix,
-	)
+func directivePrefixes() (prefixes []string) {
+	return []string{"//go:", "//line ", "//export ", "//extern ", "// +build"}
 }

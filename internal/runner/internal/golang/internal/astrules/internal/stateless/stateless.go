@@ -20,12 +20,6 @@ const (
 	constructorPrefix = "New"
 )
 
-// Stateless reports, package by package, every struct type with no fields
-// that still carries methods, and every New or NewXxx constructor whose
-// returns all build such an empty struct. Behavior without state belongs
-// in package-level functions, and constructors exist only for real state.
-// Mocks are skipped: an empty mock carries methods to satisfy the
-// interface it fakes.
 func Stateless(
 	files []source.File,
 ) (findings []report.Finding) {

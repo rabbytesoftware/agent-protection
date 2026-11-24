@@ -17,9 +17,6 @@ const (
 	generatedHeaderMaxBytes = 500
 )
 
-// Source parses every non-test, non-generated .go file under root,
-// skipping vendor/, .git/ and node_modules/ trees. It fails when a file
-// cannot be read or parsed.
 func Source(
 	root string,
 ) (files []File, err error) {
@@ -47,9 +44,6 @@ func Source(
 	)
 }
 
-// Tests parses every non-generated _test.go file under root that is not
-// guarded by an integration build tag. It fails when a file cannot be
-// read or parsed.
 func Tests(
 	root string,
 ) (files []File, err error) {
@@ -77,8 +71,6 @@ func Tests(
 	)
 }
 
-// Paths returns every non-test .go file path under root, generated files
-// included, for checks that reason about file layout rather than code.
 func Paths(
 	root string,
 ) (paths []string, err error) {
@@ -95,8 +87,6 @@ func Paths(
 		nil
 }
 
-// Directories returns every directory under root, root included, skipping
-// vendor/, .git/ and node_modules/ trees.
 func Directories(
 	root string,
 ) (directories []string, err error) {
@@ -110,8 +100,6 @@ func Directories(
 		nil
 }
 
-// RelPath returns path relative to root. It fails when path cannot be
-// made relative to root, such as a relative path under an absolute root.
 func RelPath(
 	root string,
 	path string,
@@ -133,8 +121,6 @@ func RelPath(
 		nil
 }
 
-// Parse parses content as the Go file at path, which findings report
-// relative to root.
 func Parse(
 	root string,
 	path string,
@@ -169,7 +155,6 @@ func Parse(
 		nil
 }
 
-// IsTest reports whether path names a _test.go file.
 func IsTest(
 	path string,
 ) (isTest bool) {
@@ -179,9 +164,6 @@ func IsTest(
 	)
 }
 
-// IsGenerated reports whether the first bytes of the file at path carry a
-// "Code generated" or "DO NOT EDIT" marker. It fails when the file cannot
-// be read.
 func IsGenerated(
 	path string,
 ) (isGenerated bool, err error) {

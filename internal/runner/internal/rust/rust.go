@@ -11,10 +11,6 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/rust/internal/testmodule"
 )
 
-// Rust checks the crate at root with cargo clippy and reports every
-// panic-risk warning outside test code: files whose path mentions "test"
-// and inline #[cfg(test)] modules are skipped. It fails when clippy fails
-// or a warned file cannot be read.
 func Rust(
 	root string,
 ) (findings []report.Finding, err error) {

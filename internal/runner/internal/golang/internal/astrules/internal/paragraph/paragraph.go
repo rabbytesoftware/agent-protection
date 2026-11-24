@@ -17,11 +17,6 @@ const (
 	minimumSequence = 2
 )
 
-// Paragraph reports statements that break the paragraph layout: a statement
-// that directly follows a closed block (if, for, switch, select or a bare
-// block) without a blank line between them, an if separated by a blank line
-// from the assignment whose value it checks, and a block whose first or last
-// line is blank. Blank lines anywhere else are left to the author.
 func Paragraph(
 	files []source.File,
 ) (findings []report.Finding) {

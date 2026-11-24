@@ -17,22 +17,6 @@ const (
 	indirectFormat = "func %s(...) returns a value and mutates its receiver or a pointer parameter through %s(...): split the query from the command"
 )
 
-// Cqs reports every function or method that both returns a non-error value
-// and mutates its pointer receiver or a pointer parameter (R33): a call
-// must either answer a question or change state, never both. Mutation is a
-// write through the pointer (assignment, increment, delete, clear or copy)
-// or handing the pointer to a function or method of the same package that
-// mutates it, so moving the write into a helper hides nothing. A func
-// literal counts only when it runs during the call: invoked, deferred,
-// started as a goroutine or passed as an argument; one that is returned,
-// stored or sent mutates later, not now. A chainable
-// method, whose every return hands back its own receiver, is a command:
-// the receiver it returns is no answer, only the next link. So is a
-// function that returns only a value it created itself and handed to the
-// state it changes, such as the id of a subscription it registers: that
-// value is the receipt of the command, not an answer read from state. Mocks are
-// skipped: a test double keeps the signature of the interface it fakes and
-// exists to record the calls made on it.
 func Cqs(
 	files []source.File,
 ) (findings []report.Finding) {

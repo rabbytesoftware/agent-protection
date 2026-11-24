@@ -14,10 +14,6 @@ const (
 	contextType    = "Context"
 )
 
-// Ctxfirstparam reports every context.Context that is declared after the
-// first parameter of a function, method, literal or function type, and
-// every struct field typed context.Context: a context travels as the first
-// argument of each call and is never stored.
 func Ctxfirstparam(
 	files []source.File,
 ) (findings []report.Finding) {

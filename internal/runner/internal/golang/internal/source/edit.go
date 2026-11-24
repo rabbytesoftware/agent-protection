@@ -5,18 +5,12 @@ import (
 	"slices"
 )
 
-// Edit replaces the bytes of a file between the offsets Start and End with
-// Text. An insertion has Start equal to End.
 type Edit struct {
 	Start int
 	End   int
 	Text  string
 }
 
-// Splice applies edits to content in offset order, insertions at one offset
-// in the order given. An edit overlapping one already applied is dropped:
-// the bytes it was computed against are gone, so the caller recomputes it
-// on the result.
 func Splice(
 	content []byte,
 	edits []Edit,

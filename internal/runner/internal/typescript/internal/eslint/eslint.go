@@ -16,10 +16,6 @@ const (
 	jsonOpeners = "[{"
 )
 
-// Eslint runs eslint through bun over root with any extra arguments and
-// returns its per-file JSON report, every FilePath made relative to root.
-// A non-zero exit still yields the report; it fails when bun cannot start
-// or the output holds no parseable JSON report.
 func Eslint(
 	root string,
 	arguments ...string,

@@ -23,14 +23,6 @@ const (
 	blank             = "_"
 )
 
-// Genericname reports every unexported function, method and type, and
-// every local variable holding a function literal, whose name says nothing
-// about what it does (R56): a name built only from content-free words (fn,
-// wrap, runHandler, makeCallback), a name opening with a content-free
-// prefix (implSendCreate), and a name told apart from a sibling declared
-// in the same file only by a trailing number (handler2 beside handler).
-// Exported names are read through their package qualifier and are left to
-// the package naming rules.
 func Genericname(
 	files []source.File,
 ) (findings []report.Finding) {

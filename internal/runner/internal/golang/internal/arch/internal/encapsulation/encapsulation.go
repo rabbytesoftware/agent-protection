@@ -19,12 +19,6 @@ const (
 	internalSegment = "internal"
 )
 
-// Encapsulation reports every package behind exactly one internal/ segment,
-// so visible to the whole module, that only one other package imports. It
-// belongs under that importer's own internal/ tree. Shared support packages
-// and packages whose sole importer is package main are exempt, and so is a
-// package already under its sole importer's own internal/, such as the
-// module root's internal/bus imported only by the root package.
 func Encapsulation(
 	root string,
 	files []source.File,

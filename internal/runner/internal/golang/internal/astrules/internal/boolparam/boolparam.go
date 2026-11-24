@@ -14,9 +14,6 @@ const (
 	boolType = "bool"
 )
 
-// Boolparam reports every function or method declaration that takes a bool
-// parameter (R32): a flag argument hides two behaviors behind one name, and
-// the call site cannot tell what true or false selects.
 func Boolparam(
 	files []source.File,
 ) (findings []report.Finding) {

@@ -27,7 +27,7 @@ func TestRun(
 			clean,
 			"version.go",
 		),
-		"package clean\n\n// Version is the fixture's release.\nconst Version = \"1\"\n",
+		"package clean\n\nconst Version = \"1\"\n",
 	)
 	failing := t.TempDir()
 	writeFile(
@@ -44,7 +44,7 @@ func TestRun(
 			failing,
 			"version.go",
 		),
-		"package failing\n\nconst Version = \"1\"\n",
+		"package failing\n\n// Version is a comment.\nconst Version = \"1\"\n",
 	)
 	cases := []struct {
 		arguments []string

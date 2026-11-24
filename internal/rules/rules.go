@@ -10,9 +10,6 @@ import (
 //go:embed rules.yaml
 var manifest []byte
 
-// Rules parses the embedded manifest and returns every rule keyed by its
-// ID. The manifest is parsed on every call so the registry is never held
-// as mutable package state.
 func Rules() (registry map[string]Rule, err error) {
 	err = yaml.Unmarshal(
 		manifest,

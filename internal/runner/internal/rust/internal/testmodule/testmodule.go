@@ -14,10 +14,6 @@ const (
 	closeBrace    = "}"
 )
 
-// Testmodule returns the 1-based line numbers of the Rust file at path that
-// sit inside an inline test module: a `mod ... { ... }` block directly
-// preceded (blank lines aside) by a #[cfg(test)] attribute. An unclosed
-// module runs to the end of the file. It fails when the file is unreadable.
 func Testmodule(
 	path string,
 ) (lines []int, err error) {

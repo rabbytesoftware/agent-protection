@@ -14,10 +14,6 @@ import (
 
 const rule = "R34"
 
-// Sideeffect reports every function or method whose name promises a query
-// (Get, Find, Compute, List, Calc, Calculate, Is, Has as whole words) but whose body calls a writing
-// method such as Write, Save, Delete or Send (R34): a reader trusts such a
-// name to be free of observable side effects.
 func Sideeffect(
 	files []source.File,
 ) (findings []report.Finding) {

@@ -15,10 +15,6 @@ const (
 	snippet       = "return with several values: keep the first value on the return line and put every following value on its own line"
 )
 
-// Returnperline reports every return statement with two or more values
-// where a value starts on the same line the previous one ends. The first
-// value stays on the return line, since Go ends a bare return at the line
-// break.
 func Returnperline(
 	files []source.File,
 ) (findings []report.Finding) {

@@ -17,13 +17,6 @@ const (
 	closureFormat = "%s: block nested %d levels deep where its local closure is used, max %d: hoisting a closure into a variable does not flatten it, extract a named function or method instead"
 )
 
-// Maxdepth reports every statement block nested deeper than two indentation
-// levels below its declaration, once at the block's first statement. Depth
-// is measured from columns, so it assumes gofmt-formatted code. A function
-// literal bound to a local variable is measured where it is used, not where
-// it is written: its body sits one level below the deepest line naming the
-// variable, so hoisting a nested closure out of a call or loop into a
-// variable leaves its depth unchanged.
 func Maxdepth(
 	files []source.File,
 ) (findings []report.Finding) {

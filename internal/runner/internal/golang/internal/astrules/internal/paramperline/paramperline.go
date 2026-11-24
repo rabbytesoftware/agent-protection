@@ -16,10 +16,6 @@ const (
 	snippetFormat = "%s: put every parameter on its own line, after an opening paren that ends the signature line and before a closing paren on a line of its own"
 )
 
-// Paramperline reports every function, method, func literal, interface
-// method and func type whose parameters do not each sit on their own line
-// between an opening paren ending the signature line and a closing paren on
-// its own line. Receivers and results are not checked.
 func Paramperline(
 	files []source.File,
 ) (findings []report.Finding) {

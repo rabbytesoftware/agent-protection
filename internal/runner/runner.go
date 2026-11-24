@@ -17,9 +17,6 @@ const (
 	typescriptMarker = "package.json"
 )
 
-// Runner checks the single-language component at root against its rule set
-// and returns the report. The language comes from the marker file directly
-// inside root: go.mod, Cargo.toml or package.json, in that order.
 func Runner(
 	root string,
 ) (output report.Output, err error) {
@@ -38,9 +35,6 @@ func Runner(
 	return report.Report(findings)
 }
 
-// Fix rewrites the Go component at root in place so the layout rules ap fix
-// repairs hold, and returns the rewritten paths relative to root. Only Go
-// components can be fixed; any other component is an error.
 func Fix(
 	root string,
 ) (changed []string, err error) {

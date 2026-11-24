@@ -16,8 +16,6 @@ const (
 	maxFiles = 8
 )
 
-// Maxfilesperdir reports every directory other than root that holds more
-// than eight non-test .go files, in directory order.
 func Maxfilesperdir(
 	root string,
 ) (findings []report.Finding, err error) {

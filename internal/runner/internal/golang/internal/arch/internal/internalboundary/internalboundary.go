@@ -16,10 +16,6 @@ const (
 	soleChildRule = "R51"
 )
 
-// Internalboundary checks every directory literally named internal. It may
-// directly hold only declaration-only files, and it must hide at least two
-// child packages: a sole child has no sibling to be hidden from, so the
-// boundary should be merged into its parent.
 func Internalboundary(
 	root string,
 ) (findings []report.Finding, err error) {

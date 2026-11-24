@@ -10,13 +10,6 @@ const (
 	commaAndLineBreak = ",\n"
 )
 
-// Breaks returns the insertions that put every item of a bracketed list on
-// its own line, between an opening bracket ending its line and a closing
-// bracket on a line of its own: a line break before every item starting on
-// the line where the bracket or the previous item ends, and one before a
-// closing bracket left on the last item's line, after the trailing comma Go
-// then requires. A list already laid out that way, or an empty one, needs
-// none.
 func Breaks(
 	file File,
 	opening token.Pos,

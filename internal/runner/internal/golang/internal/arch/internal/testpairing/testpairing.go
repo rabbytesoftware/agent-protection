@@ -19,11 +19,6 @@ const (
 	testSuffix      = "_test.go"
 )
 
-// Testpairing pairs source and test files one to one. Every source file
-// with behavior needs an x_test.go beside it, and every test file needs the
-// x.go it is named after; x_bench_test.go and x_integration_test.go also
-// pair with x.go. Declaration-only, generated and mock sources need no
-// test of their own.
 func Testpairing(
 	root string,
 ) (findings []report.Finding, err error) {

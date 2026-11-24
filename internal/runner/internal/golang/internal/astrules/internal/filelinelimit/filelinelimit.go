@@ -12,9 +12,6 @@ const (
 	maxLines = 500
 )
 
-// Filelinelimit reports every file longer than 500 lines, counted from the
-// parsed file's own line table so no file is read twice. The finding sits
-// on the package clause, since the fix is splitting the whole file.
 func Filelinelimit(
 	files []source.File,
 ) (findings []report.Finding) {

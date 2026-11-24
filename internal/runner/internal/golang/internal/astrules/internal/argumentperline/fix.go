@@ -6,9 +6,6 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
-// Edits returns the line breaks that give every argument of every call
-// Argumentperline checks its own line. Calls with zero or one argument are
-// left as they are.
 func Edits(
 	file source.File,
 ) (edits []source.Edit) {

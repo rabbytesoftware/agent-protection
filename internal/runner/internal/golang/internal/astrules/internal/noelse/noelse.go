@@ -10,9 +10,6 @@ import (
 
 const rule = "R03"
 
-// Noelse reports every if statement that carries an else branch (R03):
-// exceptional paths must exit early through guard clauses so the happy
-// path stays flat and returns last.
 func Noelse(
 	files []source.File,
 ) (findings []report.Finding) {

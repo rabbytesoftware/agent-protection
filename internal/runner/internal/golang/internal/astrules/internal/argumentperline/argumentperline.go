@@ -15,10 +15,6 @@ const (
 	snippet          = "call with several arguments: put every argument on its own line, after an opening paren that ends the line and before a closing paren on a line of its own"
 )
 
-// Argumentperline reports every call with two or more arguments whose
-// arguments do not each sit on their own line between an opening paren
-// ending its line and a closing paren on a line of its own. Calls with zero
-// or one argument may stay inline.
 func Argumentperline(
 	files []source.File,
 ) (findings []report.Finding) {

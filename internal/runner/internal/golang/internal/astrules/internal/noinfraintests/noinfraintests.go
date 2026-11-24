@@ -13,10 +13,6 @@ import (
 
 const rule = "R41"
 
-// Noinfraintests reports every call in a unit test that opens real
-// infrastructure (http, net or sql dialing, requesting or opening)
-// unless its arguments point at a loopback address, directly or through a
-// variable assigned from one. Building in-memory requests is not a call.
 func Noinfraintests(
 	tests []source.File,
 ) (findings []report.Finding) {

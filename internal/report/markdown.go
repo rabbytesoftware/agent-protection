@@ -14,10 +14,6 @@ const (
 	truncatedFormat = "\n_Showing %d of %d findings. The full list is in the ap-report artifact of this run._\n"
 )
 
-// Markdown renders the report as a short pull request comment: a one-line
-// verdict with the violation count, followed by a collapsed section holding
-// the per-rule breakdown and as many findings as fit GitHub's comment size
-// limit, with a note saying how many were left out.
 func (o Output) Markdown() (document string) {
 	if len(o.Findings) == 0 {
 		return cleanVerdict

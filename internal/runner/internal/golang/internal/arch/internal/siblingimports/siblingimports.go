@@ -18,10 +18,6 @@ const (
 	importQuotes = "\"`"
 )
 
-// Siblingimports reports every internal/ tree file importing a sibling
-// package that shares its parent directory, except shared support imports
-// and composition-root files. A file wiring enough siblings to act as an
-// unnamed composition root gets one wiring finding instead.
 func Siblingimports(
 	root string,
 	files []source.File,

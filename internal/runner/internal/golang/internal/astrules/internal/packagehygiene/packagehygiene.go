@@ -15,9 +15,6 @@ const (
 	underscore  = "_"
 )
 
-// Packagehygiene reports, at each file's package clause, a package name
-// that is not lowercase or contains an underscore (R21), and a generic
-// dumping-ground name such as util, common, helpers, base or misc (R22).
 func Packagehygiene(
 	files []source.File,
 ) (findings []report.Finding) {

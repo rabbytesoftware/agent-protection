@@ -14,10 +14,6 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
-// Arch runs every architecture and package layout check over the module at
-// root: sibling imports, composition roots, internal/ boundaries,
-// single-consumer encapsulation, test pairing and files per directory.
-// Every check runs; if any fails, their errors are joined and returned.
 func Arch(
 	root string,
 	files []source.File,

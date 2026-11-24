@@ -30,10 +30,6 @@ const (
 	linterGroup
 )
 
-// Lint runs golangci-lint over the module at root with Agent Protection's
-// generated config, passing the build tags named in AP_GO_BUILD_TAGS, and
-// maps every issue from a known linter to its rule ID. It fails when
-// golangci-lint cannot start or when type-checking alone failed.
 func Lint(
 	root string,
 ) (findings []report.Finding, err error) {

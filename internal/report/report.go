@@ -9,10 +9,6 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/rules"
 )
 
-// Report sorts findings by rule and then by location, and attaches the
-// registered explanation of every distinct violated rule exactly once.
-// Findings whose rule is not in the registry, such as linter pass-through
-// IDs, are kept but carry no explanation.
 func Report(
 	findings []Finding,
 ) (output Output, err error) {
