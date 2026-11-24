@@ -12,7 +12,7 @@ R02:
     text: "Maximum 2 indentation levels inside a function body"
     enforcement: analyzer
     rationale: "Code nested three levels deep forces the reader to hold several conditions in mind at once; the depth itself is the signal that a step deserves its own name."
-    fix_strategy: "Extract the inner block into a named function or method, filter collections with slices.DeleteFunc or slices.ContainsFunc, or invert conditions into guard clauses."
+    fix_strategy: "Extract the inner block into a named function or method, filter collections with slices.DeleteFunc or slices.ContainsFunc, or invert conditions into guard clauses. Moving a closure into a local variable does not reduce its depth: it is measured where it is used."
     not_a_fix: "Hoisting inner blocks into closures or helpers with meaningless names (inner, doStep, handle2) so depth drops while the function stays as long and does as much; wrapping a branch in a func literal; flattening with goto or labeled continue chains that keep the same tangled control flow."
 R03:
     id: R03
