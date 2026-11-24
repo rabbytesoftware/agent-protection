@@ -3,6 +3,7 @@ package encapsulation
 import (
 	"fmt"
 	"go/ast"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -12,15 +13,18 @@ import (
 )
 
 const (
-	rule         = "R19"
-	mainPackage  = "main"
-	importQuotes = "\"`"
+	rule            = "R19"
+	mainPackage     = "main"
+	importQuotes    = "\"`"
+	internalSegment = "internal"
 )
 
 // Encapsulation reports every package behind exactly one internal/ segment,
 // so visible to the whole module, that only one other package imports. It
 // belongs under that importer's own internal/ tree. Shared support packages
-// and packages whose sole importer is package main are exempt.
+// and packages whose sole importer is package main are exempt, and so is a
+// package already under its sole importer's own internal/, such as the
+// module root's internal/bus imported only by the root package.
 func Encapsulation(
 	root string,
 	files []source.File,
@@ -124,6 +128,13 @@ func exposureFindings(
 		return nil
 	}
 
+	if isUnderOwnInternal(
+		imported,
+		directories[0],
+	) {
+		return nil
+	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: filepath.FromSlash(imported),
@@ -184,6 +195,19 @@ func packageDirectories(
 
 	slices.Sort(directories)
 	return slices.Compact(directories)
+}
+
+func isUnderOwnInternal(
+	imported string,
+	importer string,
+) (nested bool) {
+	return strings.HasPrefix(
+		imported,
+		path.Join(
+			importer,
+			internalSegment,
+		)+"/",
+	)
 }
 
 func isNotExposed(
