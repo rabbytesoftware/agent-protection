@@ -1,6 +1,7 @@
 package internalboundary
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -40,107 +41,178 @@ func Internalboundary(
 			)
 	}
 
-	return slices.Concat(
-			looseFindings(
-				root,
-				paths,
-			),
-			boundaryFindings(
-				root,
-				directories,
-				paths,
-			),
-		),
+	findings, err = layoutFindings(
+		root,
+		directories,
+		paths,
+	)
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"internal boundaries: %w",
+				err,
+			)
+	}
+
+	return findings,
 		nil
+}
+
+func layoutFindings(
+	root string,
+	directories []string,
+	paths []string,
+) (findings []report.Finding, err error) {
+	loose, looseErr := looseFindings(
+		root,
+		paths,
+	)
+	boundaries, boundariesErr := boundaryFindings(
+		root,
+		directories,
+		paths,
+	)
+	return slices.Concat(
+			loose,
+			boundaries,
+		),
+		errors.Join(
+			looseErr,
+			boundariesErr,
+		)
 }
 
 func looseFindings(
 	root string,
 	paths []string,
-) (findings []report.Finding) {
-	for _, path := range slices.DeleteFunc(
-		slices.Clone(paths),
-		isAllowedInBoundary,
-	) {
+) (findings []report.Finding, err error) {
+	failures := []error{}
+	for _, path := range paths {
+		pathFound, pathErr := looseFinding(
+			root,
+			path,
+		)
 		findings = append(
 			findings,
-			looseFinding(
-				root,
-				path,
-			),
+			pathFound...,
+		)
+		failures = append(
+			failures,
+			pathErr,
 		)
 	}
 
-	return findings
+	return findings,
+		errors.Join(failures...)
 }
 
 func boundaryFindings(
 	root string,
 	directories []string,
 	paths []string,
-) (findings []report.Finding) {
+) (findings []report.Finding, err error) {
 	sourceDirectories := packageDirectories(paths)
+	failures := []error{}
 	for _, boundary := range slices.DeleteFunc(
 		directories,
 		isNotBoundary,
 	) {
+		boundaryFound, boundaryErr := soleChildFindings(
+			root,
+			boundary,
+			sourceDirectories,
+		)
 		findings = append(
 			findings,
-			soleChildFindings(
-				root,
-				boundary,
-				sourceDirectories,
-			)...,
+			boundaryFound...,
+		)
+		failures = append(
+			failures,
+			boundaryErr,
 		)
 	}
 
-	return findings
+	return findings,
+		errors.Join(failures...)
 }
 
 func looseFinding(
 	root string,
 	path string,
-) (finding report.Finding) {
-	return report.Finding{
-		Rule: looseRule,
-		Location: source.RelPath(
-			root,
-			path,
-		),
-		Snippet: "file with behavior directly inside internal/: move it into its own named subdirectory",
+) (findings []report.Finding, err error) {
+	loose, err := isLoose(path)
+	if err != nil {
+		return nil,
+			err
 	}
+
+	if !loose {
+		return nil,
+			nil
+	}
+
+	location, err := source.RelPath(
+		root,
+		path,
+	)
+	return []report.Finding{{
+			Rule:     looseRule,
+			Location: location,
+			Snippet:  "file with behavior directly inside internal/: move it into its own named subdirectory",
+		}},
+		err
+}
+
+func isLoose(
+	path string,
+) (loose bool, err error) {
+	if !source.IsInternalDirectory(filepath.Dir(path)) {
+		return false,
+			nil
+	}
+
+	declarationOnly, err := source.IsDeclarationOnly(path)
+	return !declarationOnly,
+		err
 }
 
 func soleChildFindings(
 	root string,
 	boundary string,
 	sourceDirectories []string,
-) (findings []report.Finding) {
+) (findings []report.Finding, err error) {
 	children := childPackages(
 		boundary,
 		sourceDirectories,
 	)
 	if len(children) != 1 {
-		return nil
+		return nil,
+			nil
 	}
 
+	location, locationErr := source.RelPath(
+		root,
+		filepath.Join(
+			boundary,
+			children[0],
+		),
+	)
+	parent, parentErr := source.RelPath(
+		root,
+		filepath.Dir(boundary),
+	)
 	return []report.Finding{{
-		Rule: soleChildRule,
-		Location: source.RelPath(
-			root,
-			filepath.Join(
-				boundary,
-				children[0],
+			Rule:     soleChildRule,
+			Location: location,
+			Snippet: fmt.Sprintf(
+				"only child of this internal/ directory: merge it into %s and drop the internal/ layer",
+				parent,
 			),
-		),
-		Snippet: fmt.Sprintf(
-			"only child of this internal/ directory: merge it into %s and drop the internal/ layer",
-			source.RelPath(
-				root,
-				filepath.Dir(boundary),
-			),
-		),
-	}}
+		}},
+		errors.Join(
+			locationErr,
+			parentErr,
+		)
 }
 
 func packageDirectories(
@@ -191,12 +263,6 @@ func childPackage(
 		filepath.ToSlash(rel),
 		"/",
 	)[:1]
-}
-
-func isAllowedInBoundary(
-	path string,
-) (allowed bool) {
-	return !source.IsInternalDirectory(filepath.Dir(path)) || source.IsDeclarationOnly(path)
 }
 
 func isNotBoundary(

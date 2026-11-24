@@ -171,21 +171,29 @@ func TestParse(
 func TestRelPath(
 	t *testing.T,
 ) {
-	cases := []struct {
-		root string
-		path string
-		want string
-	}{
-		{root: "/repo", path: "/repo/internal/a.go", want: "internal/a.go"},
-		{root: "/repo", path: "relative/a.go", want: "relative/a.go"},
-	}
-	for _, tc := range cases {
-		assertRelPath(
-			t,
-			tc.root,
-			tc.path,
-			tc.want,
+	rel, err := source.RelPath(
+		"/repo",
+		"/repo/internal/a.go",
+	)
+	isMismatch := err != nil || rel != "internal/a.go"
+	if isMismatch {
+		t.Errorf(
+			"RelPath() = %q, %v, want internal/a.go, nil",
+			rel,
+			err,
 		)
+	}
+}
+
+func TestRelPathRejectsUnrelatablePaths(
+	t *testing.T,
+) {
+	_, err := source.RelPath(
+		"/repo",
+		"relative/a.go",
+	)
+	if err == nil {
+		t.Error("RelPath(/repo, relative/a.go) error = nil, want one")
 	}
 }
 
@@ -211,28 +219,6 @@ func TestWalkersRejectMissingRoot(
 	}
 }
 
-func assertRelPath(
-	t *testing.T,
-	root string,
-	path string,
-	want string,
-) {
-	t.Helper()
-	rel := source.RelPath(
-		root,
-		path,
-	)
-	if rel != want {
-		t.Errorf(
-			"RelPath(%q, %q) = %q, want %q",
-			root,
-			path,
-			rel,
-			want,
-		)
-	}
-}
-
 func assertWalkError(
 	t *testing.T,
 	walker func(string) error,
@@ -242,7 +228,7 @@ func assertWalkError(
 	err := walker(root)
 	if err == nil {
 		t.Errorf(
-			"walking missing root %s: error = nil, want one",
+			"walking %s: error = nil, want one",
 			root,
 		)
 	}
@@ -280,7 +266,7 @@ func TestIsGenerated(
 	t *testing.T,
 ) {
 	root := fixtureModule(t)
-	cases := map[string]bool{"pkg/gen.go": true, "pkg/a.go": false, "missing.go": false}
+	cases := map[string]bool{"pkg/gen.go": true, "pkg/a.go": false}
 	for path, want := range cases {
 		assertGenerated(
 			t,
@@ -293,19 +279,77 @@ func TestIsGenerated(
 	}
 }
 
+func TestIsGeneratedRejectsUnreadableFiles(
+	t *testing.T,
+) {
+	_, err := source.IsGenerated(filepath.Join(
+		t.TempDir(),
+		"missing.go",
+	))
+	if err == nil {
+		t.Error("IsGenerated(missing.go) error = nil, want a read error")
+	}
+}
+
+func TestWalkersRejectUnreadableFiles(
+	t *testing.T,
+) {
+	walkers := map[string]func(string) error{"broken.go": sourceError, "broken_test.go": testsError}
+	for name, walker := range walkers {
+		root := t.TempDir()
+		symlink(
+			t,
+			filepath.Join(
+				root,
+				"missing.go",
+			),
+			filepath.Join(
+				root,
+				name,
+			),
+		)
+		assertWalkError(
+			t,
+			walker,
+			root,
+		)
+	}
+}
+
 func assertGenerated(
 	t *testing.T,
 	path string,
 	want bool,
 ) {
 	t.Helper()
-	got := source.IsGenerated(path)
-	if got != want {
+	got, err := source.IsGenerated(path)
+	isMismatch := err != nil || got != want
+	if isMismatch {
 		t.Errorf(
-			"IsGenerated(%s) = %v, want %v",
+			"IsGenerated(%s) = %v, %v, want %v, nil",
 			path,
 			got,
+			err,
 			want,
+		)
+	}
+}
+
+func symlink(
+	t *testing.T,
+	target string,
+	link string,
+) {
+	t.Helper()
+	err := os.Symlink(
+		target,
+		link,
+	)
+	if err != nil {
+		t.Fatalf(
+			"symlink %s: %v",
+			link,
+			err,
 		)
 	}
 }

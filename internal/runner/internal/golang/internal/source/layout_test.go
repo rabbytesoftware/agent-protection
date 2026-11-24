@@ -74,17 +74,27 @@ func TestIsDeclarationOnly(
 		),
 		"package p\n\nfunc F() {}\n",
 	)
-	cases := map[string]bool{"types.go": true, "behavior.go": false, "missing.go": false}
+	cases := map[string]bool{"types.go": true, "behavior.go": false}
 	for name, want := range cases {
-		assertBool(
+		declarationOnly, err := source.IsDeclarationOnly(filepath.Join(
+			root,
+			name,
+		))
+		assertBoolResult(
 			t,
 			"IsDeclarationOnly("+name+")",
-			source.IsDeclarationOnly(filepath.Join(
-				root,
-				name,
-			)),
+			declarationOnly,
+			err,
 			want,
 		)
+	}
+
+	_, err := source.IsDeclarationOnly(filepath.Join(
+		root,
+		"missing.go",
+	))
+	if err == nil {
+		t.Error("IsDeclarationOnly(missing.go) error = nil, want a parse error")
 	}
 }
 
@@ -188,17 +198,27 @@ func TestHasSource(
 		),
 		"package a\n",
 	)
-	cases := map[string]bool{"src": true, "tests": false, "missing": false}
+	cases := map[string]bool{"src": true, "tests": false}
 	for dir, want := range cases {
-		assertBool(
+		hasSource, err := source.HasSource(filepath.Join(
+			root,
+			dir,
+		))
+		assertBoolResult(
 			t,
 			"HasSource("+dir+")",
-			source.HasSource(filepath.Join(
-				root,
-				dir,
-			)),
+			hasSource,
+			err,
 			want,
 		)
+	}
+
+	_, err := source.HasSource(filepath.Join(
+		root,
+		"missing",
+	))
+	if err == nil {
+		t.Error("HasSource(missing) error = nil, want a read error")
 	}
 }
 
@@ -267,4 +287,28 @@ func assertBool(
 			want,
 		)
 	}
+}
+
+func assertBoolResult(
+	t *testing.T,
+	call string,
+	got bool,
+	err error,
+	want bool,
+) {
+	t.Helper()
+	if err != nil {
+		t.Fatalf(
+			"%s error = %v",
+			call,
+			err,
+		)
+	}
+
+	assertBool(
+		t,
+		call,
+		got,
+		want,
+	)
 }

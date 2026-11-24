@@ -45,60 +45,121 @@ func Testpairing(
 			)
 	}
 
-	return slices.Concat(
-			untestedSources(
-				root,
-				paths,
-				tests,
-			),
-			orphanTests(
-				root,
-				tests,
-				paths,
-			),
-		),
+	findings, err = pairingFindings(
+		root,
+		paths,
+		tests,
+	)
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"test pairing: %w",
+				err,
+			)
+	}
+
+	return findings,
 		nil
+}
+
+func pairingFindings(
+	root string,
+	paths []string,
+	tests []string,
+) (findings []report.Finding, err error) {
+	untested, untestedErr := untestedSources(
+		root,
+		paths,
+		tests,
+	)
+	orphans, orphansErr := orphanTests(
+		root,
+		tests,
+		paths,
+	)
+	return slices.Concat(
+			untested,
+			orphans,
+		),
+		errors.Join(
+			untestedErr,
+			orphansErr,
+		)
 }
 
 func untestedSources(
 	root string,
 	paths []string,
 	tests []string,
-) (findings []report.Finding) {
-	for _, path := range slices.DeleteFunc(
-		slices.Clone(paths),
-		isExempt,
-	) {
+) (findings []report.Finding, err error) {
+	failures := []error{}
+	for _, path := range paths {
+		pathFound, pathErr := untestedSource(
+			root,
+			path,
+			tests,
+		)
 		findings = append(
 			findings,
-			missingTestFindings(
-				root,
-				path,
-				tests,
-			)...,
+			pathFound...,
+		)
+		failures = append(
+			failures,
+			pathErr,
 		)
 	}
 
-	return findings
+	return findings,
+		errors.Join(failures...)
+}
+
+func untestedSource(
+	root string,
+	path string,
+	tests []string,
+) (findings []report.Finding, err error) {
+	exempt, err := isExempt(path)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	if exempt {
+		return nil,
+			nil
+	}
+
+	return missingTestFindings(
+		root,
+		path,
+		tests,
+	)
 }
 
 func orphanTests(
 	root string,
 	tests []string,
 	paths []string,
-) (findings []report.Finding) {
+) (findings []report.Finding, err error) {
+	failures := []error{}
 	for _, test := range tests {
+		testFound, testErr := orphanTestFindings(
+			root,
+			test,
+			paths,
+		)
 		findings = append(
 			findings,
-			orphanTestFindings(
-				root,
-				test,
-				paths,
-			)...,
+			testFound...,
+		)
+		failures = append(
+			failures,
+			testErr,
 		)
 	}
 
-	return findings
+	return findings,
+		errors.Join(failures...)
 }
 
 func testPaths(
@@ -167,62 +228,67 @@ func missingTestFindings(
 	root string,
 	path string,
 	tests []string,
-) (findings []report.Finding) {
-	location := source.RelPath(
+) (findings []report.Finding, err error) {
+	location, err := source.RelPath(
 		root,
 		path,
 	)
-	if source.IsMock(location) {
-		return nil
+	if err != nil {
+		return nil,
+			err
 	}
 
 	test := strings.TrimSuffix(
 		path,
 		goExtension,
 	) + testSuffix
-	if slices.Contains(
+	isPaired := source.IsMock(location) || slices.Contains(
 		tests,
 		test,
-	) {
-		return nil
+	)
+	if isPaired {
+		return nil,
+			nil
 	}
 
 	return []report.Finding{{
-		Rule:     missingTestRule,
-		Location: location,
-		Snippet: fmt.Sprintf(
-			"no %s beside it",
-			filepath.Base(test),
-		),
-	}}
+			Rule:     missingTestRule,
+			Location: location,
+			Snippet: fmt.Sprintf(
+				"no %s beside it",
+				filepath.Base(test),
+			),
+		}},
+		nil
 }
 
 func orphanTestFindings(
 	root string,
 	test string,
 	paths []string,
-) (findings []report.Finding) {
+) (findings []report.Finding, err error) {
 	candidates := pairedSources(test)
 	if containsAny(
 		paths,
 		candidates,
 	) {
-		return nil
+		return nil,
+			nil
 	}
 
-	path := candidates[0]
-
+	location, err := source.RelPath(
+		root,
+		test,
+	)
 	return []report.Finding{{
-		Rule: orphanTestRule,
-		Location: source.RelPath(
-			root,
-			test,
-		),
-		Snippet: fmt.Sprintf(
-			"no %s beside it: move these tests into the test file of the source they cover",
-			filepath.Base(path),
-		),
-	}}
+			Rule:     orphanTestRule,
+			Location: location,
+			Snippet: fmt.Sprintf(
+				"no %s beside it: move these tests into the test file of the source they cover",
+				filepath.Base(candidates[0]),
+			),
+		}},
+		err
 }
 
 func pairedSources(
@@ -283,8 +349,19 @@ func testKinds() (kinds []string) {
 
 func isExempt(
 	path string,
-) (exempt bool) {
-	return source.IsDeclarationOnly(path) || source.IsGenerated(path)
+) (exempt bool, err error) {
+	declarationOnly, err := source.IsDeclarationOnly(path)
+	if err != nil {
+		return false,
+			err
+	}
+
+	if declarationOnly {
+		return true,
+			nil
+	}
+
+	return source.IsGenerated(path)
 }
 
 func isNotTestFile(

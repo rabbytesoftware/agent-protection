@@ -133,6 +133,25 @@ func parsedContent(
 	return file
 }
 
+func TestAstrulesAppliesDroppedErrorRuleToTests(
+	t *testing.T,
+) {
+	test := parsed(
+		t,
+		"package p\n\nfunc TestX(\n\tt *testing.T,\n) {\n\tif err := run(); err != nil {\n\t\treturn\n\t}\n}\n",
+	)
+	findings := astrules.Astrules(
+		nil,
+		[]source.File{test},
+	)
+	assertRules(
+		t,
+		"a test that returns on an error it never reports is a dropped error",
+		findings,
+		[]string{"R26"},
+	)
+}
+
 func assertRules(
 	t *testing.T,
 	name string,

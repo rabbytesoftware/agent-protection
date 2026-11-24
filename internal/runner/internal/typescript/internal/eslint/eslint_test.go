@@ -40,6 +40,11 @@ func TestEslint(
 			want:   []string{"src/a.ts", "b.ts"},
 		},
 		{
+			name:    "a file path that cannot be made relative to root is an error",
+			output:  `[{"filePath":"relative/a.ts","messages":[]}]`,
+			wantErr: true,
+		},
+		{
 			name:    "output without a JSON report is an error",
 			output:  "Oops! Something went wrong",
 			exit:    2,
@@ -122,6 +127,41 @@ func TestEslintWithoutBun(
 	_, err := eslint.Eslint(t.TempDir())
 	if err == nil {
 		t.Error("Eslint() error = nil, want an error when bun is not installed")
+	}
+}
+
+func TestEslintWithoutHome(
+	t *testing.T,
+) {
+	t.Setenv(
+		"HOME",
+		"",
+	)
+	_, err := eslint.Eslint(t.TempDir())
+	if err == nil {
+		t.Error("Eslint() error = nil, want an error when HOME is not set")
+	}
+}
+
+func TestEslintWithUnreadableBunInHome(
+	t *testing.T,
+) {
+	home := t.TempDir()
+	writeExecutable(
+		t,
+		filepath.Join(
+			home,
+			".bun",
+		),
+		"",
+	)
+	t.Setenv(
+		"HOME",
+		home,
+	)
+	_, err := eslint.Eslint(t.TempDir())
+	if err == nil {
+		t.Error("Eslint() error = nil, want an error when ~/.bun is not a directory")
 	}
 }
 

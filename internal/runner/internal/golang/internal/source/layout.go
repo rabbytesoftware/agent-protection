@@ -64,10 +64,11 @@ func ModulePath(
 
 // IsDeclarationOnly reports whether the Go file at path declares no
 // functions or methods, meaning it holds only types, constants and
-// variables and has no behavior of its own.
+// variables and has no behavior of its own. It fails when the file cannot
+// be parsed.
 func IsDeclarationOnly(
 	path string,
-) (declarationOnly bool) {
+) (declarationOnly bool, err error) {
 	syntax, err := parser.ParseFile(
 		token.NewFileSet(),
 		path,
@@ -75,13 +76,19 @@ func IsDeclarationOnly(
 		parser.SkipObjectResolution,
 	)
 	if err != nil {
-		return false
+		return false,
+			fmt.Errorf(
+				"parse %s: %w",
+				path,
+				err,
+			)
 	}
 
 	return !slices.ContainsFunc(
-		syntax.Decls,
-		isFuncDecl,
-	)
+			syntax.Decls,
+			isFuncDecl,
+		),
+		nil
 }
 
 // IsInternalTree reports whether dir is an internal/ directory or sits
@@ -148,19 +155,25 @@ func IsCompositionRoot(
 }
 
 // HasSource reports whether dir directly contains at least one non-test
-// .go file.
+// .go file. It fails when dir cannot be read.
 func HasSource(
 	dir string,
-) (hasSource bool) {
+) (hasSource bool, err error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return false
+		return false,
+			fmt.Errorf(
+				"read %s: %w",
+				dir,
+				err,
+			)
 	}
 
 	return slices.ContainsFunc(
-		entries,
-		isSourceEntry,
-	)
+			entries,
+			isSourceEntry,
+		),
+		nil
 }
 
 // Entries returns the paths of the non-test .go files directly
