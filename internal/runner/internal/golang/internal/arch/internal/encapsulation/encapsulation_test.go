@@ -36,6 +36,22 @@ func TestEncapsulation(
 			want: nil,
 		},
 		{
+			name: "package under the module root's internal imported only by the root passes",
+			files: map[string]string{
+				"lib.go":            "package lib\n\nimport \"example.com/m/internal/bus\"\n\nvar _ = bus.X\n",
+				"internal/bus/b.go": "package bus\n\nfunc X() {}\n",
+			},
+			want: nil,
+		},
+		{
+			name: "package under another directory's internal imported only by a deeper package is reported",
+			files: map[string]string{
+				"x/sub/s.go":        "package sub\n\nimport \"example.com/m/x/internal/y\"\n\nvar _ = y.X\n",
+				"x/internal/y/y.go": "package y\n\nfunc X() {}\n",
+			},
+			want: []string{"R19 x/internal/y"},
+		},
+		{
 			name: "package with two importers passes",
 			files: map[string]string{
 				"internal/a/a.go":      "package a\n\nimport \"example.com/m/internal/shared\"\n\nvar _ = shared.X\n",
