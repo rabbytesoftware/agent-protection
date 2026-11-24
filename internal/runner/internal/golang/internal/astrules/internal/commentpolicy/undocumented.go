@@ -25,6 +25,7 @@ func undocumentedFindings(
 			typed,
 		)
 	}
+
 	return nil
 }
 
@@ -39,6 +40,7 @@ func undocumentedFunc(
 	if !isMissing {
 		return nil
 	}
+
 	return missingDoc(
 		file,
 		decl,
@@ -60,6 +62,7 @@ func undocumentedSpecs(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -73,6 +76,7 @@ func undocumentedSpec(
 	if !isMissing {
 		return nil
 	}
+
 	return missingDoc(
 		file,
 		spec,
@@ -113,6 +117,7 @@ func isTestFunction(
 	if !isTopLevelTestFile {
 		return false
 	}
+
 	name := decl.Name.Name
 	isExample := strings.HasPrefix(
 		name,
@@ -138,14 +143,17 @@ func takesTestingPointer(
 	if params.NumFields() != 1 {
 		return false
 	}
+
 	pointer, isPointer := params.List[0].Type.(*ast.StarExpr)
 	if !isPointer {
 		return false
 	}
+
 	selector, isSelector := pointer.X.(*ast.SelectorExpr)
 	if !isSelector {
 		return false
 	}
+
 	pkg, isIdent := selector.X.(*ast.Ident)
 	return isIdent && pkg.Name == testingPackage
 }

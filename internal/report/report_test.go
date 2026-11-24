@@ -63,6 +63,7 @@ func assertReport(
 			err,
 		)
 	}
+
 	gotLocations := locations(output.Findings)
 	if !slices.Equal(
 		gotLocations,
@@ -75,6 +76,7 @@ func assertReport(
 			wantLocations,
 		)
 	}
+
 	gotDocs := slices.Sorted(maps.Keys(output.RuleDocs))
 	if !slices.Equal(
 		gotDocs,
@@ -98,5 +100,6 @@ func locations(
 			finding.Location,
 		)
 	}
+
 	return result
 }

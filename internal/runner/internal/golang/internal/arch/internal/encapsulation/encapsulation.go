@@ -33,6 +33,7 @@ func Encapsulation(
 				err,
 			)
 	}
+
 	for _, imported := range slices.DeleteFunc(
 		importedPackages(
 			modulePath,
@@ -49,6 +50,7 @@ func Encapsulation(
 			)...,
 		)
 	}
+
 	return findings,
 		nil
 }
@@ -66,6 +68,7 @@ func importedPackages(
 			)...,
 		)
 	}
+
 	slices.Sort(packages)
 	return slices.Compact(packages)
 }
@@ -83,6 +86,7 @@ func moduleImports(
 			)...,
 		)
 	}
+
 	return packages
 }
 
@@ -100,6 +104,7 @@ func modulePackage(
 	if !inModule {
 		return nil
 	}
+
 	return []string{relative}
 }
 
@@ -118,6 +123,7 @@ func exposureFindings(
 	if !isSoleConsumer {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: filepath.FromSlash(imported),
@@ -144,6 +150,7 @@ func importersOf(
 			)...,
 		)
 	}
+
 	return importers
 }
 
@@ -161,6 +168,7 @@ func importerOrNone(
 	) {
 		return nil
 	}
+
 	return []source.File{file}
 }
 
@@ -173,6 +181,7 @@ func packageDirectories(
 			filepath.ToSlash(filepath.Dir(file.Rel)),
 		)
 	}
+
 	slices.Sort(directories)
 	return slices.Compact(directories)
 }

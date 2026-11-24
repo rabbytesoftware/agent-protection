@@ -23,6 +23,7 @@ func Golang(
 		return nil,
 			err
 	}
+
 	architecture, err := arch.Arch(
 		root,
 		files,
@@ -34,6 +35,7 @@ func Golang(
 				err,
 			)
 	}
+
 	linted, err := lint.Lint(root)
 	if err != nil {
 		return nil,
@@ -42,6 +44,7 @@ func Golang(
 				err,
 			)
 	}
+
 	return slices.Concat(
 			architecture,
 			astrules.Astrules(
@@ -65,6 +68,7 @@ func load(
 				err,
 			)
 	}
+
 	tests, err = source.Tests(root)
 	if err != nil {
 		return nil,
@@ -74,6 +78,7 @@ func load(
 				err,
 			)
 	}
+
 	return files,
 		tests,
 		nil

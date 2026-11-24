@@ -99,6 +99,7 @@ exit 1`,
 			err,
 		)
 	}
+
 	passesTags := len(findings) == 1 && strings.Contains(
 		findings[0].Snippet,
 		"--build-tags=integration",
@@ -150,6 +151,7 @@ func fakeGolangciLint(
 			err,
 		)
 	}
+
 	t.Setenv(
 		"PATH",
 		directory+string(os.PathListSeparator)+os.Getenv("PATH"),
@@ -173,6 +175,7 @@ func assertLint(
 			wantErr,
 		)
 	}
+
 	got := summaries(findings)
 	isMismatch := !slices.Equal(
 		got,
@@ -186,6 +189,7 @@ func assertLint(
 			want,
 		)
 	}
+
 	_, err = os.Stat(filepath.Join(
 		root,
 		".ap-lint-config.generated.yml",
@@ -211,5 +215,6 @@ func summaries(
 			finding.Rule+" "+finding.Location,
 		)
 	}
+
 	return got
 }

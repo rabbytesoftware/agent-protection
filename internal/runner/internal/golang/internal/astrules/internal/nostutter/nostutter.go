@@ -25,6 +25,7 @@ func Nostutter(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -40,6 +41,7 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -57,6 +59,7 @@ func identifierFindings(
 	if !isStutter {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(identifier),
@@ -78,6 +81,7 @@ func declaredNames(
 			typeNames(decl)...,
 		)
 	}
+
 	for _, function := range slices.DeleteFunc(
 		source.Nodes[*ast.FuncDecl](syntax),
 		isMethod,
@@ -87,6 +91,7 @@ func declaredNames(
 			function.Name,
 		)
 	}
+
 	return identifiers
 }
 
@@ -97,12 +102,14 @@ func typeNames(
 	if !isGeneral {
 		return nil
 	}
+
 	for _, spec := range source.Nodes[*ast.TypeSpec](general) {
 		identifiers = append(
 			identifiers,
 			spec.Name,
 		)
 	}
+
 	return identifiers
 }
 

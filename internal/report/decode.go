@@ -22,6 +22,7 @@ func Decode(
 				err,
 			)
 	}
+
 	return output,
 		nil
 }

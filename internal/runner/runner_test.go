@@ -35,6 +35,7 @@ func TestRunnerChecksGoModule(
 			err,
 		)
 	}
+
 	err = os.WriteFile(
 		filepath.Join(
 			root,
@@ -49,6 +50,7 @@ func TestRunnerChecksGoModule(
 			err,
 		)
 	}
+
 	output, err := runner.Runner(root)
 	if err != nil {
 		t.Fatalf(
@@ -56,6 +58,7 @@ func TestRunnerChecksGoModule(
 			err,
 		)
 	}
+
 	if len(output.Findings) != 0 {
 		t.Errorf(
 			"Runner() findings = %v, want none for a compliant module",
@@ -129,6 +132,7 @@ func assertDispatch(
 			err,
 		)
 	}
+
 	if len(output.Findings) != 0 {
 		t.Errorf(
 			"Runner() with %s findings = %v, want none",

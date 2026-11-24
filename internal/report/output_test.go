@@ -22,6 +22,7 @@ func TestOutputJSON(
 			err,
 		)
 	}
+
 	parsed := map[string]json.RawMessage{}
 	err = json.Unmarshal(
 		[]byte(document),
@@ -34,6 +35,7 @@ func TestOutputJSON(
 			document,
 		)
 	}
+
 	_, hasDocs := parsed["rule_docs"]
 	_, hasFindings := parsed["findings"]
 	if !hasDocs ||
@@ -67,6 +69,7 @@ func TestOutputText(
 			text,
 		)
 	}
+
 	listsBothLocations := strings.Contains(
 		text,
 		"a.go:1",
@@ -94,5 +97,6 @@ func mustReport(
 			err,
 		)
 	}
+
 	return output
 }

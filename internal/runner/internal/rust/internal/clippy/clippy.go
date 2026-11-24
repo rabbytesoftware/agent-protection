@@ -55,6 +55,7 @@ func Clippy(
 				output,
 			)
 	}
+
 	return parse(string(output))
 }
 
@@ -80,11 +81,13 @@ func parse(
 			convertErr,
 		)
 	}
+
 	err = errors.Join(failures...)
 	if err != nil {
 		return nil,
 			err
 	}
+
 	return warnings,
 		nil
 }
@@ -101,6 +104,7 @@ func newWarning(
 				err,
 			)
 	}
+
 	return Warning{Path: match[pathGroup], Line: line, Rule: rule, Text: match[textGroup]},
 		nil
 }

@@ -26,6 +26,7 @@ func Boolparam(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -49,6 +50,7 @@ func fileFindings(
 			},
 		)
 	}
+
 	return findings
 }
 

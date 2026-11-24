@@ -19,6 +19,7 @@ func (w *walker) visit(
 	if err != nil {
 		return err
 	}
+
 	isSkipped := entry.IsDir() && slices.Contains(
 		skippedDirectories(),
 		entry.Name(),
@@ -26,6 +27,7 @@ func (w *walker) visit(
 	if isSkipped {
 		return filepath.SkipDir
 	}
+
 	if entry.IsDir() {
 		w.directories = append(
 			w.directories,
@@ -33,12 +35,14 @@ func (w *walker) visit(
 		)
 		return nil
 	}
+
 	if filepath.Ext(path) == goExtension {
 		w.files = append(
 			w.files,
 			path,
 		)
 	}
+
 	return nil
 }
 

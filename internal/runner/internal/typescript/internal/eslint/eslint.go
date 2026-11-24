@@ -31,6 +31,7 @@ func Eslint(
 		return nil,
 			err
 	}
+
 	return decode(
 		root,
 		output,
@@ -64,6 +65,7 @@ func run(
 				err,
 			)
 	}
+
 	return output,
 		nil
 }
@@ -84,12 +86,14 @@ func decode(
 				output,
 			)
 	}
+
 	for index := range results {
 		results[index].FilePath = relPath(
 			root,
 			results[index].FilePath,
 		)
 	}
+
 	return results,
 		nil
 }
@@ -99,6 +103,7 @@ func bunBinary() (binary string) {
 	if err != nil {
 		return bun
 	}
+
 	candidate := filepath.Join(
 		home,
 		"."+bun,
@@ -109,6 +114,7 @@ func bunBinary() (binary string) {
 	if err != nil {
 		return bun
 	}
+
 	return candidate
 }
 
@@ -122,6 +128,7 @@ func jsonPayload(
 	if start < 0 {
 		return output
 	}
+
 	return output[start:]
 }
 
@@ -136,5 +143,6 @@ func relPath(
 	if err != nil {
 		return path
 	}
+
 	return rel
 }

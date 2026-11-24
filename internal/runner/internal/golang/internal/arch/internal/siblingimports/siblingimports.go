@@ -34,6 +34,7 @@ func Siblingimports(
 				err,
 			)
 	}
+
 	for _, file := range slices.DeleteFunc(
 		slices.Clone(files),
 		isExempt,
@@ -46,6 +47,7 @@ func Siblingimports(
 			)...,
 		)
 	}
+
 	return findings,
 		nil
 }
@@ -64,12 +66,14 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	if len(findings) >= source.CompositionRootThreshold {
 		return []report.Finding{wiringFinding(
 			file,
 			len(findings),
 		)}
 	}
+
 	return findings
 }
 
@@ -93,6 +97,7 @@ func importFindings(
 	if !isViolation {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     siblingRule,
 		Location: file.Location(spec),

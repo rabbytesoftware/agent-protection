@@ -53,6 +53,7 @@ func assertLocations(
 			finding.Rule+" "+finding.Location,
 		)
 	}
+
 	isMismatch := !slices.Equal(
 		got,
 		want,
@@ -86,5 +87,6 @@ func parsed(
 			err,
 		)
 	}
+
 	return source.File{Path: "p.go", Rel: "p.go", FileSet: fileSet, Syntax: syntax}
 }

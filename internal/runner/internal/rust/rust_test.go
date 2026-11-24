@@ -35,6 +35,7 @@ func TestRust(
 			err,
 		)
 	}
+
 	got := locations(findings)
 	if !slices.Equal(
 		got,
@@ -100,6 +101,7 @@ func fakeCargo(
 			err,
 		)
 	}
+
 	t.Setenv(
 		"PATH",
 		directory+string(os.PathListSeparator)+os.Getenv("PATH"),
@@ -123,6 +125,7 @@ func writeFile(
 			err,
 		)
 	}
+
 	err = os.WriteFile(
 		path,
 		[]byte(content),
@@ -146,5 +149,6 @@ func locations(
 			finding.Location,
 		)
 	}
+
 	return got
 }

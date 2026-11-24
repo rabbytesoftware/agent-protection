@@ -23,6 +23,7 @@ func TestWalkerSkipsVendoredTrees(
 			"package x\n",
 		)
 	}
+
 	directories, err := source.Directories(root)
 	if err != nil {
 		t.Fatalf(
@@ -30,6 +31,7 @@ func TestWalkerSkipsVendoredTrees(
 			err,
 		)
 	}
+
 	want := []string{root, filepath.Join(
 		root,
 		"a",
@@ -63,6 +65,7 @@ func writeFile(
 			err,
 		)
 	}
+
 	err = os.WriteFile(
 		path,
 		[]byte(content),

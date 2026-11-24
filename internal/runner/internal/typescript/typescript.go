@@ -18,11 +18,13 @@ func Typescript(
 		return nil,
 			err
 	}
+
 	manifested, err := manifest.Manifest(root)
 	if err != nil {
 		return nil,
 			err
 	}
+
 	return append(
 			own,
 			manifested...,

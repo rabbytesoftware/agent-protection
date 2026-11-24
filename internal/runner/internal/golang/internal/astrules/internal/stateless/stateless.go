@@ -35,12 +35,14 @@ func Stateless(
 			file,
 		)
 	}
+
 	for _, directory := range slices.Sorted(maps.Keys(packages)) {
 		findings = append(
 			findings,
 			packageFindings(packages[directory])...,
 		)
 	}
+
 	return findings
 }
 
@@ -65,6 +67,7 @@ func packageFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -82,6 +85,7 @@ func typeFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -96,6 +100,7 @@ func specFindings(
 	) {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     typeRule,
 		Location: file.Location(spec),
@@ -124,6 +129,7 @@ func constructorFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -140,6 +146,7 @@ func statelessConstructorFindings(
 	if !isStateless {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     constructorRule,
 		Location: file.Location(constructor),
@@ -161,6 +168,7 @@ func allBuildEmpty(
 			empty,
 		)
 	}
+
 	return allEmpty
 }
 
@@ -171,6 +179,7 @@ func buildsEmpty(
 	if len(statement.Results) == 0 {
 		return false
 	}
+
 	literal, isLiteral := withoutAddress(statement.Results[0]).(*ast.CompositeLit)
 	return isLiteral && slices.Contains(
 		empty,
@@ -186,6 +195,7 @@ func withoutAddress(
 	if !isAddress {
 		return expression
 	}
+
 	return unary.X
 }
 
@@ -212,6 +222,7 @@ func emptyStructNames(
 			fileEmptyStructNames(file)...,
 		)
 	}
+
 	return names
 }
 
@@ -224,6 +235,7 @@ func fileEmptyStructNames(
 			spec.Name.Name,
 		)
 	}
+
 	return names
 }
 
@@ -252,6 +264,7 @@ func receiverNames(
 			fileReceiverNames(file)...,
 		)
 	}
+
 	return names
 }
 
@@ -268,6 +281,7 @@ func fileReceiverNames(
 			typeName(method.Recv.List[0].Type),
 		)
 	}
+
 	return names
 }
 
@@ -292,5 +306,6 @@ func typeName(
 	case *ast.IndexListExpr:
 		return typeName(typed.X)
 	}
+
 	return ""
 }

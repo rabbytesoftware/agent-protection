@@ -28,11 +28,13 @@ func Runner(
 		return report.Output{},
 			err
 	}
+
 	findings, err := check(root)
 	if err != nil {
 		return report.Output{},
 			err
 	}
+
 	return report.Report(findings)
 }
 
@@ -59,6 +61,7 @@ func checkFor(
 		return typescript.Typescript,
 			nil
 	}
+
 	return nil,
 		fmt.Errorf(
 			"no %s, %s or %s directly in %s: point ap at a single-language component folder",

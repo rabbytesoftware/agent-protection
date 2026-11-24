@@ -55,7 +55,7 @@ returns (R04), the comment policy (R07), one type per file (R08),
 stateless types as functions (R11, R12), interfaces over exported structs
 (R13), package layering and internal/ boundaries (R16, R19, R47-R51),
 naming (R21-R23), no panic (R27), 1:1 test files (R42, R43), file and
-directory size caps (R44, R46). Agent Protection passes its own gate.
+directory size caps (R44, R46), and paragraph layout: a blank line after every closed block, checks attached to what they check (R55). Agent Protection passes its own gate.
 Rust: unwrap/expect/panic-risk detection through clippy, excluding inline
 `#[cfg(test)]` modules.
 TypeScript: complexity, magic-number, no-else, no-debug-output,

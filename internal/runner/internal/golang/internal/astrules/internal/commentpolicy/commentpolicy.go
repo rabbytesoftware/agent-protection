@@ -48,6 +48,7 @@ func Commentpolicy(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -65,6 +66,7 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	for _, decl := range file.Syntax.Decls {
 		findings = append(
 			findings,
@@ -74,6 +76,7 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -100,6 +103,7 @@ func groupFindings(
 		!isSuppression {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(group),
@@ -125,6 +129,7 @@ func allowedDocs(
 			)...,
 		)
 	}
+
 	return groups
 }
 
@@ -141,6 +146,7 @@ func declDocs(
 	case *ast.GenDecl:
 		return genDeclDocs(typed)
 	}
+
 	return nil
 }
 
@@ -154,6 +160,7 @@ func funcDocs(
 	) {
 		return nil
 	}
+
 	return []*ast.CommentGroup{decl.Doc}
 }
 
@@ -167,6 +174,7 @@ func genDeclDocs(
 	) {
 		return groups
 	}
+
 	groups = append(
 		groups,
 		decl.Doc,
@@ -177,6 +185,7 @@ func genDeclDocs(
 			exportedSpecDoc(spec),
 		)
 	}
+
 	return groups
 }
 
@@ -189,12 +198,14 @@ func memberDocs(
 			fieldDocs(structType.Fields)...,
 		)
 	}
+
 	for _, interfaceType := range source.Nodes[*ast.InterfaceType](decl) {
 		groups = append(
 			groups,
 			fieldDocs(interfaceType.Methods)...,
 		)
 	}
+
 	return groups
 }
 
@@ -210,6 +221,7 @@ func fieldDocs(
 			field.Doc,
 		)
 	}
+
 	return groups
 }
 
@@ -225,6 +237,7 @@ func exportedSpecDoc(
 	if !isExportedSpec(spec) {
 		return nil
 	}
+
 	return specDoc(spec)
 }
 
@@ -237,6 +250,7 @@ func specDoc(
 	case *ast.ValueSpec:
 		return typed.Doc
 	}
+
 	return nil
 }
 
@@ -249,6 +263,7 @@ func exportedName(
 	case *ast.ValueSpec:
 		return firstExported(typed.Names)
 	}
+
 	return ""
 }
 
@@ -262,6 +277,7 @@ func firstExported(
 	if index < 0 {
 		return ""
 	}
+
 	return names[index].Name
 }
 
@@ -271,6 +287,7 @@ func isUnexportedField(
 	if len(field.Names) > 0 {
 		return firstExported(field.Names) == ""
 	}
+
 	return !token.IsExported(embeddedName(field.Type))
 }
 
@@ -289,6 +306,7 @@ func embeddedName(
 	case *ast.IndexListExpr:
 		return embeddedName(typed.X)
 	}
+
 	return ""
 }
 

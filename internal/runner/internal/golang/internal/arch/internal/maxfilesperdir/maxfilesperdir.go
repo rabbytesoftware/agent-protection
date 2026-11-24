@@ -28,10 +28,12 @@ func Maxfilesperdir(
 				err,
 			)
 	}
+
 	counts := map[string]int{}
 	for _, path := range paths {
 		counts[filepath.Dir(path)]++
 	}
+
 	for _, directory := range slices.Sorted(maps.Keys(counts)) {
 		findings = append(
 			findings,
@@ -42,6 +44,7 @@ func Maxfilesperdir(
 			)...,
 		)
 	}
+
 	return findings,
 		nil
 }
@@ -55,6 +58,7 @@ func directoryFindings(
 	if isWithinLimit {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule: rule,
 		Location: source.RelPath(

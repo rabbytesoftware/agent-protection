@@ -30,6 +30,7 @@ func Testmodule(
 				err,
 			)
 	}
+
 	source := strings.Split(
 		string(content),
 		"\n",
@@ -43,6 +44,7 @@ func Testmodule(
 			)...,
 		)
 	}
+
 	return lines,
 		nil
 }
@@ -57,6 +59,7 @@ func moduleLines(
 	) {
 		return nil
 	}
+
 	open := firstNonBlank(
 		source,
 		attribute+1,
@@ -68,6 +71,7 @@ func moduleLines(
 	if !isModule {
 		return nil
 	}
+
 	return lineRange(
 		open+1,
 		closeLine(
@@ -88,6 +92,7 @@ func firstNonBlank(
 	if offset < 0 {
 		return len(source)
 	}
+
 	return from + offset
 }
 
@@ -102,6 +107,7 @@ func closeLine(
 	if offset < 0 {
 		return len(source)
 	}
+
 	return open + offset + 1
 }
 
@@ -122,6 +128,7 @@ func runningDepths(
 			depth,
 		)
 	}
+
 	return depths
 }
 
@@ -135,6 +142,7 @@ func lineRange(
 			line,
 		)
 	}
+
 	return lines
 }
 

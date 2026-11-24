@@ -28,6 +28,7 @@ func Argumentperline(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -43,6 +44,7 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -57,6 +59,7 @@ func callFindings(
 	if isCompliant {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(call),
@@ -81,6 +84,7 @@ func hasArgumentPerLine(
 			),
 		)
 	}
+
 	spans = append(
 		spans,
 		pointSpan(
@@ -116,6 +120,7 @@ func gaps(
 			span{first: spans[index-1].last, last: spans[index].first},
 		)
 	}
+
 	return between
 }
 

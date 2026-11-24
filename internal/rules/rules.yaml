@@ -243,6 +243,13 @@ R54:
     enforcement: analyzer
     rationale: "One value per line makes each returned value visible at the exit of the function, the same way R52 does for call arguments."
     fix_strategy: "Keep the first value on the return line (Go ends a bare return at the line break), end it with a comma, and put each following value on its own line."
+R55:
+    id: R55
+    level: L0
+    text: "Statements form paragraphs: a blank line follows every closed block, a check stays attached to the statement it checks, and no block starts or ends with a blank line"
+    enforcement: analyzer
+    rationale: "Each step of a function (a statement plus the guard that checks it) reads as one paragraph, and the blank line after a closing brace marks where the next step begins. Fixed positions keep the layout mechanical instead of a matter of taste."
+    fix_strategy: "Add one blank line after the closing brace of every if, for, switch, select or bare block that is not the last statement of its block; remove the blank line between an assignment and the if that checks the value it assigned; remove blank lines right after an opening brace or right before a closing one."
 PROXY-COMPLEXITY:
     id: PROXY-COMPLEXITY
     level: L0

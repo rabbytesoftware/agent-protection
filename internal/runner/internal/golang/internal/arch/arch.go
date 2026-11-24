@@ -49,6 +49,7 @@ func Arch(
 		return nil,
 			err
 	}
+
 	return slices.Concat(
 			siblings,
 			components,

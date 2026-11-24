@@ -37,6 +37,7 @@ func TestGolang(
 			err,
 		)
 	}
+
 	got := ruleIDs(findings)
 	for _, want := range []string{"R01", "R03", "R42"} {
 		assertContains(
@@ -126,6 +127,7 @@ func ruleIDs(
 			finding.Rule,
 		)
 	}
+
 	return ids
 }
 

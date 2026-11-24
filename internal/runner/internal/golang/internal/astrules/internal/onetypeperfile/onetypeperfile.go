@@ -29,6 +29,7 @@ func Onetypeperfile(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -39,6 +40,7 @@ func fileFindings(
 	if len(specs) == 0 {
 		return nil
 	}
+
 	if len(specs) > 1 {
 		return []report.Finding{{
 			Rule:     rule,
@@ -49,6 +51,7 @@ func fileFindings(
 			),
 		}}
 	}
+
 	return misnamedFindings(
 		file,
 		specs[0],
@@ -65,6 +68,7 @@ func misnamedFindings(
 	if isHome {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(spec),
@@ -86,6 +90,7 @@ func topLevelTypes(
 			typeSpecs(decl)...,
 		)
 	}
+
 	return specs
 }
 
@@ -96,6 +101,7 @@ func typeSpecs(
 	if !isGeneral {
 		return nil
 	}
+
 	return source.Nodes[*ast.TypeSpec](general)
 }
 
@@ -109,6 +115,7 @@ func snakeCase(
 			index,
 		) + string(unicode.ToLower(letter))
 	}
+
 	return snake
 }
 
@@ -123,6 +130,7 @@ func separator(
 	if !isWordStart {
 		return ""
 	}
+
 	return wordSeparator
 }
 

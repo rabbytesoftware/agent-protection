@@ -16,6 +16,7 @@ func TestRules(
 			err,
 		)
 	}
+
 	for id, rule := range registry {
 		assertComplete(
 			t,

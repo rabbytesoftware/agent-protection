@@ -25,6 +25,7 @@ func Sideeffect(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -44,6 +45,7 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -55,6 +57,7 @@ func functionFindings(
 	if len(writes) == 0 {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(function),
@@ -81,6 +84,7 @@ func hasQueryName(
 			prefix,
 		)
 	}
+
 	return isQuery
 }
 
@@ -93,6 +97,7 @@ func writeCalls(
 			calledMethod(call),
 		)
 	}
+
 	return slices.DeleteFunc(
 		methods,
 		isNotWriteVerb,
@@ -106,6 +111,7 @@ func calledMethod(
 	if !isSelector {
 		return ""
 	}
+
 	return selector.Sel.Name
 }
 

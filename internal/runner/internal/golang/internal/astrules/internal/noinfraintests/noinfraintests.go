@@ -26,6 +26,7 @@ func Noinfraintests(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -41,6 +42,7 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -51,6 +53,7 @@ func functionFindings(
 	if function.Body == nil {
 		return nil
 	}
+
 	loopback := loopbackNames(function.Body)
 	calls := slices.DeleteFunc(
 		source.Nodes[*ast.CallExpr](function.Body),
@@ -66,6 +69,7 @@ func functionFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -80,6 +84,7 @@ func callFindings(
 	) {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(call),
@@ -97,6 +102,7 @@ func isNotLiveCall(
 	if !isSelector {
 		return true
 	}
+
 	qualifier, isIdent := selector.X.(*ast.Ident)
 	isLive := isIdent && slices.Contains(
 		livePackages(),
@@ -117,6 +123,7 @@ func loopbackNames(
 			assignedLoopbackNames(assignment)...,
 		)
 	}
+
 	return names
 }
 
@@ -132,6 +139,7 @@ func assignedLoopbackNames(
 			)...,
 		)
 	}
+
 	return names
 }
 
@@ -143,10 +151,12 @@ func assignedLoopbackName(
 	if !isPairedLoopback {
 		return nil
 	}
+
 	target, isIdent := assignment.Lhs[index].(*ast.Ident)
 	if !isIdent {
 		return nil
 	}
+
 	return []string{target.Name}
 }
 
@@ -160,6 +170,7 @@ func reachesLoopback(
 			identName(argument),
 		)
 	}
+
 	return reaches
 }
 
@@ -170,6 +181,7 @@ func identName(
 	if !isIdent {
 		return ""
 	}
+
 	return ident.Name
 }
 
@@ -189,6 +201,7 @@ func containsLoopbackHint(
 	case *ast.SelectorExpr:
 		return isLoopbackSelector(typed)
 	}
+
 	return false
 }
 
@@ -211,6 +224,7 @@ func literalLooksLoopback(
 			marker,
 		)
 	}
+
 	return loopback
 }
 

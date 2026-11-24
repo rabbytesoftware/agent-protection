@@ -88,6 +88,7 @@ func written(
 			err,
 		)
 	}
+
 	return path
 }
 
@@ -106,6 +107,7 @@ func assertLines(
 			err,
 		)
 	}
+
 	isMismatch := !slices.Equal(
 		got,
 		want,

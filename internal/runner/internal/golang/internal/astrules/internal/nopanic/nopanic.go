@@ -26,6 +26,7 @@ func Nopanic(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -35,6 +36,7 @@ func fileFindings(
 	if file.Syntax.Name.Name == mainPackage {
 		return nil
 	}
+
 	calls := slices.DeleteFunc(
 		source.Nodes[*ast.CallExpr](file.Syntax),
 		isNotPanic,
@@ -49,6 +51,7 @@ func fileFindings(
 			},
 		)
 	}
+
 	return findings
 }
 

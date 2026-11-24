@@ -28,6 +28,7 @@ func Maxdepth(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -43,6 +44,7 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -62,6 +64,7 @@ func declFindings(
 			typed,
 		)
 	}
+
 	return nil
 }
 
@@ -72,6 +75,7 @@ func funcFindings(
 	if decl.Body == nil {
 		return nil
 	}
+
 	return blockFindings(
 		file,
 		decl.Name.Name,
@@ -94,6 +98,7 @@ func genDeclFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -106,6 +111,7 @@ func specFindings(
 	if !isValue {
 		return nil
 	}
+
 	if decl.Lparen.IsValid() {
 		return blockFindings(
 			file,
@@ -114,6 +120,7 @@ func specFindings(
 			file.Column(value),
 		)
 	}
+
 	return blockFindings(
 		file,
 		value.Names[0].Name,
@@ -139,6 +146,7 @@ func blockFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -152,12 +160,14 @@ func listFindings(
 	if len(statements) == 0 {
 		return nil
 	}
+
 	first := unlabeled(statements[0])
 	depth := file.Column(first) - baseColumn
 	isTooDeep := depth > deepestLevel && file.Line(first) != file.FileSet.Position(opening).Line
 	if !isTooDeep {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(first),
@@ -187,6 +197,7 @@ func statementList(
 		return typed.Colon,
 			typed.Body
 	}
+
 	return token.NoPos,
 		nil
 }
@@ -198,6 +209,7 @@ func isClause(
 	case *ast.CaseClause, *ast.CommClause:
 		return true
 	}
+
 	return false
 }
 
@@ -208,5 +220,6 @@ func unlabeled(
 	if !isLabeled {
 		return statement
 	}
+
 	return unlabeled(labeled.Stmt)
 }

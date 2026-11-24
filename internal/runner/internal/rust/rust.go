@@ -23,6 +23,7 @@ func Rust(
 		return nil,
 			err
 	}
+
 	testLines, err := inlineTestLines(
 		root,
 		warnings,
@@ -31,6 +32,7 @@ func Rust(
 		return nil,
 			err
 	}
+
 	for _, warning := range warnings {
 		findings = append(
 			findings,
@@ -40,6 +42,7 @@ func Rust(
 			)...,
 		)
 	}
+
 	return findings,
 		nil
 }
@@ -61,11 +64,13 @@ func inlineTestLines(
 			readErr,
 		)
 	}
+
 	err = errors.Join(failures...)
 	if err != nil {
 		return nil,
 			err
 	}
+
 	return lines,
 		nil
 }
@@ -79,6 +84,7 @@ func warnedPaths(
 			warning.Path,
 		)
 	}
+
 	slices.Sort(paths)
 	return slices.Compact(paths)
 }
@@ -93,6 +99,7 @@ func warningFindings(
 	) {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule: warning.Rule,
 		Location: fmt.Sprintf(

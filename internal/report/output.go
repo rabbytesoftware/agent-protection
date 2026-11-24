@@ -29,6 +29,7 @@ func (o Output) JSON() (document string, err error) {
 				err,
 			)
 	}
+
 	return string(encoded),
 		nil
 }
@@ -41,6 +42,7 @@ func (o Output) Text() (text string) {
 	for _, rule := range o.violatedRules() {
 		builder.WriteString(o.section(rule))
 	}
+
 	fmt.Fprintf(
 		&builder,
 		"\n%d findings across %d unique rules\n",
@@ -57,6 +59,7 @@ func (o Output) violatedRules() (ids []string) {
 			finding.Rule,
 		)
 	}
+
 	return slices.Compact(ids)
 }
 
@@ -79,6 +82,7 @@ func (o Output) section(
 			rule,
 		))
 	}
+
 	return builder.String()
 }
 
@@ -89,6 +93,7 @@ func entry(
 	if finding.Rule != rule {
 		return ""
 	}
+
 	return fmt.Sprintf(
 		"  x %s  %s\n",
 		finding.Location,
