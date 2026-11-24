@@ -18,8 +18,9 @@ const (
 
 // Onetypeperfile reports every file that declares more than one top-level
 // type, and every single-type file not named after its type in snake_case,
-// so type ParsedFile must live in parsed_file.go (R08). The file named
-// after the package may hold its one type under any name.
+// so type ParsedFile must live in parsed_file.go (R08). A composition root
+// file (the file named after the package, container.go or wire.go, the
+// names R47 requires for wiring) may hold its one type under any name.
 func Onetypeperfile(
 	files []source.File,
 ) (findings []report.Finding) {
@@ -64,7 +65,10 @@ func misnamedFindings(
 ) (findings []report.Finding) {
 	base := filepath.Base(file.Path)
 	expected := snakeCase(spec.Name.Name) + goExtension
-	isHome := base == expected || base == file.Syntax.Name.Name+goExtension
+	isHome := base == expected || source.IsCompositionRoot(
+		file.Path,
+		file.Syntax.Name.Name,
+	)
 	if isHome {
 		return nil
 	}

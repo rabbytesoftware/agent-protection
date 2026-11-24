@@ -41,10 +41,10 @@ R07:
 R08:
     id: R08
     level: L1
-    text: One type per file, named after the type
+    text: "One type per file, named after the type; a composition root file (<package>.go, container.go, wire.go) may hold its one type under any name"
     enforcement: analyzer
-    rationale: A file with multiple types has no single, name-matched home, making it harder for both agents and humans to find or size any one type's code.
-    fix_strategy: Split into one file per type, named after that type.
+    rationale: "A file with multiple types has no single, name-matched home, making it harder for both agents and humans to find or size any one type's code. R47 requires a file that wires sibling packages to carry a composition root name, so the type doing that wiring lives there."
+    fix_strategy: "Split into one file per type, named after that type. If the type's file imports 2+ sibling internal/ packages, keep it in the composition root file (<package>.go, container.go or wire.go) instead of renaming it after the type."
     not_a_fix: "Hiding the second type as a type alias, an anonymous struct in a var, or a type declared inside a function; naming the file after one type while helpers that belong to another type stay in it."
 R11:
     id: R11

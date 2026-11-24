@@ -57,6 +57,18 @@ func TestOnetypeperfile(
 			want: nil,
 		},
 		{
+			name: "single type in container.go passes",
+			path: "container.go",
+			code: "package p\n\ntype aggregatePool struct{}\n",
+			want: nil,
+		},
+		{
+			name: "single type in wire.go passes",
+			path: "wire.go",
+			code: "package p\n\ntype aggregatePool struct{}\n",
+			want: nil,
+		},
+		{
 			name: "type local to a function body is not counted",
 			path: "walker.go",
 			code: "package p\n\ntype walker struct{}\n\nfunc f() {\n\ttype local int\n}\n",
