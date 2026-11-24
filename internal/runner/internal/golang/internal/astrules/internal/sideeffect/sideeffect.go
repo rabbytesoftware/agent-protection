@@ -5,6 +5,8 @@ import (
 	"go/ast"
 	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
@@ -13,7 +15,7 @@ import (
 const rule = "R34"
 
 // Sideeffect reports every function or method whose name promises a query
-// (Get, Find, Compute, List, Calc, Is, Has) but whose body calls a writing
+// (Get, Find, Compute, List, Calc, Calculate, Is, Has as whole words) but whose body calls a writing
 // method such as Write, Save, Delete or Send (R34): a reader trusts such a
 // name to be free of observable side effects.
 func Sideeffect(
@@ -79,13 +81,29 @@ func hasQueryName(
 	function *ast.FuncDecl,
 ) (isQuery bool) {
 	for _, prefix := range queryPrefixes() {
-		isQuery = isQuery || strings.HasPrefix(
+		isQuery = isQuery || startsWithWord(
 			function.Name.Name,
 			prefix,
 		)
 	}
 
 	return isQuery
+}
+
+func startsWithWord(
+	name string,
+	word string,
+) (starts bool) {
+	rest, hasPrefix := strings.CutPrefix(
+		name,
+		word,
+	)
+	if !hasPrefix {
+		return false
+	}
+
+	next, _ := utf8.DecodeRuneInString(rest)
+	return rest == "" || unicode.IsUpper(next) || unicode.IsDigit(next)
 }
 
 func writeCalls(
@@ -125,7 +143,7 @@ func isNotWriteVerb(
 }
 
 func queryPrefixes() (prefixes []string) {
-	return []string{"Get", "Find", "Compute", "List", "Calc", "Is", "Has"}
+	return []string{"Get", "Find", "Compute", "List", "Calc", "Calculate", "Is", "Has"}
 }
 
 func writeVerbs() (verbs []string) {
