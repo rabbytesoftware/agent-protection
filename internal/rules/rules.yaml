@@ -161,7 +161,7 @@ R32:
 R33:
     id: R33
     level: L0
-    text: 'Command-Query Separation: a function either mutates state or returns a value, never both (a chainable method returning its own receiver is a command)'
+    text: 'Command-Query Separation: a function either mutates state or returns a value, never both. Mutation includes writing through a pointer receiver or parameter, or handing it to a same-package helper that does (a chainable method returning its own receiver is a command)'
     enforcement: analyzer
     rationale: Mixing "tell me something" and "change something" in one call makes call sites unpredictable and hard to reason about.
     fix_strategy: Split into a Compute/Get query function (no mutation) and a separate Set/Apply/Update command function (no return value beyond error).
