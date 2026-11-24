@@ -35,6 +35,21 @@ func TestNoinfraintests(
 			want: nil,
 		},
 		{
+			name: "loopback url built by concatenation passes",
+			code: "package p\n\nimport (\n\t\"net/http\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\thttp.Get(\"http://\" + \"127.0.0.1\" + \":8080\")\n}\n",
+			want: nil,
+		},
+		{
+			name: "test server url selector passes",
+			code: "package p\n\nimport (\n\t\"net/http\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\thttp.Get(server.URL)\n}\n",
+			want: nil,
+		},
+		{
+			name: "plain calls, field assignments and bodiless functions pass",
+			code: "package p\n\nimport \"testing\"\n\nfunc external()\n\nfunc TestF(\n\tt *testing.T,\n) {\n\tcount := 1\n\tconfig.address = \"127.0.0.1:1\"\n\thelper(count)\n}\n",
+			want: nil,
+		},
+		{
 			name: "building an in-memory request passes",
 			code: "package p\n\nimport (\n\t\"net/http\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\thttp.NewRequest(\"GET\", \"/\", nil)\n}\n",
 			want: nil,

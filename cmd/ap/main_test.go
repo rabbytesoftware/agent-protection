@@ -8,6 +8,63 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 )
 
+func TestRun(
+	t *testing.T,
+) {
+	t.Chdir(t.TempDir())
+	clean := t.TempDir()
+	writeFile(
+		t,
+		filepath.Join(
+			clean,
+			"go.mod",
+		),
+		"module example.com/clean\n\ngo 1.24\n",
+	)
+	writeFile(
+		t,
+		filepath.Join(
+			clean,
+			"version.go",
+		),
+		"package clean\n\n// Version is the fixture's release.\nconst Version = \"1\"\n",
+	)
+	failing := t.TempDir()
+	writeFile(
+		t,
+		filepath.Join(
+			failing,
+			"go.mod",
+		),
+		"module example.com/failing\n\ngo 1.24\n",
+	)
+	writeFile(
+		t,
+		filepath.Join(
+			failing,
+			"version.go",
+		),
+		"package failing\n\nconst Version = \"1\"\n",
+	)
+	cases := []struct {
+		arguments []string
+		wantCode  int
+	}{
+		{arguments: []string{"ap"}, wantCode: usageExitCode},
+		{arguments: []string{"ap", "check", t.TempDir()}, wantCode: findingsExitCode},
+		{arguments: []string{"ap", "check", clean}, wantCode: cleanExitCode},
+		{arguments: []string{"ap", "check", failing}, wantCode: findingsExitCode},
+		{arguments: []string{"ap", "markdown", reportPath}, wantCode: cleanExitCode},
+	}
+	for _, tc := range cases {
+		assertRun(
+			t,
+			tc.arguments,
+			tc.wantCode,
+		)
+	}
+}
+
 func TestCommandArguments(
 	t *testing.T,
 ) {
@@ -110,6 +167,23 @@ func TestExitCode(
 			failing,
 			cleanExitCode,
 			findingsExitCode,
+		)
+	}
+}
+
+func assertRun(
+	t *testing.T,
+	arguments []string,
+	wantCode int,
+) {
+	t.Helper()
+	code := run(arguments)
+	if code != wantCode {
+		t.Errorf(
+			"run(%v) = %d, want %d",
+			arguments,
+			code,
+			wantCode,
 		)
 	}
 }

@@ -135,3 +135,16 @@ func assertFindings(
 		)
 	}
 }
+
+func TestMaxfilesperdirRejectsMissingRoot(
+	t *testing.T,
+) {
+	missing := filepath.Join(
+		t.TempDir(),
+		"missing",
+	)
+	_, err := maxfilesperdir.Maxfilesperdir(missing)
+	if err == nil {
+		t.Error("Maxfilesperdir() error = nil, want one for a missing root")
+	}
+}

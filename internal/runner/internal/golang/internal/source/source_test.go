@@ -105,16 +105,109 @@ func TestSourceReportsUnparsableFiles(
 func TestRelPath(
 	t *testing.T,
 ) {
-	rel := source.RelPath(
-		"/repo",
-		"/repo/internal/a.go",
-	)
-	if rel != "internal/a.go" {
-		t.Errorf(
-			"RelPath() = %q, want internal/a.go",
-			rel,
+	cases := []struct {
+		root string
+		path string
+		want string
+	}{
+		{root: "/repo", path: "/repo/internal/a.go", want: "internal/a.go"},
+		{root: "/repo", path: "relative/a.go", want: "relative/a.go"},
+	}
+	for _, tc := range cases {
+		assertRelPath(
+			t,
+			tc.root,
+			tc.path,
+			tc.want,
 		)
 	}
+}
+
+func TestWalkersRejectMissingRoot(
+	t *testing.T,
+) {
+	missing := filepath.Join(
+		t.TempDir(),
+		"missing",
+	)
+	walkers := []func(string) error{
+		sourceError,
+		testsError,
+		pathsError,
+		directoriesError,
+	}
+	for _, walker := range walkers {
+		assertWalkError(
+			t,
+			walker,
+			missing,
+		)
+	}
+}
+
+func assertRelPath(
+	t *testing.T,
+	root string,
+	path string,
+	want string,
+) {
+	t.Helper()
+	rel := source.RelPath(
+		root,
+		path,
+	)
+	if rel != want {
+		t.Errorf(
+			"RelPath(%q, %q) = %q, want %q",
+			root,
+			path,
+			rel,
+			want,
+		)
+	}
+}
+
+func assertWalkError(
+	t *testing.T,
+	walker func(string) error,
+	root string,
+) {
+	t.Helper()
+	err := walker(root)
+	if err == nil {
+		t.Errorf(
+			"walking missing root %s: error = nil, want one",
+			root,
+		)
+	}
+}
+
+func sourceError(
+	root string,
+) (err error) {
+	_, err = source.Source(root)
+	return err
+}
+
+func testsError(
+	root string,
+) (err error) {
+	_, err = source.Tests(root)
+	return err
+}
+
+func pathsError(
+	root string,
+) (err error) {
+	_, err = source.Paths(root)
+	return err
+}
+
+func directoriesError(
+	root string,
+) (err error) {
+	_, err = source.Directories(root)
+	return err
 }
 
 func TestIsGenerated(

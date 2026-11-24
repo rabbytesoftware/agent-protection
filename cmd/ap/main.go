@@ -23,18 +23,24 @@ const (
 )
 
 func main() {
-	command, target, err := commandArguments(os.Args)
+	os.Exit(run(os.Args))
+}
+
+func run(
+	arguments []string,
+) (code int) {
+	command, target, err := commandArguments(arguments)
 	if err != nil {
 		fmt.Fprintln(
 			os.Stderr,
 			err,
 		)
-		os.Exit(usageExitCode)
+		return usageExitCode
 	}
 	if command == markdownCommand {
-		os.Exit(markdown(target))
+		return markdown(target)
 	}
-	os.Exit(check(target))
+	return check(target)
 }
 
 func commandArguments(

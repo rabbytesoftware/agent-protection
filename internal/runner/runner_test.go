@@ -63,3 +63,97 @@ func TestRunnerChecksGoModule(
 		)
 	}
 }
+
+func TestRunnerDispatchesByLanguageMarker(
+	t *testing.T,
+) {
+	cases := []struct {
+		marker   string
+		content  string
+		tool     string
+		toolBody string
+	}{
+		{marker: "Cargo.toml", content: "[package]\nname = \"clean\"\n", tool: "cargo", toolBody: "exit 0"},
+		{marker: "package.json", content: "{}\n", tool: "bun", toolBody: "printf '[]'"},
+	}
+	for _, tc := range cases {
+		assertDispatch(
+			t,
+			tc.marker,
+			tc.content,
+			tc.tool,
+			tc.toolBody,
+		)
+	}
+}
+
+func assertDispatch(
+	t *testing.T,
+	marker string,
+	content string,
+	tool string,
+	toolBody string,
+) {
+	t.Helper()
+	root := t.TempDir()
+	tools := t.TempDir()
+	writeExecutable(
+		t,
+		filepath.Join(
+			root,
+			marker,
+		),
+		content,
+	)
+	writeExecutable(
+		t,
+		filepath.Join(
+			tools,
+			tool,
+		),
+		"#!/bin/sh\n"+toolBody+"\n",
+	)
+	t.Setenv(
+		"HOME",
+		t.TempDir(),
+	)
+	t.Setenv(
+		"PATH",
+		tools+string(os.PathListSeparator)+os.Getenv("PATH"),
+	)
+	output, err := runner.Runner(root)
+	if err != nil {
+		t.Fatalf(
+			"Runner() with %s error = %v",
+			marker,
+			err,
+		)
+	}
+	if len(output.Findings) != 0 {
+		t.Errorf(
+			"Runner() with %s findings = %v, want none",
+			marker,
+			output.Findings,
+		)
+	}
+}
+
+func writeExecutable(
+	t *testing.T,
+	path string,
+	content string,
+) {
+	t.Helper()
+	err := os.WriteFile(
+		path,
+		[]byte(content),
+		0o700,
+	)
+	if err != nil {
+		t.Fatalf(
+			"write %s: %v",
+			path,
+			err,
+		)
+	}
+}
