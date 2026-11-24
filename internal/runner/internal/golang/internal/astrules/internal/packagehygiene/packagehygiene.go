@@ -30,6 +30,7 @@ func Packagehygiene(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -44,6 +45,7 @@ func formatFindings(
 	if isWellFormed {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     formatRule,
 		Location: file.Location(file.Syntax.Name),
@@ -64,6 +66,7 @@ func genericFindings(
 	) {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     genericRule,
 		Location: file.Location(file.Syntax.Name),

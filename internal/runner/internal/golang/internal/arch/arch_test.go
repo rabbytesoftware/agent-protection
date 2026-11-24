@@ -75,6 +75,7 @@ func assertRules(
 			err,
 		)
 	}
+
 	findings, err := arch.Arch(
 		root,
 		parsed,
@@ -88,6 +89,7 @@ func assertRules(
 			fails,
 		)
 	}
+
 	got := []string{}
 	for _, finding := range findings {
 		got = append(
@@ -95,6 +97,7 @@ func assertRules(
 			finding.Rule+" "+finding.Location,
 		)
 	}
+
 	if !slices.Equal(
 		got,
 		want,
@@ -124,6 +127,7 @@ func module(
 			content,
 		)
 	}
+
 	return root
 }
 
@@ -144,6 +148,7 @@ func write(
 			err,
 		)
 	}
+
 	err = os.WriteFile(
 		path,
 		[]byte(content),

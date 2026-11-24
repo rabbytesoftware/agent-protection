@@ -366,6 +366,7 @@ func parsed(
 			err,
 		)
 	}
+
 	return source.File{Path: path, Rel: path, FileSet: fileSet, Syntax: syntax}
 }
 
@@ -383,6 +384,7 @@ func assertFindings(
 			finding.Rule+" "+finding.Location,
 		)
 	}
+
 	isMismatch := !slices.Equal(
 		got,
 		want,

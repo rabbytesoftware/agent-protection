@@ -26,18 +26,12 @@ func Manifest(
 		root,
 		configName,
 	)
-	err = os.WriteFile(
-		configPath,
-		[]byte(config),
-		configFileMode,
-	)
+	err = writeConfig(configPath)
 	if err != nil {
 		return nil,
-			fmt.Errorf(
-				"write eslint manifest config: %w",
-				err,
-			)
+			err
 	}
+
 	results, runErr := eslint.Eslint(
 		root,
 		"--config",
@@ -51,14 +45,34 @@ func Manifest(
 		return nil,
 			err
 	}
+
 	for _, result := range results {
 		findings = append(
 			findings,
 			resultFindings(result)...,
 		)
 	}
+
 	return findings,
 		nil
+}
+
+func writeConfig(
+	configPath string,
+) (err error) {
+	err = os.WriteFile(
+		configPath,
+		[]byte(config),
+		configFileMode,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"write eslint manifest config: %w",
+			err,
+		)
+	}
+
+	return nil
 }
 
 func removeConfig(
@@ -71,6 +85,7 @@ func removeConfig(
 			err,
 		)
 	}
+
 	return nil
 }
 
@@ -86,6 +101,7 @@ func resultFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -97,6 +113,7 @@ func messageFindings(
 	if !known {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule: rule,
 		Location: fmt.Sprintf(

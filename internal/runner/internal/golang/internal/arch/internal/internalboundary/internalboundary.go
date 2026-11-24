@@ -30,6 +30,7 @@ func Internalboundary(
 				err,
 			)
 	}
+
 	paths, err := source.Paths(root)
 	if err != nil {
 		return nil,
@@ -38,6 +39,7 @@ func Internalboundary(
 				err,
 			)
 	}
+
 	return slices.Concat(
 			looseFindings(
 				root,
@@ -68,6 +70,7 @@ func looseFindings(
 			),
 		)
 	}
+
 	return findings
 }
 
@@ -90,6 +93,7 @@ func boundaryFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -119,6 +123,7 @@ func soleChildFindings(
 	if len(children) != 1 {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule: soleChildRule,
 		Location: source.RelPath(
@@ -147,6 +152,7 @@ func packageDirectories(
 			filepath.Dir(path),
 		)
 	}
+
 	slices.Sort(directories)
 	return slices.Compact(directories)
 }
@@ -164,6 +170,7 @@ func childPackages(
 			)...,
 		)
 	}
+
 	slices.Sort(children)
 	return slices.Compact(children)
 }
@@ -179,6 +186,7 @@ func childPackage(
 	if !isBeneath {
 		return nil
 	}
+
 	return strings.Split(
 		filepath.ToSlash(rel),
 		"/",

@@ -34,6 +34,7 @@ func Testpairing(
 				err,
 			)
 	}
+
 	tests, err := testPaths(root)
 	if err != nil {
 		return nil,
@@ -42,6 +43,7 @@ func Testpairing(
 				err,
 			)
 	}
+
 	return slices.Concat(
 			untestedSources(
 				root,
@@ -75,6 +77,7 @@ func untestedSources(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -93,6 +96,7 @@ func orphanTests(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -104,6 +108,7 @@ func testPaths(
 		return nil,
 			err
 	}
+
 	failures := []error{}
 	for _, directory := range directories {
 		found, readErr := directoryTests(directory)
@@ -116,11 +121,13 @@ func testPaths(
 			readErr,
 		)
 	}
+
 	err = errors.Join(failures...)
 	if err != nil {
 		return nil,
 			err
 	}
+
 	return tests,
 		nil
 }
@@ -137,6 +144,7 @@ func directoryTests(
 				err,
 			)
 	}
+
 	for _, entry := range slices.DeleteFunc(
 		entries,
 		isNotTestFile,
@@ -149,6 +157,7 @@ func directoryTests(
 			),
 		)
 	}
+
 	return tests,
 		nil
 }
@@ -168,6 +177,7 @@ func missingTestFindings(
 	) {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule: missingTestRule,
 		Location: source.RelPath(
@@ -196,6 +206,7 @@ func orphanTestFindings(
 	) {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule: orphanTestRule,
 		Location: source.RelPath(

@@ -53,6 +53,7 @@ func Lint(
 				err,
 			)
 	}
+
 	output, runErr := run(
 		root,
 		configPath,
@@ -65,6 +66,7 @@ func Lint(
 		return nil,
 			err
 	}
+
 	return parse(output)
 }
 
@@ -96,6 +98,7 @@ func run(
 				combined,
 			)
 	}
+
 	return string(combined),
 		nil
 }
@@ -108,6 +111,7 @@ func arguments(
 	if buildTags == "" {
 		return args
 	}
+
 	return append(
 		args,
 		"--build-tags="+buildTags,
@@ -124,6 +128,7 @@ func removeConfig(
 			err,
 		)
 	}
+
 	return nil
 }
 
@@ -148,12 +153,14 @@ func parse(
 				buildTagsEnvVar,
 			)
 	}
+
 	for _, issue := range issues {
 		findings = append(
 			findings,
 			issueFindings(issue)...,
 		)
 	}
+
 	return findings,
 		nil
 }
@@ -165,6 +172,7 @@ func issueFindings(
 	if !known {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: issue[pathGroup] + ":" + issue[lineGroup],

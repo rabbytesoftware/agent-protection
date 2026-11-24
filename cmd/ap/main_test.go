@@ -145,6 +145,7 @@ func TestWriteReport(
 			err,
 		)
 	}
+
 	_, err = os.Stat(reportPath)
 	if err != nil {
 		t.Errorf(

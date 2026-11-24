@@ -24,6 +24,7 @@ func Filelinelimit(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -34,6 +35,7 @@ func fileFindings(
 	if lines <= maxLines {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(file.Syntax),

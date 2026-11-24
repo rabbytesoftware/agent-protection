@@ -72,6 +72,7 @@ func TestOutputMarkdownFitsCommentLimit(
 			},
 		)
 	}
+
 	document := mustReport(
 		t,
 		findings,
@@ -107,6 +108,7 @@ func assertMarkdown(
 			fragment,
 		)
 	}
+
 	for _, fragment := range wantAbsent {
 		assertAbsent(
 			t,

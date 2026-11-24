@@ -35,6 +35,7 @@ func Compositionroot(
 				err,
 			)
 	}
+
 	paths, err := source.Paths(root)
 	if err != nil {
 		return nil,
@@ -43,6 +44,22 @@ func Compositionroot(
 				err,
 			)
 	}
+
+	return everyComponentFindings(
+			root,
+			directories,
+			paths,
+			files,
+		),
+		nil
+}
+
+func everyComponentFindings(
+	root string,
+	directories []string,
+	paths []string,
+	files []source.File,
+) (findings []report.Finding) {
 	groups := groupByDirectory(paths)
 	parsed := indexByPath(files)
 	for _, directory := range components(
@@ -60,8 +77,8 @@ func Compositionroot(
 			)...,
 		)
 	}
-	return findings,
-		nil
+
+	return findings
 }
 
 func groupByDirectory(
@@ -75,6 +92,7 @@ func groupByDirectory(
 			path,
 		)
 	}
+
 	return groups
 }
 
@@ -85,6 +103,7 @@ func indexByPath(
 	for _, file := range files {
 		index[file.Path] = file
 	}
+
 	return index
 }
 
@@ -103,6 +122,7 @@ func components(
 			)...,
 		)
 	}
+
 	return found
 }
 
@@ -122,6 +142,7 @@ func asComponent(
 	if !isComponent {
 		return nil
 	}
+
 	return []string{directory}
 }
 
@@ -138,6 +159,7 @@ func childPackages(
 			)...,
 		)
 	}
+
 	slices.Sort(children)
 	return slices.Compact(children)
 }
@@ -153,6 +175,7 @@ func childPackage(
 	if !isBeneath {
 		return nil
 	}
+
 	segments := strings.Split(
 		filepath.ToSlash(rel),
 		"/",
@@ -160,9 +183,11 @@ func childPackage(
 	if !source.IsInternalDirectory(segments[0]) {
 		return segments[:1]
 	}
+
 	if len(segments) == 1 {
 		return nil
 	}
+
 	return []string{strings.Join(
 		segments[:2],
 		"/",
@@ -185,6 +210,7 @@ func componentFindings(
 			directory,
 		)}
 	}
+
 	strays := slices.Delete(
 		slices.Clone(entries),
 		index,
@@ -222,6 +248,7 @@ func contractFindings(
 	if file.Syntax == nil {
 		return nil
 	}
+
 	types := exportedTypes(file.Syntax)
 	findings = structFindings(
 		file,
@@ -234,6 +261,7 @@ func contractFindings(
 	if isExposed {
 		return findings
 	}
+
 	return append(
 		findings,
 		report.Finding{
@@ -267,6 +295,7 @@ func structFindings(
 			},
 		)
 	}
+
 	return findings
 }
 
@@ -287,6 +316,7 @@ func strayFindings(
 			},
 		)
 	}
+
 	return findings
 }
 
@@ -299,6 +329,7 @@ func exportedTypes(
 			typeSpecs(declaration)...,
 		)
 	}
+
 	return slices.DeleteFunc(
 		types,
 		isUnexported,
@@ -313,6 +344,7 @@ func typeSpecs(
 	if !isTypeDeclaration {
 		return nil
 	}
+
 	return source.Nodes[*ast.TypeSpec](general)
 }
 
@@ -329,6 +361,7 @@ func hasEntryFunction(
 			strings.ToLower(function.Name.Name),
 		)
 	}
+
 	return slices.Contains(
 		names,
 		strings.ToLower(syntax.Name.Name),

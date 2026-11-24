@@ -26,6 +26,7 @@ func Cqs(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -49,6 +50,7 @@ func fileFindings(
 			},
 		)
 	}
+
 	return findings
 }
 
@@ -84,6 +86,7 @@ func mutatesPointer(
 			name,
 		)
 	}
+
 	return mutates
 }
 
@@ -103,6 +106,7 @@ func pointerNames(
 			identifierNames(field.Names)...,
 		)
 	}
+
 	return names
 }
 
@@ -112,6 +116,7 @@ func receiverFields(
 	if function.Recv == nil {
 		return nil
 	}
+
 	return function.Recv.List
 }
 
@@ -131,6 +136,7 @@ func identifierNames(
 			identifier.Name,
 		)
 	}
+
 	return names
 }
 
@@ -143,6 +149,7 @@ func assignedNames(
 			mutatedRoots(assignment.Lhs)...,
 		)
 	}
+
 	return names
 }
 
@@ -155,6 +162,7 @@ func mutatedRoots(
 			mutatedRoot(target),
 		)
 	}
+
 	return names
 }
 
@@ -169,6 +177,7 @@ func mutatedRoot(
 	case *ast.IndexExpr:
 		return identifierName(typed.X)
 	}
+
 	return ""
 }
 
@@ -179,5 +188,6 @@ func identifierName(
 	if !isIdentifier {
 		return ""
 	}
+
 	return identifier.Name
 }

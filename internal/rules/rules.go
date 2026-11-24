@@ -25,6 +25,7 @@ func Rules() (registry map[string]Rule, err error) {
 				err,
 			)
 	}
+
 	return registry,
 		nil
 }

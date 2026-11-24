@@ -75,6 +75,7 @@ func assertRules(
 			finding.Rule,
 		)
 	}
+
 	missing := []string{}
 	for _, rule := range want {
 		missing = append(
@@ -85,6 +86,7 @@ func assertRules(
 			)...,
 		)
 	}
+
 	if len(missing) > 0 {
 		t.Errorf(
 			"%s: rules %v missing from %v",
@@ -113,6 +115,7 @@ func parsed(
 			err,
 		)
 	}
+
 	return source.File{Path: "p.go", Rel: "p.go", FileSet: fileSet, Syntax: syntax}
 }
 
@@ -126,5 +129,6 @@ func absent(
 	) {
 		return nil
 	}
+
 	return []string{rule}
 }

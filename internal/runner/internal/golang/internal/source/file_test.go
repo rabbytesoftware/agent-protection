@@ -61,5 +61,6 @@ func parsedFile(
 			err,
 		)
 	}
+
 	return source.File{Path: "p.go", Rel: "dir/p.go", FileSet: fileSet, Syntax: syntax}
 }

@@ -27,6 +27,7 @@ func TestModulePath(
 			err,
 		)
 	}
+
 	if modulePath != "example.com/app" {
 		t.Errorf(
 			"ModulePath() = %q, want example.com/app",
@@ -215,6 +216,7 @@ func TestEntries(
 			err,
 		)
 	}
+
 	if !slices.Equal(
 		paths,
 		[]string{filepath.Join(

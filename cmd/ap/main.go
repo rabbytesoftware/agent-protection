@@ -37,9 +37,11 @@ func run(
 		)
 		return usageExitCode
 	}
+
 	if command == markdownCommand {
 		return markdown(target)
 	}
+
 	return check(target)
 }
 
@@ -58,6 +60,7 @@ func commandArguments(
 			"",
 			errors.New(usage)
 	}
+
 	return arguments[1],
 		arguments[2],
 		nil
@@ -75,6 +78,7 @@ func check(
 		)
 		return findingsExitCode
 	}
+
 	err = writeReport(output)
 	if err != nil {
 		fmt.Fprintf(
@@ -84,6 +88,7 @@ func check(
 		)
 		return findingsExitCode
 	}
+
 	fmt.Print(output.Text())
 	return exitCode(output)
 }
@@ -100,6 +105,7 @@ func markdown(
 		)
 		return findingsExitCode
 	}
+
 	output, err := report.Decode(document)
 	if err != nil {
 		fmt.Fprintln(
@@ -108,6 +114,7 @@ func markdown(
 		)
 		return findingsExitCode
 	}
+
 	fmt.Print(output.Markdown())
 	return cleanExitCode
 }
@@ -119,6 +126,7 @@ func writeReport(
 	if err != nil {
 		return err
 	}
+
 	return os.WriteFile(
 		reportPath,
 		[]byte(document),
@@ -132,5 +140,6 @@ func exitCode(
 	if len(output.Findings) > 0 {
 		return findingsExitCode
 	}
+
 	return cleanExitCode
 }

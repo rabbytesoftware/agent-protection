@@ -86,6 +86,7 @@ func fakeCargo(
 			err,
 		)
 	}
+
 	t.Setenv(
 		"PATH",
 		directory+string(os.PathListSeparator)+os.Getenv("PATH"),
@@ -108,6 +109,7 @@ func assertClippy(
 			wantErr,
 		)
 	}
+
 	got := []string{}
 	for _, warning := range warnings {
 		got = append(
@@ -119,6 +121,7 @@ func assertClippy(
 			),
 		)
 	}
+
 	isMismatch := !slices.Equal(
 		got,
 		want,

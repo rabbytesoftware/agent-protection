@@ -56,6 +56,7 @@ func TestManifestReportFailure(
 	if err == nil {
 		t.Error("Manifest() error = nil, want an error when eslint prints no report")
 	}
+
 	assertConfigRemoved(
 		t,
 		root,
@@ -89,6 +90,7 @@ func assertRules(
 			err,
 		)
 	}
+
 	got := strings.Join(
 		rules(findings),
 		",",
@@ -101,6 +103,7 @@ func assertRules(
 			want,
 		)
 	}
+
 	assertConfigRemoved(
 		t,
 		root,
@@ -147,6 +150,7 @@ func fakeBun(
 			err,
 		)
 	}
+
 	t.Setenv(
 		"HOME",
 		t.TempDir(),
@@ -166,5 +170,6 @@ func rules(
 			finding.Rule,
 		)
 	}
+
 	return got
 }

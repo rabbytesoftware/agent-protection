@@ -177,6 +177,7 @@ func writeExecutable(
 			err,
 		)
 	}
+
 	err = os.WriteFile(
 		path,
 		[]byte("#!/bin/sh\n"+body+"\n"),
@@ -208,6 +209,7 @@ func assertFilePaths(
 			wantErr,
 		)
 	}
+
 	got := []string{}
 	for _, result := range results {
 		got = append(
@@ -215,6 +217,7 @@ func assertFilePaths(
 			result.FilePath,
 		)
 	}
+
 	isMismatch := !slices.Equal(
 		got,
 		want,

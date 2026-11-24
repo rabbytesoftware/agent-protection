@@ -45,6 +45,7 @@ func TestTypescript(
 			err,
 		)
 	}
+
 	got := summaries(findings)
 	want := []string{"TS-ESLINT:no-console src/a.ts:2", "TS-ESLINT:custom/rule src/a.ts:5", "TS-NO-DEBUG-OUTPUT src/a.ts:2"}
 	if !slices.Equal(
@@ -127,5 +128,6 @@ func summaries(
 			finding.Rule+" "+finding.Location,
 		)
 	}
+
 	return got
 }

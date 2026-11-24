@@ -28,6 +28,7 @@ func Returnperline(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -47,6 +48,7 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -65,9 +67,11 @@ func statementFindings(
 			)...,
 		)
 	}
+
 	if len(collapsed) == 0 {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(statement),
@@ -90,6 +94,7 @@ func collapsedValue(
 	if isOwnLine {
 		return nil
 	}
+
 	return []ast.Expr{value}
 }
 

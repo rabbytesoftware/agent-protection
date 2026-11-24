@@ -59,6 +59,7 @@ func checked(
 			"package pkg\n",
 		)
 	}
+
 	write(
 		t,
 		filepath.Join(
@@ -75,6 +76,7 @@ func checked(
 			err,
 		)
 	}
+
 	return findings
 }
 
@@ -95,6 +97,7 @@ func write(
 			err,
 		)
 	}
+
 	err = os.WriteFile(
 		path,
 		[]byte(content),
@@ -123,6 +126,7 @@ func assertFindings(
 			finding.Rule+" "+finding.Location,
 		)
 	}
+
 	if !slices.Equal(
 		got,
 		want,

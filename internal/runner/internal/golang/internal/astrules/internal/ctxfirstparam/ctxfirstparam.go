@@ -27,6 +27,7 @@ func Ctxfirstparam(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -42,6 +43,7 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	for _, structure := range source.Nodes[*ast.StructType](file.Syntax) {
 		findings = append(
 			findings,
@@ -51,6 +53,7 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -62,6 +65,7 @@ func parameterFindings(
 	if len(parameters) == 0 {
 		return nil
 	}
+
 	misplaced := slices.DeleteFunc(
 		slices.Clone(parameters[1:]),
 		isNotContext,
@@ -76,6 +80,7 @@ func parameterFindings(
 			},
 		)
 	}
+
 	return findings
 }
 
@@ -97,6 +102,7 @@ func fieldFindings(
 			},
 		)
 	}
+
 	return findings
 }
 
@@ -107,6 +113,7 @@ func isNotContext(
 	if !isSelector {
 		return true
 	}
+
 	qualifier, isIdent := selector.X.(*ast.Ident)
 	isContext := isIdent && qualifier.Name == contextPackage && selector.Sel.Name == contextType
 	return !isContext

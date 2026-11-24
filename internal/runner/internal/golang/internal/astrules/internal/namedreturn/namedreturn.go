@@ -25,6 +25,7 @@ func Namedreturn(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -41,6 +42,7 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	for _, literal := range source.Nodes[*ast.FuncLit](file.Syntax) {
 		findings = append(
 			findings,
@@ -51,6 +53,7 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -62,6 +65,7 @@ func functionFindings(
 	if body == nil {
 		return nil
 	}
+
 	literals := source.Nodes[*ast.FuncLit](body)
 	returns := ownReturns(
 		body,
@@ -90,6 +94,7 @@ func nakedFindings(
 	if !hasNamedResults(signature) {
 		return nil
 	}
+
 	naked := slices.DeleteFunc(
 		slices.Clone(returns),
 		hasResults,
@@ -104,6 +109,7 @@ func nakedFindings(
 			},
 		)
 	}
+
 	return findings
 }
 
@@ -125,6 +131,7 @@ func variableFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -141,6 +148,7 @@ func declarationFindings(
 	if !isOwnVariable {
 		return nil
 	}
+
 	for _, spec := range source.Nodes[*ast.ValueSpec](declaration) {
 		findings = append(
 			findings,
@@ -151,6 +159,7 @@ func declarationFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -169,6 +178,7 @@ func specFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -183,6 +193,7 @@ func nameFindings(
 	) {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(name),
@@ -202,6 +213,7 @@ func returnedNames(
 			identNames(statement.Results)...,
 		)
 	}
+
 	return names
 }
 
@@ -214,6 +226,7 @@ func identNames(
 			identName(expression)...,
 		)
 	}
+
 	return names
 }
 
@@ -224,6 +237,7 @@ func identName(
 	if !isIdent {
 		return nil
 	}
+
 	return []string{ident.Name}
 }
 
@@ -240,6 +254,7 @@ func ownReturns(
 			)...,
 		)
 	}
+
 	return returns
 }
 
@@ -253,6 +268,7 @@ func ownReturn(
 	) {
 		return nil
 	}
+
 	return []*ast.ReturnStmt{statement}
 }
 
@@ -266,6 +282,7 @@ func isEnclosed(
 			node,
 		)
 	}
+
 	return enclosed
 }
 

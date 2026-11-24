@@ -29,6 +29,7 @@ func Paramperline(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -44,6 +45,7 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -59,6 +61,7 @@ func nodeFindings(
 	if isCompliant {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(node),
@@ -84,6 +87,7 @@ func signature(
 	case *ast.Field:
 		return methodSignature(typed)
 	}
+
 	return "",
 		nil
 }
@@ -96,6 +100,7 @@ func typeSignature(
 		return "",
 			nil
 	}
+
 	return spec.Name.Name,
 		funcType
 }
@@ -109,6 +114,7 @@ func methodSignature(
 		return "",
 			nil
 	}
+
 	return field.Names[0].Name,
 		funcType
 }
@@ -120,27 +126,20 @@ func hasParameterPerLine(
 	if len(params.List) == 0 {
 		return true
 	}
-	opening := span{first: lineOf(
-		file,
-		params.Opening,
-	), last: lineOf(
-		file,
-		params.Opening,
-	)}
-	closing := span{first: lineOf(
-		file,
-		params.Closing,
-	), last: lineOf(
-		file,
-		params.Closing,
-	)}
+
 	spans := slices.Concat(
-		[]span{opening},
+		[]span{bracketSpan(
+			file,
+			params.Opening,
+		)},
 		parameterSpans(
 			file,
 			params,
 		),
-		[]span{closing},
+		[]span{bracketSpan(
+			file,
+			params.Closing,
+		)},
 	)
 	gaps := []span{}
 	for index := 1; index < len(spans); index++ {
@@ -149,10 +148,22 @@ func hasParameterPerLine(
 			span{first: spans[index-1].last, last: spans[index].first},
 		)
 	}
+
 	return !slices.ContainsFunc(
 		gaps,
 		isCollapsed,
 	)
+}
+
+func bracketSpan(
+	file source.File,
+	position token.Pos,
+) (bracket span) {
+	line := lineOf(
+		file,
+		position,
+	)
+	return span{first: line, last: line}
 }
 
 func isCollapsed(
@@ -174,6 +185,7 @@ func parameterSpans(
 			)...,
 		)
 	}
+
 	return spans
 }
 
@@ -190,6 +202,7 @@ func fieldSpans(
 			field.End(),
 		)}}
 	}
+
 	for _, name := range field.Names {
 		spans = append(
 			spans,
@@ -202,6 +215,7 @@ func fieldSpans(
 			)},
 		)
 	}
+
 	spans[len(spans)-1].last = lineOf(
 		file,
 		field.End(),

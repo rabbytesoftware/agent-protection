@@ -106,6 +106,7 @@ func checked(
 			err,
 		)
 	}
+
 	findings, err = siblingimports.Siblingimports(
 		root,
 		parsed,
@@ -116,6 +117,7 @@ func checked(
 			err,
 		)
 	}
+
 	return findings
 }
 
@@ -143,6 +145,7 @@ func module(
 			content,
 		)
 	}
+
 	return root
 }
 
@@ -163,6 +166,7 @@ func write(
 			err,
 		)
 	}
+
 	err = os.WriteFile(
 		path,
 		[]byte(content),
@@ -191,6 +195,7 @@ func assertFindings(
 			finding.Rule+" "+finding.Location,
 		)
 	}
+
 	if !slices.Equal(
 		got,
 		want,

@@ -27,6 +27,7 @@ func Conditionperline(
 			fileFindings(file)...,
 		)
 	}
+
 	return findings
 }
 
@@ -42,6 +43,7 @@ func fileFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -63,9 +65,11 @@ func statementFindings(
 			)...,
 		)
 	}
+
 	if len(collapsed) == 0 {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(statement.Cond),
@@ -87,6 +91,7 @@ func collapsedJoin(
 	if isSplit {
 		return nil
 	}
+
 	return []*ast.BinaryExpr{join}
 }
 

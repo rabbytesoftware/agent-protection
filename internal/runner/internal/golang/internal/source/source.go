@@ -27,6 +27,7 @@ func Source(
 		return nil,
 			err
 	}
+
 	return parseAll(
 		root,
 		slices.DeleteFunc(
@@ -46,6 +47,7 @@ func Tests(
 		return nil,
 			err
 	}
+
 	return parseAll(
 		root,
 		slices.DeleteFunc(
@@ -65,6 +67,7 @@ func Paths(
 		return nil,
 			err
 	}
+
 	return slices.DeleteFunc(
 			found.files,
 			IsTest,
@@ -82,6 +85,7 @@ func Directories(
 		return nil,
 			err
 	}
+
 	return found.directories,
 		nil
 }
@@ -99,6 +103,7 @@ func RelPath(
 	if err != nil {
 		return path
 	}
+
 	return rel
 }
 
@@ -122,6 +127,7 @@ func IsGenerated(
 	if err != nil {
 		return false
 	}
+
 	header := string(content[:min(
 		len(content),
 		generatedHeaderMaxBytes,
@@ -151,6 +157,7 @@ func walk(
 				err,
 			)
 	}
+
 	return found,
 		nil
 }
@@ -174,11 +181,13 @@ func parseAll(
 			parseErr,
 		)
 	}
+
 	err = errors.Join(failures...)
 	if err != nil {
 		return nil,
 			err
 	}
+
 	return files,
 		nil
 }
@@ -202,6 +211,7 @@ func parse(
 				err,
 			)
 	}
+
 	return File{Path: path, Rel: RelPath(
 			root,
 			path,
@@ -228,6 +238,7 @@ func hasIntegrationTag(
 	if err != nil {
 		return false
 	}
+
 	return strings.Contains(
 		string(content),
 		"//go:build",

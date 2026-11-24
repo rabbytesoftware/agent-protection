@@ -30,6 +30,7 @@ func Passthrough(
 				err,
 			)
 	}
+
 	if !slices.ContainsFunc(
 		entries,
 		isConfig,
@@ -37,17 +38,20 @@ func Passthrough(
 		return nil,
 			nil
 	}
+
 	results, err := eslint.Eslint(root)
 	if err != nil {
 		return nil,
 			err
 	}
+
 	for _, result := range results {
 		findings = append(
 			findings,
 			resultFindings(result)...,
 		)
 	}
+
 	return findings,
 		nil
 }
@@ -64,6 +68,7 @@ func resultFindings(
 			)...,
 		)
 	}
+
 	return findings
 }
 
@@ -75,6 +80,7 @@ func messageFindings(
 	if isSilent {
 		return nil
 	}
+
 	return []report.Finding{{
 		Rule: rulePrefix + message.RuleID,
 		Location: fmt.Sprintf(

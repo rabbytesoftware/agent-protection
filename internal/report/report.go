@@ -24,6 +24,7 @@ func Report(
 				err,
 			)
 	}
+
 	sorted := slices.SortedFunc(
 		slices.Values(findings),
 		compareFindings,
@@ -59,6 +60,7 @@ func ruleDocs(
 	for _, finding := range findings {
 		violated[finding.Rule] = registry[finding.Rule]
 	}
+
 	maps.DeleteFunc(
 		violated,
 		isUnregistered,
@@ -67,6 +69,7 @@ func ruleDocs(
 	for id, rule := range violated {
 		docs[id] = RuleDoc{Text: rule.Text, Rationale: rule.Rationale, FixStrategy: rule.FixStrategy}
 	}
+
 	return docs
 }
 

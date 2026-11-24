@@ -22,6 +22,7 @@ func (o Output) Markdown() (document string) {
 	if len(o.Findings) == 0 {
 		return cleanVerdict
 	}
+
 	var builder strings.Builder
 	fmt.Fprintf(
 		&builder,
@@ -54,6 +55,7 @@ func (o Output) breakdown() (table string) {
 			cell(o.RuleDocs[rule].Text),
 		)
 	}
+
 	return builder.String()
 }
 
@@ -65,6 +67,7 @@ func (o Output) listing() (listing string) {
 			o.ruleLines(rule)...,
 		)
 	}
+
 	kept := fitting(
 		lines,
 		markdownBudget,
@@ -77,6 +80,7 @@ func (o Output) listing() (listing string) {
 	if shown == len(o.Findings) {
 		return listing
 	}
+
 	return listing + fmt.Sprintf(
 		truncatedFormat,
 		shown,
@@ -103,6 +107,7 @@ func (o Output) ruleLines(
 			)...,
 		)
 	}
+
 	return lines
 }
 
@@ -115,6 +120,7 @@ func (o Output) countOf(
 			rule,
 		))
 	}
+
 	return count
 }
 
@@ -125,6 +131,7 @@ func bullet(
 	if finding.Rule != rule {
 		return nil
 	}
+
 	return []string{fmt.Sprintf(
 		"%s`%s` `%s`\n",
 		findingBullet,
@@ -143,6 +150,7 @@ func fitting(
 		used += len(lines[count])
 		count++
 	}
+
 	return lines[:count]
 }
 
@@ -174,6 +182,7 @@ func heading(
 			rule,
 		)
 	}
+
 	return fmt.Sprintf(
 		"\n#### %s: %s\n**Fix:** %s\n\n",
 		rule,
@@ -192,6 +201,7 @@ func counted(
 			noun,
 		)
 	}
+
 	return fmt.Sprintf(
 		"%d %ss",
 		count,

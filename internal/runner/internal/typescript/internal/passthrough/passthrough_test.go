@@ -121,6 +121,7 @@ func assertPassthrough(
 			err,
 		)
 	}
+
 	got := summaries(findings)
 	isMismatch := !slices.Equal(
 		got,
@@ -191,5 +192,6 @@ func summaries(
 			finding.Rule+" "+finding.Location,
 		)
 	}
+
 	return got
 }

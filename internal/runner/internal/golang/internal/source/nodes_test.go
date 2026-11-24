@@ -25,6 +25,7 @@ func TestNodes(
 			err,
 		)
 	}
+
 	declarations := source.Nodes[*ast.FuncDecl](syntax)
 	literals := source.Nodes[*ast.FuncLit](syntax)
 	countsMatch := len(declarations) == 2 && len(literals) == 1
@@ -52,6 +53,7 @@ func TestNodesKeepsSourceOrderAcrossNesting(
 			err,
 		)
 	}
+
 	positions := []token.Pos{}
 	for _, statement := range source.Nodes[*ast.IfStmt](syntax) {
 		positions = append(
@@ -59,6 +61,7 @@ func TestNodesKeepsSourceOrderAcrossNesting(
 			statement.Pos(),
 		)
 	}
+
 	isOrdered := len(positions) == 3 && slices.IsSorted(positions)
 	if !isOrdered {
 		t.Errorf(

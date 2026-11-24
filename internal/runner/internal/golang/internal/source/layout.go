@@ -35,6 +35,7 @@ func ModulePath(
 				err,
 			)
 	}
+
 	lines := strings.Split(
 		string(content),
 		"\n",
@@ -53,6 +54,7 @@ func ModulePath(
 				),
 			)
 	}
+
 	return strings.TrimSpace(strings.TrimPrefix(
 			strings.TrimSpace(lines[index]),
 			moduleDirective,
@@ -75,6 +77,7 @@ func IsDeclarationOnly(
 	if err != nil {
 		return false
 	}
+
 	return !slices.ContainsFunc(
 		syntax.Decls,
 		isFuncDecl,
@@ -137,6 +140,7 @@ func HasSource(
 	if err != nil {
 		return false
 	}
+
 	return slices.ContainsFunc(
 		entries,
 		isSourceEntry,
@@ -157,6 +161,7 @@ func Entries(
 				err,
 			)
 	}
+
 	for _, entry := range slices.DeleteFunc(
 		entries,
 		isNotSourceEntry,
@@ -169,6 +174,7 @@ func Entries(
 			),
 		)
 	}
+
 	return paths,
 		nil
 }

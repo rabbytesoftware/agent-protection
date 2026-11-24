@@ -14,6 +14,7 @@ func Nodes[T ast.Node](
 			node,
 		)
 	}
+
 	return nodes
 }
 
@@ -25,6 +26,7 @@ func appendMatching[T ast.Node](
 	if !matches {
 		return nodes
 	}
+
 	return append(
 		nodes,
 		typed,
