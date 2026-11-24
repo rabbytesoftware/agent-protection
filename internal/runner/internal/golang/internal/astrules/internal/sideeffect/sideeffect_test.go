@@ -35,6 +35,16 @@ func TestSideeffect(
 			want: nil,
 		},
 		{
+			name: "query word cut short by the name is not a query",
+			code: "package p\n\ntype S struct {\n\tv map[string]int\n}\n\nfunc (s S) Listen() {\n\ts.v.Store(1)\n}\n\nfunc (s S) Issue() {\n\ts.v.Send(1)\n}\n\nfunc (s S) Hashed() {\n\ts.v.Save(1)\n}\n",
+			want: nil,
+		},
+		{
+			name: "query word as the whole name or before a digit is reported",
+			code: "package p\n\ntype S struct {\n\tv map[string]int\n}\n\nfunc (s S) List() {\n\ts.v.Store(1)\n}\n\nfunc (s S) Get2() {\n\ts.v.Store(1)\n}\n\nfunc (s S) CalculateTotal() {\n\ts.v.Store(1)\n}\n",
+			want: []string{"p.go:7", "p.go:11", "p.go:15"},
+		},
+		{
 			name: "honest command name that writes passes",
 			code: "package p\n\nimport \"os\"\n\nfunc SaveConfig() (err error) {\n\treturn os.WriteFile(\"x\", nil, 0o644)\n}\n",
 			want: nil,
