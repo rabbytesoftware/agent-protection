@@ -25,6 +25,28 @@ never one process scanning a whole multi-language monorepo.
 ap check .
 ```
 
+Each violated rule is reported once with what it requires, why (WHY), how
+to fix it (FIX), and which changes silence it without fixing it (NOT A
+FIX), such as deleting comments instead of renaming symbols, or splitting
+an interface into pieces no consumer asks for. Agents follow the report
+text, so the report also says what does not count as a fix.
+
+The three pure-layout Go rules can be repaired automatically instead of by
+hand: one parameter per line (R01), one argument per line (R52) and
+paragraph layout (R55).
+
+```sh
+ap fix .
+```
+
+`ap fix` rewrites, in place, the same source and test files `ap check`
+reads, and only the ones those three rules flag. It moves line breaks and
+nothing else: the syntax tree keeps its shape, comments stay, the result is
+gofmt-clean, and a second run changes nothing. It prints every rewritten
+file and how many there were, and exits non-zero on a parse or write
+error. It supports Go only; a Cargo.toml or package.json component is
+refused. Every other rule still needs a human, so run `ap check .` after it.
+
 See `.ap.yaml.example` for the one config file a consuming repo owns.
 
 In GitHub Actions, use the composite action. On pull requests it keeps one
@@ -47,14 +69,17 @@ steps:
 
 ## Status
 
-Go: 32 analyzer and architecture rules plus the golangci-lint proxies,
+Go: 33 analyzer and architecture rules plus the golangci-lint proxies,
 covering the full Rabbyte Go manifest wherever a rule is mechanically
 checkable: one parameter per line (R01), at most two indentation levels
 (R02), guard clauses with no else (R03), named results and no naked
-returns (R04), the comment policy (R07), one type per file (R08),
+returns (R04), the comment policy, including doc comments that only
+restate the name (R07), one type per file (R08),
 stateless types as functions (R11, R12), interfaces over exported structs
 (R13), package layering and internal/ boundaries (R16, R19, R47-R51),
-naming (R21-R23), no panic (R27), 1:1 test files (R42, R43), file and
+naming (R21-R23), no content-free or numbered helper names (R56), errors
+checked and then dropped, which errcheck cannot see (R26), no panic (R27),
+1:1 test files (R42, R43), file and
 directory size caps (R44, R46), and paragraph layout: a blank line after every closed block, checks attached to what they check (R55). Agent Protection passes its own gate.
 Rust: unwrap/expect/panic-risk detection through clippy, excluding inline
 `#[cfg(test)]` modules.

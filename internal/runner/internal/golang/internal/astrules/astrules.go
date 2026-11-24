@@ -10,7 +10,9 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/conditionperline"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/cqs"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/ctxfirstparam"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/droppederror"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/filelinelimit"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/genericname"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/maxdepth"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/namedreturn"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/noelse"
@@ -27,9 +29,9 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
-// Astrules runs every per-declaration syntax rule. Layout rules run on
-// source and tests alike, design rules on source only, and the
-// no-real-infrastructure rule on unit tests only.
+// Astrules runs every per-declaration syntax rule. Layout rules and the
+// dropped-error rule run on source and tests alike, design rules on source
+// only, and the no-real-infrastructure rule on unit tests only.
 func Astrules(
 	files []source.File,
 	tests []source.File,
@@ -48,6 +50,8 @@ func Astrules(
 		commentpolicy.Commentpolicy(everyFile),
 		noelse.Noelse(everyFile),
 		namedreturn.Namedreturn(everyFile),
+		genericname.Genericname(everyFile),
+		droppederror.Droppederror(everyFile),
 		boolparam.Boolparam(files),
 		cqs.Cqs(files),
 		sideeffect.Sideeffect(files),
@@ -59,5 +63,19 @@ func Astrules(
 		nopanic.Nopanic(files),
 		stateless.Stateless(files),
 		noinfraintests.Noinfraintests(tests),
+	)
+}
+
+// Edits returns the edits that bring file in line with the layout rules ap
+// fix repairs: one parameter per line (R01), one argument per line (R52) and
+// paragraph layout (R55). The edits only move line breaks, so they never
+// change what the code means.
+func Edits(
+	file source.File,
+) (edits []source.Edit) {
+	return slices.Concat(
+		paramperline.Edits(file),
+		argumentperline.Edits(file),
+		paragraph.Edits(file),
 	)
 }

@@ -85,6 +85,30 @@ func TestOutputText(
 	}
 }
 
+func TestOutputTextNotAFix(
+	t *testing.T,
+) {
+	text := mustReport(
+		t,
+		[]report.Finding{{Rule: "R26", Location: "a.go:1", Snippet: "_ = save()"}},
+	).Text()
+	fixAt := strings.Index(
+		text,
+		"\nFIX: ",
+	)
+	notAFixAt := strings.Index(
+		text,
+		"\nNOT A FIX: Wrappers like saveBestEffort",
+	)
+	isAfterFix := fixAt >= 0 && notAFixAt > fixAt
+	if !isAfterFix {
+		t.Errorf(
+			"Text() has no NOT A FIX line after FIX:\n%s",
+			text,
+		)
+	}
+}
+
 func mustReport(
 	t *testing.T,
 	findings []report.Finding,

@@ -5,13 +5,15 @@ R01:
     enforcement: analyzer
     rationale: "A signature with one parameter per line diffs cleanly when parameters are added, removed or reordered, and reads the same way in every function regardless of length."
     fix_strategy: "Break the parameter list so the opening paren ends the func line, each parameter sits on its own line with a trailing comma, and the closing paren starts its own line."
+    not_a_fix: "Bundling unrelated parameters into an ad hoc options struct or a variadic ...any so the list has one entry; keeping grouped names like (a, b int) on one line; reading inputs from package state or captured closure variables instead of taking them as parameters."
 R02:
     id: R02
     level: L0
     text: "Maximum 2 indentation levels inside a function body"
     enforcement: analyzer
     rationale: "Code nested three levels deep forces the reader to hold several conditions in mind at once; the depth itself is the signal that a step deserves its own name."
-    fix_strategy: "Extract the inner block into a named function or method, filter collections with slices.DeleteFunc or slices.ContainsFunc, or invert conditions into guard clauses."
+    fix_strategy: "Extract the inner block into a named function or method, filter collections with slices.DeleteFunc or slices.ContainsFunc, or invert conditions into guard clauses. Moving a closure into a local variable does not reduce its depth: it is measured where it is used."
+    not_a_fix: "Hoisting inner blocks into closures or helpers with meaningless names (inner, doStep, handle2) so depth drops while the function stays as long and does as much; wrapping a branch in a func literal; flattening with goto or labeled continue chains that keep the same tangled control flow."
 R03:
     id: R03
     level: L1
@@ -19,6 +21,7 @@ R03:
     enforcement: analyzer
     rationale: An else branch means the happy path and the exceptional path are nested at the same level instead of the exceptional path exiting early -- harder to scan, one more indentation level to track.
     fix_strategy: Invert the condition and return/continue early; keep the function body flat.
+    not_a_fix: "Replacing else with a second if that tests the negated condition; turning the if/else into a switch or a map of funcs that keeps the same two nested branches; nesting the success path inside the if and returning the failure last."
 R04:
     id: R04
     level: L1
@@ -26,20 +29,23 @@ R04:
     enforcement: analyzer
     rationale: "A var declared only to be returned duplicates what a named result already declares, and a naked return hides what is actually returned at the exit that matters most."
     fix_strategy: "Declare the value as a named result and drop the var, and always write the explicit return values even though the names are declared in the signature."
+    not_a_fix: "Swapping var x T for x := T{} so the value is still declared in the body only to be returned; declaring the named result and then shadowing it with := inside a block; copying a local into the named result at the end instead of using the result directly."
 R07:
     id: R07
     level: L0
-    text: "No inline comments and no comments on unexported symbols; every exported symbol has a doc comment"
+    text: "No inline comments and no comments on unexported symbols; every exported symbol has a doc comment that says more than its name"
     enforcement: analyzer
     rationale: "Names carry what code does; a comment that restates it drifts out of date and adds noise. Exported symbols are the contract other packages read, so they and only they are documented."
-    fix_strategy: "Delete the comment and rename the symbol until it explains itself; add a doc comment describing behavior and contract to every exported symbol. Deprecation notes and spec links are the only other comments allowed."
+    fix_strategy: "Delete the comment and rename the symbol until it explains itself; add a doc comment describing behavior and contract to every exported symbol. Deprecation notes and spec links are the only other comments allowed. A doc comment made only of the name's own words (inflected or not, plus the receiver type's) and filler such as returns, the, satisfies the interface or test double restates the name: replace it with what a caller cannot read off the name, such as what it returns on failure, what it blocks on or what it leaves untouched."
+    not_a_fix: "Bulk-deleting comments without renaming anything so the code no longer explains itself; one-line doc comments that merely restate the name (// Name does X., // Run runs.); moving the explanation into string literals or identifiers like todoFixThis; exporting a symbol only so its comment is allowed."
 R08:
     id: R08
     level: L1
-    text: One type per file, named after the type
+    text: "One type per file, named after the type; a composition root file (<package>.go, container.go, wire.go) may hold its one type under any name"
     enforcement: analyzer
-    rationale: A file with multiple types has no single, name-matched home, making it harder for both agents and humans to find or size any one type's code.
-    fix_strategy: Split into one file per type, named after that type.
+    rationale: "A file with multiple types has no single, name-matched home, making it harder for both agents and humans to find or size any one type's code. R47 requires a file that wires sibling packages to carry a composition root name, so the type doing that wiring lives there."
+    fix_strategy: "Split into one file per type, named after that type. If the type's file imports 2+ sibling internal/ packages, keep it in the composition root file (<package>.go, container.go or wire.go) instead of renaming it after the type."
+    not_a_fix: "Hiding the second type as a type alias, an anonymous struct in a var, or a type declared inside a function; naming the file after one type while helpers that belong to another type stay in it."
 R11:
     id: R11
     level: L1
@@ -47,6 +53,7 @@ R11:
     enforcement: analyzer
     rationale: "An empty struct with methods carries no state, so the type adds a constructor, a receiver and an indirection that a plain function does not need."
     fix_strategy: "Delete the struct and expose the behavior as a package-level function named after the package (vault.Vault, deptree.Deptree)."
+    not_a_fix: "Adding a dummy or unused field (a mutex nobody locks, _ struct{}, a name nobody reads) so the struct is no longer empty; renaming the file or type to look like a mock; replacing the struct with a non-struct named type such as type x int that carries the same methods."
 R12:
     id: R12
     level: L1
@@ -54,6 +61,7 @@ R12:
     enforcement: analyzer
     rationale: "A constructor that returns an empty struct implies initialization that does not exist and invites callers to depend on a type that should not be there."
     fix_strategy: "Remove the constructor and the empty struct, and call the package-level function directly."
+    not_a_fix: "Adding a meaningless field or a config value nobody reads so the constructor has something to set; renaming NewXxx to MakeXxx, CreateXxx or Default so the name check misses it; returning the empty struct from a package var instead."
 R13:
     id: R13
     level: L0
@@ -61,6 +69,7 @@ R13:
     enforcement: analyzer
     rationale: An exported struct couples every caller to its exact field layout and construction details; an interface describes only the behavior a caller needs, so the implementation can change freely behind it.
     fix_strategy: Unexport the struct, expose an interface describing its behavior instead, and return the interface from a constructor function.
+    not_a_fix: "Returning an exported alias or exported pointer type of the same struct; wrapping the struct in an interface whose methods hand back the concrete struct; declaring an interface that mirrors every field as a getter and setter so the field layout is still the contract."
 R16:
     id: R16
     level: L1
@@ -68,6 +77,7 @@ R16:
     enforcement: arch
     rationale: Two packages at the same layer importing each other is undeclared coupling that makes the dependency graph impossible to reason about and blocks independent evolution of either package.
     fix_strategy: Extract the shared contract into a third, lower package that both siblings depend on, or merge the two packages if they are genuinely one responsibility.
+    not_a_fix: "Copy-pasting the shared code into both siblings so they drift apart; routing the import through a third package that only re-exports the sibling; replacing the import with a string-keyed registry, reflection or any plumbing that keeps the same coupling hidden."
 R19:
     id: R19
     level: L1
@@ -75,6 +85,7 @@ R19:
     enforcement: arch
     rationale: A package sitting above its sole consumer's internal/ boundary is importable by anything else in the module even though nothing else uses it -- the encapsulation only exists by accident, not by Go's own visibility enforcement, and the first stray import from elsewhere quietly turns an implementation detail into a load-bearing dependency.
     fix_strategy: Move the package under its sole importer's own internal/ subtree (e.g. importer/internal/<package>), so Go's internal/ visibility rule actually restricts it to that one consumer.
+    not_a_fix: "Adding a token import from a second package only so the package counts as shared; moving it to a directory the rule does not walk; copying the package under its importer while the old exposed copy stays in place."
 R21:
     id: R21
     level: L1
@@ -82,6 +93,7 @@ R21:
     enforcement: analyzer
     rationale: A package name is read at every call site (pkg.Func); inconsistent casing or underscores add friction everywhere that name is used.
     fix_strategy: Rename the package to a short, lowercase, no-underscore noun.
+    not_a_fix: "Renaming the directory but keeping the old package clause, or the reverse; replacing underscores with camelCase or an unreadable abbreviation; aliasing the import at every call site instead of renaming the package."
 R22:
     id: R22
     level: L1
@@ -89,6 +101,7 @@ R22:
     enforcement: analyzer
     rationale: A generically-named package becomes an unbounded dumping ground with no single responsibility, and its name tells a reader nothing about what's inside.
     fix_strategy: Name the package after what it actually does, and split it if it's doing more than one thing.
+    not_a_fix: "Renaming util to a synonym like shared, core, kit, lib, support or toolbox while it stays a grab bag; splitting it alphabetically or by file count into packages that still have no single responsibility; dumping the helpers into the importer's top-level file instead."
 R23:
     id: R23
     level: L1
@@ -96,6 +109,7 @@ R23:
     enforcement: analyzer
     rationale: pkg.PkgThing repeats information the caller already has from the package qualifier -- it's noise at every call site.
     fix_strategy: Drop the repeated package name from the type name.
+    not_a_fix: "Abbreviating or misspelling the repeated word (vault.VltConfig, vault.VConfig) instead of dropping it; moving the type to another package only to change the qualifier; renaming the package to something meaningless so it no longer matches the type."
 R24:
     id: R24
     level: L1
@@ -103,6 +117,7 @@ R24:
     enforcement: lint
     rationale: init() runs implicitly with no caller-visible trigger, and package-level mutable state is shared, hidden, and hard to reason about under concurrency or tests.
     fix_strategy: Move init logic into an explicit constructor; pass state through a struct field instead of a package var.
+    not_a_fix: "Hiding the state in a package-level struct, map or sync.Once singleton; replacing init() with a var x = setup() initializer that runs the same hidden code at import time; keeping the state in a closure returned by a package func so it is shared but unseen."
 R25:
     id: R25
     level: L1
@@ -110,13 +125,15 @@ R25:
     enforcement: analyzer
     rationale: A context not positioned first breaks the one universal Go convention every reader expects; storing it in a struct hides its lifetime and invites using a stale or wrong context.
     fix_strategy: Move ctx to the first parameter position; pass it through call chains explicitly instead of storing it.
+    not_a_fix: "Storing the context in a closure, a map, a channel or an embedded struct instead of passing it as the first parameter; replacing the caller's ctx with context.Background() or context.TODO() deeper in the chain; carrying ctx inside an options bag parameter."
 R26:
     id: R26
     level: L1
     text: Never ignore an error; wrap with %w and compare with errors.Is/As
-    enforcement: lint
-    rationale: A silently discarded error is a silently discarded failure -- the single most common way real bugs get masked in Go.
-    fix_strategy: Check the error; wrap it with context via %w if propagating.
+    enforcement: analyzer
+    rationale: "A silently discarded error is a silently discarded failure -- the single most common way real bugs get masked in Go. Checking an error and then returning, continuing or substituting a fallback without using it hides the failure just as _ = does."
+    fix_strategy: "Return the error wrapped with context via %w, or hand it to a reporter; replacing it with a zero value or a bare sentinel still drops it."
+    not_a_fix: "Wrappers like saveBestEffort or swallowPanic that check the error and drop it; checking err and then returning silently or returning nil; assigning to _ or to a variable nobody reads; functions like ids.New() that return \"\" or a zero value on failure instead of an error; logging the error and carrying on as if the call succeeded."
 R27:
     id: R27
     level: L1
@@ -124,6 +141,7 @@ R27:
     enforcement: analyzer
     rationale: "A library that panics takes the decision to crash away from its caller; errors are values the caller can handle, log or wrap."
     fix_strategy: "Return an error wrapped with context via %w instead of panicking, and let main decide whether startup failure is fatal."
+    not_a_fix: "Replacing panic with log.Fatal, os.Exit or runtime.Goexit inside a library; calling a must-style helper in another package that panics on your behalf; returning a zero value and swallowing the failure instead of returning an error."
 R28:
     id: R28
     level: L1
@@ -131,6 +149,7 @@ R28:
     enforcement: lint
     rationale: A large interface forces every implementor and every fake to satisfy methods most callers never use, and couples far more callers to far more surface than necessary.
     fix_strategy: Split the interface along how it's actually consumed; define each smaller interface where it's used.
+    not_a_fix: "Splitting the interface into arbitrary pieces of 3 or fewer methods (DispatcherParkRecovery) that are not concepts any consumer actually asks for; embedding the pieces back into one big interface that every caller still takes; leaving the definition in the producer package under a new name."
 R32:
     id: R32
     level: L0
@@ -138,13 +157,15 @@ R32:
     enforcement: analyzer
     rationale: A boolean parameter means the function secretly has two behaviors selected by the caller; this is a fork in behavior disguised as data, and the call site can't tell what true/false means without opening the function.
     fix_strategy: Split into two explicitly named functions, or replace the bool with a typed enum describing the real choice.
+    not_a_fix: "Replacing the bool with a bool alias, a single-field options struct, a 0/1 int or a mode string that still means true or false; hiding the flag in a variadic ...bool or a functional option; reading the flag from a package var instead of a parameter."
 R33:
     id: R33
     level: L0
-    text: 'Command-Query Separation: a function either mutates state or returns a value, never both (a chainable method returning its own receiver is a command)'
+    text: 'Command-Query Separation: a function either mutates state or returns a value, never both. Mutation includes writing through a pointer receiver or parameter, or handing it to a same-package helper that does (a chainable method returning its own receiver is a command)'
     enforcement: analyzer
     rationale: Mixing "tell me something" and "change something" in one call makes call sites unpredictable and hard to reason about.
     fix_strategy: Split into a Compute/Get query function (no mutation) and a separate Set/Apply/Update command function (no return value beyond error).
+    not_a_fix: "Moving the mutation into a helper so the function no longer looks like it mutates while it still mutates and returns; handing the result back through an out-parameter pointer or callback; returning the receiver from a method only so it passes as chainable."
 R34:
     id: R34
     level: L0
@@ -152,6 +173,7 @@ R34:
     enforcement: analyzer
     rationale: A reader trusts a Get/Find/Compute-prefixed name to be cheap and side-effect-free; violating that is a common source of bugs (accidental writes, accidental caching).
     fix_strategy: Rename to reflect the real behavior (Fetch/Load/Sync/Save) or remove the side effect from the function entirely.
+    not_a_fix: "Renaming to a vague verb (Handle, Process, Do) that claims nothing instead of naming the effect; moving the side effect into a deferred call, a goroutine or a helper the getter calls; caching through a package var so the write is invisible to the check."
 R41:
     id: R41
     level: L3
@@ -159,6 +181,7 @@ R41:
     enforcement: script
     rationale: A unit test that opens a real socket or DB connection is slow, flaky, and stops being a unit test.
     fix_strategy: Inject an in-memory fake through the same interface the real implementation satisfies, or move the test to an integration-tagged file.
+    not_a_fix: "Adding an integration build tag or file suffix while the test still runs as a unit test; pointing the real client at localhost or a container the test starts itself; deleting the test instead of injecting a fake."
 R42:
     id: R42
     level: L3
@@ -166,6 +189,7 @@ R42:
     enforcement: script
     rationale: A source file with no test file has unverified behavior by construction; this is the floor, not a strong guarantee of quality.
     fix_strategy: Add a _test.go file covering at least the exported surface of the source file.
+    not_a_fix: "Adding an empty _test.go or a test that asserts nothing; renaming the source file to look like a mock or fake so it is excluded; deleting a test or an assertion to get a refactor through."
 R43:
     id: R43
     level: L3
@@ -173,6 +197,7 @@ R43:
     enforcement: arch
     rationale: "Tests grouped by feature or into catch-all files have no single home, so nobody can tell which source file is covered by what."
     fix_strategy: "Move each test into the _test.go file named after the source file it exercises, then delete the free test file."
+    not_a_fix: "Creating an empty or stub source file named after the free test file; renaming the test file after a source file it does not exercise; deleting the tests instead of moving them."
 R44:
     id: R44
     level: L3
@@ -180,6 +205,7 @@ R44:
     enforcement: script
     rationale: A file this long is a sign the abstraction is wrong, not that it needs a bigger limit.
     fix_strategy: Split by responsibility, not by line count.
+    not_a_fix: "Splitting by line count into part1/part2 or x_extra.go files with no responsibility boundary; joining lines or deleting blank lines and doc comments to squeeze under the cap; moving code into a file the check excludes."
 R46:
     id: R46
     level: L0
@@ -187,6 +213,7 @@ R46:
     enforcement: script
     rationale: A directory with too many files is a package doing too much work; this is the directory-level analog of a per-file line cap.
     fix_strategy: Split into subdirectories by responsibility, never just to get under the count.
+    not_a_fix: "Moving files into arbitrary subdirectories (part1, more, extra) to get under the count; merging unrelated files into one larger file; inventing packages that have no responsibility of their own."
 R47:
     id: R47
     level: L1
@@ -194,6 +221,7 @@ R47:
     enforcement: arch
     rationale: Wiring code that coordinates multiple siblings is architecturally significant -- it's the one place allowed to break the sibling-import rule. If it hides in an arbitrarily-named file instead of the conventional composition-root location, nobody reviewing the package structure can find it, and the exemption becomes indistinguishable from an unreviewed layering violation.
     fix_strategy: Rename the file to container.go, wire.go, or the name of its own package, or move the wiring code into such a file.
+    not_a_fix: "Dropping one sibling import by duplicating its code or routing it through a re-exporting package; renaming an unrelated file to container.go or wire.go so the wiring hides among other logic; splitting the wiring across files that each import only one sibling."
 R48:
     id: R48
     level: L0
@@ -201,6 +229,7 @@ R48:
     enforcement: arch
     rationale: "A parent of multiple internal sub-packages is a component boundary; without one named entry point there is no single place for callers to go to understand or use the component."
     fix_strategy: "Add a <package-name>.go file that exposes the component either as an exported interface (when it holds state) or as a package-level function named after the package (when it is stateless, rule 11)."
+    not_a_fix: "Adding an entry file with a placeholder interface or a no-op function named after the package; inventing wrapper packages (ports, api) only to move child packages out of the parent; merging unrelated children into one package just to drop below two."
 R49:
     id: R49
     level: L0
@@ -208,6 +237,7 @@ R49:
     enforcement: arch
     rationale: The container file is the package's entire public contract. Any additional loose file in the same directory is unreviewable implementation detail hiding in plain sight next to the interface -- it belongs in the package's own internal/ subtree (rule 15), the same way a repository package keeps only its own <name>.go exposed and pushes everything else into a nested internal/.
     fix_strategy: Move the extra file(s) into a nested internal/ subdirectory of the composition root's own package, and have the container file call into it.
+    not_a_fix: "Inventing packages (ports, api, types) beside the root only to move the loose files away from it; renaming a loose file so it looks like a test or mock; inlining every extra file into the container file so it becomes the dumping ground."
 R50:
     id: R50
     level: L0
@@ -215,6 +245,7 @@ R50:
     enforcement: arch
     rationale: internal/ is the visibility-boundary marker, not a package identity -- if real implementation hides directly inside it, there is no name describing what that code does, and nothing stops a second, third, unrelated concern from being dropped in beside it as loose peers. Every behaviorful piece of code needs an actual name (a subdirectory), even when it is currently the only thing there.
     fix_strategy: Move the file into its own subdirectory named after what it does (e.g. internal/golangci.go becomes internal/golangci/golangci.go), even if it is the only file there today.
+    not_a_fix: "Moving the behavior elsewhere while leaving a declaration-only shell that still names nothing; naming the subdirectory generically (impl, core, logic) instead of after what it does; renaming the internal directory so the rule stops applying."
 R51:
     id: R51
     level: L0
@@ -222,6 +253,7 @@ R51:
     enforcement: arch
     rationale: internal/ exists to restrict visibility among siblings. A sole child has no sibling to be restricted from, and its real consumer (the package one level up, already the only thing that could ever reach it) sits right next to it -- the boundary is pure indirection with nothing on the other side.
     fix_strategy: Move the child's files up to the grandparent's directory as same-package companion files (or merge into its container file directly), then remove the now-empty internal/ directory.
+    not_a_fix: "Adding an empty or placeholder sibling package so internal/ has two children; renaming internal/ to another name so the rule stops applying while the indirection stays."
 R52:
     id: R52
     level: L0
@@ -229,6 +261,7 @@ R52:
     enforcement: analyzer
     rationale: "One argument per line makes every input of a call visible at a glance and keeps diffs to one line per changed argument, the same way R01 does for signatures."
     fix_strategy: "Break after the opening paren, put each argument on its own line with a trailing comma, and put the closing paren on its own line; calls with zero or one argument stay inline."
+    not_a_fix: "Collapsing the arguments into a temporary struct literal, slice or variadic spread so the call has one argument; wrapping the call in a helper with fewer parameters that only forwards to it."
 R53:
     id: R53
     level: L0
@@ -236,6 +269,7 @@ R53:
     enforcement: analyzer
     rationale: "A compound condition on one line hides how many separate facts the branch depends on; one condition per line makes each one readable and reviewable on its own."
     fix_strategy: "End each line with the && or || operator and start the next condition on a new line, including conditions inside parentheses, or extract the whole condition into a named boolean (rule 5)."
+    not_a_fix: "Splitting into nested ifs that add depth instead of naming the condition; extracting it into a meaningless boolean (ok2, cond, check) or a helper named after its body; moving the compound expression into a switch true case."
 R54:
     id: R54
     level: L0
@@ -243,6 +277,7 @@ R54:
     enforcement: analyzer
     rationale: "One value per line makes each returned value visible at the exit of the function, the same way R52 does for call arguments."
     fix_strategy: "Keep the first value on the return line (Go ends a bare return at the line break), end it with a comma, and put each following value on its own line."
+    not_a_fix: "Packing the values into an ad hoc struct or slice only to return one value; dropping a result such as the error so a single value remains."
 R55:
     id: R55
     level: L0
@@ -250,6 +285,15 @@ R55:
     enforcement: analyzer
     rationale: "Each step of a function (a statement plus the guard that checks it) reads as one paragraph, and the blank line after a closing brace marks where the next step begins. Fixed positions keep the layout mechanical instead of a matter of taste."
     fix_strategy: "Add one blank line after the closing brace of every if, for, switch, select or bare block that is not the last statement of its block; remove the blank line between an assignment and the if that checks the value it assigned; remove blank lines right after an opening brace or right before a closing one."
+    not_a_fix: "Reordering statements or moving a block to the end of its function only so no blank line is required; wrapping a step in a func literal or bare block to hide its boundary; adding the blank line but leaving unrelated statements glued into one paragraph."
+R56:
+    id: R56
+    level: L0
+    text: "Functions, methods, types and named closures carry a name that says what they do; no name made only of content-free words, opened by a content-free prefix, or told apart from a sibling only by a number"
+    enforcement: analyzer
+    rationale: "Extracting a block into a helper only helps when the helper's name explains the block. runHandler, makeCallback, wrap, implSendCreate or handler2 beside handler move code without naming it, so the reader still has to open the body, and the line, depth and paragraph limits are met in form while the readability they protect is lost."
+    fix_strategy: "Rename after the specific behavior or value: what the function decides, returns or causes, or the role the closure plays in its caller (recordDelivery, failAfterFirstAttempt). When several closures differ only by a number, name what each one does differently. Exported names, main, init and a lone role word such as handler or run are left alone."
+    not_a_fix: "Renaming to another content-free word; swapping the number for a letter or a synonym (handlerB, otherHandler); exporting the name to skip the check; inlining the block back as an unnamed closure argument."
 PROXY-COMPLEXITY:
     id: PROXY-COMPLEXITY
     level: L0
@@ -257,6 +301,7 @@ PROXY-COMPLEXITY:
     enforcement: lint
     rationale: A function under complexity, length and nesting budgets is structurally incapable of doing many unrelated things.
     fix_strategy: Extract named helper functions per branch/step; replace nested conditionals with early returns.
+    not_a_fix: "Hoisting branches into closures or helpers with meaningless names (step1, handleRest) so each piece passes while the logic is as tangled as before; replacing conditionals with a map of funcs that keeps every path; adding a nolint comment or excluding the file in lint config."
 PROXY-DUPLICATION:
     id: PROXY-DUPLICATION
     level: L0
@@ -264,6 +309,7 @@ PROXY-DUPLICATION:
     enforcement: lint
     rationale: Two occurrences can be coincidental; three is a pattern, and the point past which drift between copies becomes a real risk.
     fix_strategy: Extract the duplicated block into a shared helper, parameterizing the differences.
+    not_a_fix: "Renaming variables or reordering statements in each copy until the token match breaks; extracting a helper with a mode parameter that branches into every original copy; moving a copy into a file the linter skips."
 PROXY-GLOBAL-STATE:
     id: PROXY-GLOBAL-STATE
     level: L1
@@ -271,6 +317,7 @@ PROXY-GLOBAL-STATE:
     enforcement: lint
     rationale: Package-level mutable state is implicit, shared, and hard to reason about under concurrency or testing.
     fix_strategy: Pass the state explicitly through a constructor/struct field instead.
+    not_a_fix: "Wrapping the variable in a package-level struct, sync.Map or getter and setter pair; keeping a package-level pointer to a value that is still mutated; moving it into a closure returned by a package func so it is shared but unseen."
 PROXY-MAGIC-NUMBER:
     id: PROXY-MAGIC-NUMBER
     level: L0
@@ -278,6 +325,7 @@ PROXY-MAGIC-NUMBER:
     enforcement: lint
     rationale: Unnamed literals hide intent and make the meaning of a threshold invisible at the call site.
     fix_strategy: Hoist the literal into a named const with a descriptive identifier.
+    not_a_fix: "Naming the const after its value (two, ten, sixty) instead of its meaning; parsing the number from a string or building it from smaller literals; moving it into a struct default or config map entry with no name of its own."
 TS-MODERN-SYNTAX:
     id: TS-MODERN-SYNTAX
     level: L1
@@ -285,6 +333,7 @@ TS-MODERN-SYNTAX:
     enforcement: lint
     rationale: var's function-scoping and == 's type coercion are both long-documented sources of subtle bugs that let/const and === eliminate entirely.
     fix_strategy: Replace var with let/const, and == / != with === / !==.
+    not_a_fix: "Disabling the ESLint rule inline or in config; replacing == with a helper that still compares loosely inside; turning every var into let when the value is never reassigned and should be const."
 TS-NO-DEBUG-OUTPUT:
     id: TS-NO-DEBUG-OUTPUT
     level: L0
@@ -292,6 +341,7 @@ TS-NO-DEBUG-OUTPUT:
     enforcement: lint
     rationale: Debug output left behind is dead signal in production logs and usually a sign a real logger call was never added.
     fix_strategy: Remove it, or replace with the project's real logging mechanism.
+    not_a_fix: "Aliasing console (const log = console.log) or calling console['log'] so the rule misses it; switching to process.stdout.write or alert as ad hoc debug output; wrapping it in an if (DEBUG) block instead of using the real logger."
 TS-NO-ELSE:
     id: TS-NO-ELSE
     level: L0
@@ -299,6 +349,7 @@ TS-NO-ELSE:
     enforcement: lint
     rationale: An else branch nests the happy path and exceptional path at the same level instead of exiting early.
     fix_strategy: Invert the condition and return early; keep the function body flat.
+    not_a_fix: "Replacing else with a second if on the negated condition; using a ternary chain or an IIFE that keeps both branches nested at the same level; disabling the rule inline."
 TS-NO-PARAM-REASSIGN:
     id: TS-NO-PARAM-REASSIGN
     level: L0
@@ -306,6 +357,7 @@ TS-NO-PARAM-REASSIGN:
     enforcement: lint
     rationale: Mutating a parameter hides a side effect from the caller, who passed a value expecting it to remain theirs.
     fix_strategy: Copy into a local variable before modifying, or return a new value instead of mutating in place.
+    not_a_fix: "Aliasing the parameter (const p = param) and mutating through the alias; shallow-copying an object and then mutating its nested members, which still belong to the caller; calling a helper that mutates the parameter on your behalf."
 TS-ONE-TYPE-PER-FILE:
     id: TS-ONE-TYPE-PER-FILE
     level: L1
@@ -313,6 +365,7 @@ TS-ONE-TYPE-PER-FILE:
     enforcement: lint
     rationale: A file with multiple classes has no single, name-matched home, making it harder to find or size any one class's code.
     fix_strategy: Split into one file per class, named after that class.
+    not_a_fix: "Turning the extra class into a class expression assigned to a const or a factory returning an object literal with the same methods; disabling max-classes-per-file for the file; moving the second class into an unrelated barrel file."
 TS-PROXY-COMPLEXITY:
     id: TS-PROXY-COMPLEXITY
     level: L1
@@ -320,6 +373,7 @@ TS-PROXY-COMPLEXITY:
     enforcement: lint
     rationale: A function under these budgets is structurally incapable of doing many unrelated things -- same proxy principle as the Go manifest, applied via ESLint core rules.
     fix_strategy: Extract named helper functions per branch/step; replace nested conditionals with early returns.
+    not_a_fix: "Hoisting branches into nested arrow functions or helpers with meaningless names so each passes while the logic is as tangled as before; packing many parameters into one untyped options object; replacing conditionals with a lookup table of callbacks that keeps every path; disabling the rule inline or in config."
 TS-PROXY-MAGIC-NUMBER:
     id: TS-PROXY-MAGIC-NUMBER
     level: L1
@@ -327,3 +381,4 @@ TS-PROXY-MAGIC-NUMBER:
     enforcement: lint
     rationale: Unnamed literals hide intent and make the meaning of a threshold invisible at the call site.
     fix_strategy: Hoist the literal into a named const with a descriptive identifier.
+    not_a_fix: "Naming the const after its value (TWO, TEN, ONE_THOUSAND) instead of its meaning; moving the number into an object literal or a string parsed at runtime; adding it to the rule's ignore list or disabling the rule inline."

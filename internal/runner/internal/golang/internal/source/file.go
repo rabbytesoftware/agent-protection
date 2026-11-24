@@ -7,13 +7,15 @@ import (
 )
 
 // File is one parsed Go file: its path as walked, its path relative to the
-// checked root (the form every finding reports), and its syntax tree with
-// the file set that resolves the tree's positions.
+// checked root (the form every finding reports), its syntax tree with the
+// file set that resolves the tree's positions, and the bytes it was parsed
+// from, against which edits are computed.
 type File struct {
 	Path    string
 	Rel     string
 	FileSet *token.FileSet
 	Syntax  *ast.File
+	Content []byte
 }
 
 // Location renders the position of node as "relative/path.go:line", the
@@ -42,4 +44,19 @@ func (f File) Column(
 	node ast.Node,
 ) (column int) {
 	return f.FileSet.Position(node.Pos()).Column
+}
+
+// Offset returns the byte offset of position within the file's content.
+func (f File) Offset(
+	position token.Pos,
+) (offset int) {
+	return f.FileSet.Position(position).Offset
+}
+
+// LineOffset returns the byte offset at which the 1-based line starts.
+func (f File) LineOffset(
+	line int,
+) (offset int) {
+	tokenFile := f.FileSet.File(f.Syntax.Pos())
+	return tokenFile.Offset(tokenFile.LineStart(line))
 }

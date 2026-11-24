@@ -211,3 +211,15 @@ func TestInternalboundaryRejectsMissingRoot(
 		t.Error("Internalboundary() error = nil, want one for a missing root")
 	}
 }
+
+func TestInternalboundaryRejectsUnparsableFiles(
+	t *testing.T,
+) {
+	_, err := internalboundary.Internalboundary(module(
+		t,
+		map[string]string{"internal/broken.go": "package internal\n\nfunc {\n"},
+	))
+	if err == nil {
+		t.Error("Internalboundary() error = nil, want one for an unparsable file inside internal/")
+	}
+}

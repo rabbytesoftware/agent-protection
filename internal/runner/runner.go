@@ -38,6 +38,33 @@ func Runner(
 	return report.Report(findings)
 }
 
+// Fix rewrites the Go component at root in place so the layout rules ap fix
+// repairs hold, and returns the rewritten paths relative to root. Only Go
+// components can be fixed; any other component is an error.
+func Fix(
+	root string,
+) (changed []string, err error) {
+	if hasMarker(
+		root,
+		goMarker,
+	) {
+		return golang.Fix(root)
+	}
+
+	_, err = checkFor(root)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	return nil,
+		fmt.Errorf(
+			"ap fix supports Go only: %s holds no %s",
+			root,
+			goMarker,
+		)
+}
+
 func checkFor(
 	root string,
 ) (check func(string) ([]report.Finding, error), err error) {

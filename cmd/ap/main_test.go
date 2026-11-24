@@ -55,6 +55,8 @@ func TestRun(
 		{arguments: []string{"ap", "check", clean}, wantCode: cleanExitCode},
 		{arguments: []string{"ap", "check", failing}, wantCode: findingsExitCode},
 		{arguments: []string{"ap", "markdown", reportPath}, wantCode: cleanExitCode},
+		{arguments: []string{"ap", "fix", failing}, wantCode: cleanExitCode},
+		{arguments: []string{"ap", "fix", t.TempDir()}, wantCode: findingsExitCode},
 	}
 	for _, tc := range cases {
 		assertRun(
@@ -76,6 +78,7 @@ func TestCommandArguments(
 	}{
 		{arguments: []string{"ap", "check", "."}, wantCommand: "check", wantTarget: "."},
 		{arguments: []string{"ap", "markdown", "ap-report.json"}, wantCommand: "markdown", wantTarget: "ap-report.json"},
+		{arguments: []string{"ap", "fix", "."}, wantCommand: "fix", wantTarget: "."},
 		{arguments: []string{"ap", "check"}, wantErr: true},
 		{arguments: []string{"ap", "lint", "."}, wantErr: true},
 		{arguments: []string{"ap", "check", ".", "extra"}, wantErr: true},

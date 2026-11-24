@@ -194,3 +194,15 @@ func TestTestpairingRejectsMissingRoot(
 		t.Error("Testpairing() error = nil, want one for a missing root")
 	}
 }
+
+func TestTestpairingRejectsUnparsableFiles(
+	t *testing.T,
+) {
+	_, err := testpairing.Testpairing(module(
+		t,
+		map[string]string{"broken.go": "package p\n\nfunc {\n"},
+	))
+	if err == nil {
+		t.Error("Testpairing() error = nil, want one for an unparsable source file")
+	}
+}

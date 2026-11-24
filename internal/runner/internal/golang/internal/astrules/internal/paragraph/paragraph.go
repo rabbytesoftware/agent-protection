@@ -114,6 +114,27 @@ func pairFindings(
 	previous ast.Stmt,
 	current ast.Stmt,
 ) (findings []report.Finding) {
+	snippet := pairViolation(
+		file,
+		previous,
+		current,
+	)
+	if snippet == "" {
+		return nil
+	}
+
+	return []report.Finding{finding(
+		file,
+		current,
+		snippet,
+	)}
+}
+
+func pairViolation(
+	file source.File,
+	previous ast.Stmt,
+	current ast.Stmt,
+) (snippet string) {
 	separated := blankBetween(
 		file,
 		previous.End(),
@@ -121,11 +142,7 @@ func pairFindings(
 	)
 	isCrampedBlock := closesBlock(previous) && !separated
 	if isCrampedBlock {
-		return []report.Finding{finding(
-			file,
-			current,
-			afterBlock,
-		)}
+		return afterBlock
 	}
 
 	isDetachedCheck := separated && checksAssignment(
@@ -133,14 +150,10 @@ func pairFindings(
 		current,
 	)
 	if isDetachedCheck {
-		return []report.Finding{finding(
-			file,
-			current,
-			detachedCheck,
-		)}
+		return detachedCheck
 	}
 
-	return nil
+	return ""
 }
 
 func edgeFindings(

@@ -18,7 +18,8 @@ const (
 )
 
 // Source parses every non-test, non-generated .go file under root,
-// skipping vendor/, .git/ and node_modules/ trees.
+// skipping vendor/, .git/ and node_modules/ trees. It fails when a file
+// cannot be read or parsed.
 func Source(
 	root string,
 ) (files []File, err error) {
@@ -28,17 +29,27 @@ func Source(
 			err
 	}
 
-	return parseAll(
-		root,
+	paths, err := selected(
 		slices.DeleteFunc(
 			found.files,
-			isNotHandWrittenSource,
+			IsTest,
 		),
+		handWrittenPath,
+	)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	return parseAll(
+		root,
+		paths,
 	)
 }
 
 // Tests parses every non-generated _test.go file under root that is not
-// guarded by an integration build tag.
+// guarded by an integration build tag. It fails when a file cannot be
+// read or parsed.
 func Tests(
 	root string,
 ) (files []File, err error) {
@@ -48,12 +59,21 @@ func Tests(
 			err
 	}
 
-	return parseAll(
-		root,
+	paths, err := selected(
 		slices.DeleteFunc(
 			found.files,
-			isNotUnitTest,
+			isNotTest,
 		),
+		unitTestPath,
+	)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	return parseAll(
+		root,
+		paths,
 	)
 }
 
@@ -90,21 +110,63 @@ func Directories(
 		nil
 }
 
-// RelPath returns path relative to root, or path unchanged when it cannot
-// be made relative.
+// RelPath returns path relative to root. It fails when path cannot be
+// made relative to root, such as a relative path under an absolute root.
 func RelPath(
 	root string,
 	path string,
-) (rel string) {
-	rel, err := filepath.Rel(
+) (rel string, err error) {
+	rel, err = filepath.Rel(
 		root,
 		path,
 	)
 	if err != nil {
-		return path
+		return "",
+			fmt.Errorf(
+				"relative path of %s: %w",
+				path,
+				err,
+			)
 	}
 
-	return rel
+	return rel,
+		nil
+}
+
+// Parse parses content as the Go file at path, which findings report
+// relative to root.
+func Parse(
+	root string,
+	path string,
+	content []byte,
+) (file File, err error) {
+	fileSet := token.NewFileSet()
+	syntax, err := parser.ParseFile(
+		fileSet,
+		path,
+		content,
+		parser.ParseComments,
+	)
+	if err != nil {
+		return File{},
+			fmt.Errorf(
+				"parse %s: %w",
+				path,
+				err,
+			)
+	}
+
+	rel, err := RelPath(
+		root,
+		path,
+	)
+	if err != nil {
+		return File{},
+			err
+	}
+
+	return File{Path: path, Rel: rel, FileSet: fileSet, Syntax: syntax, Content: content},
+		nil
 }
 
 // IsTest reports whether path names a _test.go file.
@@ -118,16 +180,24 @@ func IsTest(
 }
 
 // IsGenerated reports whether the first bytes of the file at path carry a
-// "Code generated" or "DO NOT EDIT" marker. Unreadable files count as hand
-// written so they still get checked and surface their own error.
+// "Code generated" or "DO NOT EDIT" marker. It fails when the file cannot
+// be read.
 func IsGenerated(
 	path string,
-) (isGenerated bool) {
-	content, err := os.ReadFile(path)
+) (isGenerated bool, err error) {
+	content, err := readFile(path)
 	if err != nil {
-		return false
+		return false,
+			err
 	}
 
+	return isGeneratedContent(content),
+		nil
+}
+
+func isGeneratedContent(
+	content []byte,
+) (isGenerated bool) {
 	header := string(content[:min(
 		len(content),
 		generatedHeaderMaxBytes,
@@ -196,49 +266,96 @@ func parse(
 	root string,
 	path string,
 ) (file File, err error) {
-	fileSet := token.NewFileSet()
-	syntax, err := parser.ParseFile(
-		fileSet,
-		path,
-		nil,
-		parser.ParseComments,
-	)
+	content, err := os.ReadFile(path)
 	if err != nil {
 		return File{},
 			fmt.Errorf(
-				"parse %s: %w",
+				"read %s: %w",
 				path,
 				err,
 			)
 	}
 
-	return File{Path: path, Rel: RelPath(
-			root,
-			path,
-		), FileSet: fileSet, Syntax: syntax},
+	return Parse(
+		root,
+		path,
+		content,
+	)
+}
+
+func selected(
+	paths []string,
+	selector func(string) ([]string, error),
+) (kept []string, err error) {
+	failures := []error{}
+	for _, path := range paths {
+		chosen, selectErr := selector(path)
+		kept = append(
+			kept,
+			chosen...,
+		)
+		failures = append(
+			failures,
+			selectErr,
+		)
+	}
+
+	err = errors.Join(failures...)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	return kept,
 		nil
 }
 
-func isNotHandWrittenSource(
+func handWrittenPath(
 	path string,
-) (excluded bool) {
-	return IsTest(path) || IsGenerated(path)
+) (kept []string, err error) {
+	generated, err := IsGenerated(path)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	if generated {
+		return nil,
+			nil
+	}
+
+	return []string{path},
+		nil
 }
 
-func isNotUnitTest(
+func unitTestPath(
+	path string,
+) (kept []string, err error) {
+	content, err := readFile(path)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	isExcluded := isGeneratedContent(content) || hasIntegrationTag(content)
+	if isExcluded {
+		return nil,
+			nil
+	}
+
+	return []string{path},
+		nil
+}
+
+func isNotTest(
 	path string,
 ) (excluded bool) {
-	return !IsTest(path) || IsGenerated(path) || hasIntegrationTag(path)
+	return !IsTest(path)
 }
 
 func hasIntegrationTag(
-	path string,
+	content []byte,
 ) (tagged bool) {
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return false
-	}
-
 	return strings.Contains(
 		string(content),
 		"//go:build",
@@ -246,4 +363,21 @@ func hasIntegrationTag(
 		string(content),
 		"integration",
 	)
+}
+
+func readFile(
+	path string,
+) (content []byte, err error) {
+	content, err = os.ReadFile(path)
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"read %s: %w",
+				path,
+				err,
+			)
+	}
+
+	return content,
+		nil
 }

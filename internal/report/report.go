@@ -67,7 +67,7 @@ func ruleDocs(
 	)
 	docs = map[string]RuleDoc{}
 	for id, rule := range violated {
-		docs[id] = RuleDoc{Text: rule.Text, Rationale: rule.Rationale, FixStrategy: rule.FixStrategy}
+		docs[id] = RuleDoc{Text: rule.Text, Rationale: rule.Rationale, FixStrategy: rule.FixStrategy, NotAFix: rule.NotAFix}
 	}
 
 	return docs

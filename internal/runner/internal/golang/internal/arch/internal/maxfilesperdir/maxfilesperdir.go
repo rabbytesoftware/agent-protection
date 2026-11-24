@@ -1,6 +1,7 @@
 package maxfilesperdir
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"path/filepath"
@@ -34,41 +35,58 @@ func Maxfilesperdir(
 		counts[filepath.Dir(path)]++
 	}
 
+	failures := []error{}
 	for _, directory := range slices.Sorted(maps.Keys(counts)) {
+		directoryFound, directoryErr := directoryFindings(
+			root,
+			directory,
+			counts[directory],
+		)
 		findings = append(
 			findings,
-			directoryFindings(
-				root,
-				directory,
-				counts[directory],
-			)...,
+			directoryFound...,
+		)
+		failures = append(
+			failures,
+			directoryErr,
 		)
 	}
 
 	return findings,
-		nil
+		errors.Join(failures...)
 }
 
 func directoryFindings(
 	root string,
 	directory string,
 	count int,
-) (findings []report.Finding) {
+) (findings []report.Finding, err error) {
 	isWithinLimit := directory == filepath.Clean(root) || count <= maxFiles
 	if isWithinLimit {
-		return nil
+		return nil,
+			nil
+	}
+
+	location, err := source.RelPath(
+		root,
+		directory,
+	)
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"max files per directory: %w",
+				err,
+			)
 	}
 
 	return []report.Finding{{
-		Rule: rule,
-		Location: source.RelPath(
-			root,
-			directory,
-		),
-		Snippet: fmt.Sprintf(
-			"%d non-test source files, max %d: split the package",
-			count,
-			maxFiles,
-		),
-	}}
+			Rule:     rule,
+			Location: location,
+			Snippet: fmt.Sprintf(
+				"%d non-test source files, max %d: split the package",
+				count,
+				maxFiles,
+			),
+		}},
+		nil
 }

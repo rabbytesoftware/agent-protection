@@ -8,6 +8,7 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/lint"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/rewrite"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
@@ -54,6 +55,29 @@ func Golang(
 			linted,
 		),
 		nil
+}
+
+// Fix rewrites the Go module rooted at root in place until one parameter
+// per line (R01), one argument per line (R52) and paragraph layout (R55)
+// hold, over the same source and test files Golang checks, and returns the
+// rewritten paths relative to root.
+func Fix(
+	root string,
+) (changed []string, err error) {
+	files, tests, err := load(root)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	return rewrite.Rewrite(
+		root,
+		slices.Concat(
+			files,
+			tests,
+		),
+		astrules.Edits,
+	)
 }
 
 func load(

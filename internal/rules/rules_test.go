@@ -32,7 +32,7 @@ func assertComplete(
 	rule rules.Rule,
 ) {
 	t.Helper()
-	isIncomplete := rule.ID != id || rule.Level == "" || rule.Text == "" || rule.Rationale == "" || rule.FixStrategy == ""
+	isIncomplete := rule.ID != id || rule.Level == "" || rule.Text == "" || rule.Rationale == "" || rule.FixStrategy == "" || rule.NotAFix == ""
 	if isIncomplete {
 		t.Errorf(
 			"rule %q is incomplete or keyed under the wrong ID: %+v",

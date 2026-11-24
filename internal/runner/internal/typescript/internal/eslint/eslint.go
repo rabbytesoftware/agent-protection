@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,8 +47,14 @@ func run(
 		[]string{"x", "eslint", ".", "--format=json"},
 		arguments...,
 	)
+	binary, err := bunBinary()
+	if err != nil {
+		return nil,
+			err
+	}
+
 	command := exec.Command(
-		bunBinary(),
+		binary,
 		commandArguments...,
 	)
 	command.Dir = root
@@ -87,21 +94,38 @@ func decode(
 			)
 	}
 
+	failures := []error{}
 	for index := range results {
-		results[index].FilePath = relPath(
+		rel, relErr := relPath(
 			root,
 			results[index].FilePath,
 		)
+		results[index].FilePath = rel
+		failures = append(
+			failures,
+			relErr,
+		)
+	}
+
+	err = errors.Join(failures...)
+	if err != nil {
+		return nil,
+			err
 	}
 
 	return results,
 		nil
 }
 
-func bunBinary() (binary string) {
+func bunBinary() (binary string, err error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return bun
+		return "",
+			fmt.Errorf(
+				"locate %s: %w",
+				bun,
+				err,
+			)
 	}
 
 	candidate := filepath.Join(
@@ -111,11 +135,25 @@ func bunBinary() (binary string) {
 		bun,
 	)
 	_, err = os.Stat(candidate)
-	if err != nil {
-		return bun
+	if errors.Is(
+		err,
+		fs.ErrNotExist,
+	) {
+		return bun,
+			nil
 	}
 
-	return candidate
+	if err != nil {
+		return "",
+			fmt.Errorf(
+				"locate %s: %w",
+				bun,
+				err,
+			)
+	}
+
+	return candidate,
+		nil
 }
 
 func jsonPayload(
@@ -135,14 +173,20 @@ func jsonPayload(
 func relPath(
 	root string,
 	path string,
-) (rel string) {
-	rel, err := filepath.Rel(
+) (rel string, err error) {
+	rel, err = filepath.Rel(
 		root,
 		path,
 	)
 	if err != nil {
-		return path
+		return "",
+			fmt.Errorf(
+				"eslint file path %s: %w",
+				path,
+				err,
+			)
 	}
 
-	return rel
+	return rel,
+		nil
 }

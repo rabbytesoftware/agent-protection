@@ -1,6 +1,7 @@
 package compositionroot
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/token"
@@ -45,12 +46,21 @@ func Compositionroot(
 			)
 	}
 
-	return everyComponentFindings(
-			root,
-			directories,
-			paths,
-			files,
-		),
+	findings, err = everyComponentFindings(
+		root,
+		directories,
+		paths,
+		files,
+	)
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"composition roots: %w",
+				err,
+			)
+	}
+
+	return findings,
 		nil
 }
 
@@ -59,26 +69,34 @@ func everyComponentFindings(
 	directories []string,
 	paths []string,
 	files []source.File,
-) (findings []report.Finding) {
+) (findings []report.Finding, err error) {
 	groups := groupByDirectory(paths)
 	parsed := indexByPath(files)
-	for _, directory := range components(
+	found, err := components(
 		root,
 		directories,
 		slices.Collect(maps.Keys(groups)),
-	) {
+	)
+	failures := []error{err}
+	for _, directory := range found {
+		componentFound, componentErr := componentFindings(
+			root,
+			directory,
+			groups[directory],
+			parsed,
+		)
 		findings = append(
 			findings,
-			componentFindings(
-				root,
-				directory,
-				groups[directory],
-				parsed,
-			)...,
+			componentFound...,
+		)
+		failures = append(
+			failures,
+			componentErr,
 		)
 	}
 
-	return findings
+	return findings,
+		errors.Join(failures...)
 }
 
 func groupByDirectory(
@@ -111,39 +129,54 @@ func components(
 	root string,
 	directories []string,
 	sourceDirectories []string,
-) (found []string) {
+) (found []string, err error) {
+	failures := []error{}
 	for _, directory := range directories {
+		component, componentErr := asComponent(
+			root,
+			directory,
+			sourceDirectories,
+		)
 		found = append(
 			found,
-			asComponent(
-				root,
-				directory,
-				sourceDirectories,
-			)...,
+			component...,
+		)
+		failures = append(
+			failures,
+			componentErr,
 		)
 	}
 
-	return found
+	return found,
+		errors.Join(failures...)
 }
 
 func asComponent(
 	root string,
 	directory string,
 	sourceDirectories []string,
-) (component []string) {
-	isInsideBoundary := source.IsInternalTree(source.RelPath(
+) (component []string, err error) {
+	rel, err := source.RelPath(
 		root,
 		directory,
-	)) && !source.IsInternalDirectory(directory)
+	)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	isInsideBoundary := source.IsInternalTree(rel) && !source.IsInternalDirectory(directory)
 	isComponent := isInsideBoundary && len(childPackages(
 		directory,
 		sourceDirectories,
 	)) >= source.CompositionRootThreshold
 	if !isComponent {
-		return nil
+		return nil,
+			nil
 	}
 
-	return []string{directory}
+	return []string{directory},
+		nil
 }
 
 func childPackages(
@@ -199,47 +232,55 @@ func componentFindings(
 	directory string,
 	entries []string,
 	parsed map[string]source.File,
-) (findings []report.Finding) {
+) (findings []report.Finding, err error) {
 	index := slices.IndexFunc(
 		entries,
 		isCompositionRoot,
 	)
 	if index < 0 {
-		return []report.Finding{missingRootFinding(
+		return missingRootFindings(
 			root,
 			directory,
-		)}
+		)
 	}
 
-	strays := slices.Delete(
-		slices.Clone(entries),
-		index,
-		index+1,
+	strays, err := strayFindings(
+		root,
+		slices.Delete(
+			slices.Clone(entries),
+			index,
+			index+1,
+		),
 	)
 	return slices.Concat(
-		contractFindings(parsed[entries[index]]),
-		strayFindings(
-			root,
+			contractFindings(parsed[entries[index]]),
 			strays,
 		),
-	)
+		err
 }
 
-func missingRootFinding(
+func missingRootFindings(
 	root string,
 	directory string,
-) (finding report.Finding) {
-	return report.Finding{
-		Rule: missingRule,
-		Location: source.RelPath(
-			root,
-			directory,
-		),
-		Snippet: fmt.Sprintf(
-			"component directory has no composition root: add %s.go",
-			filepath.Base(directory),
-		),
+) (findings []report.Finding, err error) {
+	location, err := source.RelPath(
+		root,
+		directory,
+	)
+	if err != nil {
+		return nil,
+			err
 	}
+
+	return []report.Finding{{
+			Rule:     missingRule,
+			Location: location,
+			Snippet: fmt.Sprintf(
+				"component directory has no composition root: add %s.go",
+				filepath.Base(directory),
+			),
+		}},
+		nil
 }
 
 func contractFindings(
@@ -302,22 +343,29 @@ func structFindings(
 func strayFindings(
 	root string,
 	strays []string,
-) (findings []report.Finding) {
+) (findings []report.Finding, err error) {
+	failures := []error{}
 	for _, stray := range strays {
+		location, locationErr := source.RelPath(
+			root,
+			stray,
+		)
 		findings = append(
 			findings,
 			report.Finding{
-				Rule: looseRule,
-				Location: source.RelPath(
-					root,
-					stray,
-				),
-				Snippet: "file beside the composition root: move it into its own package under internal/",
+				Rule:     looseRule,
+				Location: location,
+				Snippet:  "file beside the composition root: move it into its own package under internal/",
 			},
+		)
+		failures = append(
+			failures,
+			locationErr,
 		)
 	}
 
-	return findings
+	return findings,
+		errors.Join(failures...)
 }
 
 func exportedTypes(

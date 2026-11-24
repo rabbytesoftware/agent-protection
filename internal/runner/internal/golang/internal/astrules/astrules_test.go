@@ -1,6 +1,7 @@
 package astrules_test
 
 import (
+	"go/format"
 	"go/parser"
 	"go/token"
 	"slices"
@@ -58,6 +59,96 @@ func TestAstrulesAppliesLayoutRulesToTests(
 		"test files get layout rules",
 		findings,
 		[]string{"R01", "R03"},
+	)
+}
+
+func TestEdits(
+	t *testing.T,
+) {
+	file := parsedContent(
+		t,
+		"package p\n\nfunc f(a int, b int) {\n\tif a > b {\n\t}\n\tg(a, b)\n}\n",
+	)
+	edits := astrules.Edits(file)
+	formatted, err := format.Source(source.Splice(
+		file.Content,
+		edits,
+	))
+	if err != nil {
+		t.Fatalf(
+			"format edited code: %v",
+			err,
+		)
+	}
+
+	remaining := astrules.Astrules(
+		[]source.File{parsedContent(
+			t,
+			string(formatted),
+		)},
+		nil,
+	)
+	for _, finding := range remaining {
+		assertNotLayout(
+			t,
+			finding,
+		)
+	}
+}
+
+func assertNotLayout(
+	t *testing.T,
+	finding report.Finding,
+) {
+	t.Helper()
+	if slices.Contains(
+		[]string{"R01", "R52", "R55"},
+		finding.Rule,
+	) {
+		t.Errorf(
+			"Edits() left %s at %s",
+			finding.Rule,
+			finding.Location,
+		)
+	}
+}
+
+func parsedContent(
+	t *testing.T,
+	code string,
+) (file source.File) {
+	t.Helper()
+	file, err := source.Parse(
+		"",
+		"p.go",
+		[]byte(code),
+	)
+	if err != nil {
+		t.Fatalf(
+			"parse fixture: %v",
+			err,
+		)
+	}
+
+	return file
+}
+
+func TestAstrulesAppliesDroppedErrorRuleToTests(
+	t *testing.T,
+) {
+	test := parsed(
+		t,
+		"package p\n\nfunc TestX(\n\tt *testing.T,\n) {\n\tif err := run(); err != nil {\n\t\treturn\n\t}\n}\n",
+	)
+	findings := astrules.Astrules(
+		nil,
+		[]source.File{test},
+	)
+	assertRules(
+		t,
+		"a test that returns on an error it never reports is a dropped error",
+		findings,
+		[]string{"R26"},
 	)
 }
 

@@ -70,11 +70,12 @@ func (o Output) section(
 	var builder strings.Builder
 	fmt.Fprintf(
 		&builder,
-		"\n=== %s: %s ===\nWHY: %s\nFIX: %s\n\n",
+		"\n=== %s: %s ===\nWHY: %s\nFIX: %s\nNOT A FIX: %s\n\n",
 		rule,
 		doc.Text,
 		doc.Rationale,
 		doc.FixStrategy,
+		doc.NotAFix,
 	)
 	for _, finding := range o.Findings {
 		builder.WriteString(entry(

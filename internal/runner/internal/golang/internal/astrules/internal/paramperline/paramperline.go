@@ -176,50 +176,19 @@ func parameterSpans(
 	file source.File,
 	params *ast.FieldList,
 ) (spans []span) {
-	for _, field := range params.List {
-		spans = append(
-			spans,
-			fieldSpans(
-				file,
-				field,
-			)...,
-		)
-	}
-
-	return spans
-}
-
-func fieldSpans(
-	file source.File,
-	field *ast.Field,
-) (spans []span) {
-	if len(field.Names) == 0 {
-		return []span{{first: lineOf(
-			file,
-			field.Pos(),
-		), last: lineOf(
-			file,
-			field.End(),
-		)}}
-	}
-
-	for _, name := range field.Names {
+	for _, extent := range parameterExtents(params) {
 		spans = append(
 			spans,
 			span{first: lineOf(
 				file,
-				name.Pos(),
+				extent.Start,
 			), last: lineOf(
 				file,
-				name.End(),
+				extent.End,
 			)},
 		)
 	}
 
-	spans[len(spans)-1].last = lineOf(
-		file,
-		field.End(),
-	)
 	return spans
 }
 
