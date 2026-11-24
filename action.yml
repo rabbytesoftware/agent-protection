@@ -30,10 +30,14 @@ runs:
       shell: bash
       run: |
         OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-        ARCH=$(uname -m)
+        case "$(uname -m)" in
+          x86_64|amd64) ARCH=amd64 ;;
+          aarch64|arm64) ARCH=arm64 ;;
+          *) echo "::error::Unsupported architecture $(uname -m)"; exit 1 ;;
+        esac
         VERSION="${{ steps.resolve.outputs.version }}"
         URL="https://github.com/rabbytesoftware/agent-protection/releases/download/${VERSION}/ap_${OS}_${ARCH}.tar.gz"
-        curl -sSL "$URL" -o /tmp/ap.tar.gz
+        curl -fsSL "$URL" -o /tmp/ap.tar.gz
         tar -xzf /tmp/ap.tar.gz -C /usr/local/bin ap
         chmod +x /usr/local/bin/ap
 
