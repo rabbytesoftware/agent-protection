@@ -37,9 +37,10 @@ func Syntax(
 	files []source.File,
 	tests []source.File,
 ) (findings []report.Finding) {
+	handWritten := source.HandWritten(files)
 	everyFile := slices.Concat(
-		files,
-		tests,
+		handWritten,
+		source.HandWritten(tests),
 	)
 	return slices.Concat(
 		paramperline.Paramperline(everyFile),
@@ -52,22 +53,25 @@ func Syntax(
 		noelse.Noelse(everyFile),
 		namedreturn.Namedreturn(everyFile),
 		genericname.Genericname(everyFile),
-		droppederror.Droppederror(everyFile),
+		droppederror.Droppederror(slices.Concat(
+			files,
+			tests,
+		)),
 		gofmtcheck.Gofmtcheck(everyFile),
-		boolparam.Boolparam(files),
+		boolparam.Boolparam(handWritten),
 		cqs.Cqs(files),
-		sideeffect.Sideeffect(files),
-		packagehygiene.Packagehygiene(files),
-		nostutter.Nostutter(files),
-		onetypeperfile.Onetypeperfile(files),
-		ctxfirstparam.Ctxfirstparam(files),
-		filelinelimit.Filelinelimit(files),
-		nopanic.Nopanic(files),
+		sideeffect.Sideeffect(handWritten),
+		packagehygiene.Packagehygiene(handWritten),
+		nostutter.Nostutter(handWritten),
+		onetypeperfile.Onetypeperfile(handWritten),
+		ctxfirstparam.Ctxfirstparam(handWritten),
+		filelinelimit.Filelinelimit(handWritten),
+		nopanic.Nopanic(handWritten),
 		packagestate.Packagestate(files),
-		stateless.Stateless(files),
+		stateless.Stateless(handWritten),
 		concretetype.Concretetype(files),
 		roleinterface.Roleinterface(everyFile),
-		realinfra.Realinfra(tests),
+		realinfra.Realinfra(source.HandWritten(tests)),
 	)
 }
 

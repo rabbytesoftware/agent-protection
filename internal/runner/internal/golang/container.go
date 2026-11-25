@@ -64,10 +64,10 @@ func Fix(
 
 	return rewrite.Rewrite(
 		root,
-		slices.Concat(
+		source.HandWritten(slices.Concat(
 			files,
 			tests,
-		),
+		)),
 		syntax.Edits,
 	)
 }

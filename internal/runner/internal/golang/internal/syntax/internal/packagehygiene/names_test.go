@@ -28,6 +28,42 @@ func TestPackagehygieneNames(
 			want: []string{"R22 internal/orders/internal/extra/a.go:1"},
 		},
 		{
+			name: "escape-hatch names are reported",
+			rel:  "internal/orders/internal/legacy/a.go",
+			code: "package legacy\n",
+			want: []string{"R22 internal/orders/internal/legacy/a.go:1"},
+		},
+		{
+			name: "data and glue packages are reported",
+			rel:  "internal/glue/a.go",
+			code: "package data\n",
+			want: []string{"R22 internal/glue/a.go:1", "R21 internal/glue", "R22 internal/glue"},
+		},
+		{
+			name: "util and helper affixes are reported",
+			rel:  "internal/internalutil/a.go",
+			code: "package internalutil\n",
+			want: []string{"R22 internal/internalutil/a.go:1"},
+		},
+		{
+			name: "legacy and compat affixes are reported",
+			rel:  "internal/compatauth/a.go",
+			code: "package compatauth\n",
+			want: []string{"R22 internal/compatauth/a.go:1"},
+		},
+		{
+			name: "names that only contain an escape word pass",
+			rel:  "internal/manifold/a.go",
+			code: "package manifold\n",
+			want: nil,
+		},
+		{
+			name: "template packages pass",
+			rel:  "internal/tmpl/a.go",
+			code: "package tmpl\n",
+			want: nil,
+		},
+		{
 			name: "numbered names are reported",
 			rel:  "internal/orders/internal/part2/a.go",
 			code: "package part2\n",

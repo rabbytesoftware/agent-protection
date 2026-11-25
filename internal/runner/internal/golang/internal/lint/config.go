@@ -16,6 +16,8 @@ linters:
     - errcheck
     - nakedret
     - interfacebloat
+  exclusions:
+    generated: disable
   settings:
     errcheck:
       check-blank: true

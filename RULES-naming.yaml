@@ -1,0 +1,40 @@
+R22:
+    id: R22
+    level: L1
+    text: "No util/common/helpers/base/misc packages, and no escape-hatch names: legacy, compat, tmp, temp, wip, hack, glue, data, generic, old, new, deprecated, unused, todo, workaround, junk and the like; a name opening or ending with util, utils, helper, helpers, legacy, compat or deprecated (internalutil, legacyauth) counts as the same"
+    enforcement: analyzer
+    rationale: "A generically-named package becomes an unbounded dumping ground with no single responsibility, and its name tells a reader nothing about what's inside. Escape-hatch names such as legacy, compat, wip or glue say why code was parked, not what it does, so they collect everything nobody wanted to design."
+    fix_strategy: Name the package after what it actually does, and split it if it's doing more than one thing.
+    not_a_fix: "Renaming util to a synonym like shared, core, kit, lib, support, toolbox, glue or data while it stays a grab bag; gluing the banned word onto another word (internalutil, oldstore); splitting it alphabetically or by file count into packages that still have no single responsibility; dumping the helpers into the importer's top-level file instead."
+R24:
+    id: R24
+    level: L1
+    text: No init() and no mutable package-level state
+    enforcement: lint
+    rationale: init() runs implicitly with no caller-visible trigger, and package-level mutable state is shared, hidden, and hard to reason about under concurrency or tests.
+    fix_strategy: Move init logic into an explicit constructor; pass state through a struct field instead of a package var.
+    not_a_fix: "Hiding the state in a package-level struct, map or sync.Once singleton; replacing init() with a var x = setup() initializer that runs the same hidden code at import time; keeping the state in a closure returned by a package func so it is shared but unseen; adding a // Code generated ... DO NOT EDIT. header, a go:generate directive or a generator config: generated files are still checked for package state."
+R26:
+    id: R26
+    level: L1
+    text: Never ignore an error; wrap with %w and compare with errors.Is/As
+    enforcement: analyzer
+    rationale: "A silently discarded error is a silently discarded failure -- the single most common way real bugs get masked in Go. Checking an error and then returning, continuing or substituting a fallback without using it hides the failure just as _ = does."
+    fix_strategy: "Return the error wrapped with context via %w, or hand it to a reporter; replacing it with a zero value or a bare sentinel still drops it."
+    not_a_fix: "Wrappers like saveBestEffort or swallowPanic that check the error and drop it; checking err and then returning silently or returning nil; assigning to _ or to a variable nobody reads; functions like ids.New() that return \"\" or a zero value on failure instead of an error; logging the error and carrying on as if the call succeeded; marking the file as generated: generated files are still checked for dropped errors."
+R56:
+    id: R56
+    level: L0
+    text: "Functions, methods, types and named closures, exported or not, carry a name that says what they do; no name made only of content-free words, opened by a content-free prefix, or told apart by a trailing number (HandleData1, match2) unless the number belongs to a domain term (Base64, SHA256, Int64, OAuth2, IPv6, X509), a version or percentile (ParseV2, latencyP99), an HTTP status or a benchmark size"
+    enforcement: analyzer
+    rationale: "Extracting a block into a helper only helps when the helper's name explains the block. runHandler, makeCallback, wrap, implSendCreate, DoWork or HandleData2 move code without naming it, so the reader still has to open the body, and the line, depth and paragraph limits are met in form while the readability they protect is lost. Exporting the name changes nothing about that."
+    fix_strategy: "Rename after the specific behavior or value: what the function decides, returns or causes, or the role the closure plays in its caller (recordDelivery, failAfterFirstAttempt). When several functions or closures differ only by a number, name what each one does differently. Left alone: main, init, a name equal to its package name (wrap.Wrap), a lone role word such as handler or run, and methods whose names standard library interfaces force (Error, String, Read, Write, Close, ServeHTTP, Len, Less, Swap, Unwrap, Is, As, Do, Value, Helper and similar)."
+    not_a_fix: "Renaming to another content-free word; swapping the number for a letter or a synonym (handlerB, otherHandler, deliveryA1); exporting the name to skip the check; gluing a domain term onto the name (handleDataBase64) only to make the number look meaningful; inlining the block back as an unnamed closure argument."
+R58:
+    id: R58
+    level: L1
+    text: "Sibling packages do not split one concept: no two sibling package names share 80% or more of the shorter name as a common prefix (dispatch and dispatcher, mock and mockbuses, store and storage, parse and parsing), and no two reduce to the same stem once inflections (-age, -ing, -er, -or, -ion, -ions, -ment, -s, -es, -e) and version markers (old, new, legacy, next, prev, v2, 2) are stripped (oldstore and store)"
+    enforcement: arch
+    rationale: "Look-alike sibling names mean one responsibility was cut in two, usually to get under a file cap, and readers cannot tell which half to open."
+    fix_strategy: "Merge the two packages, or rename each after the distinct thing it provides."
+    not_a_fix: "Renaming one with a synonym that hides the split while the split stays (store and persistence); renaming one to an inflected form of the other; marking one as old, new or v2 while both stay in use; nesting one inside the other unchanged."

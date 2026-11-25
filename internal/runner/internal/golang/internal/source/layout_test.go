@@ -2,7 +2,6 @@ package source_test
 
 import (
 	"path/filepath"
-	"slices"
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
@@ -195,100 +194,6 @@ func TestIsCompositionRoot(
 				"arch",
 			),
 			want,
-		)
-	}
-}
-
-func TestHasSource(
-	t *testing.T,
-) {
-	root := t.TempDir()
-	writeFile(
-		t,
-		filepath.Join(
-			root,
-			"src/a.go",
-		),
-		"package a\n",
-	)
-	writeFile(
-		t,
-		filepath.Join(
-			root,
-			"tests/a_test.go",
-		),
-		"package a\n",
-	)
-	cases := map[string]bool{"src": true, "tests": false}
-	for dir, want := range cases {
-		hasSource, err := source.HasSource(filepath.Join(
-			root,
-			dir,
-		))
-		assertBoolResult(
-			t,
-			"HasSource("+dir+")",
-			hasSource,
-			err,
-			want,
-		)
-	}
-
-	_, err := source.HasSource(filepath.Join(
-		root,
-		"missing",
-	))
-	if err == nil {
-		t.Error("HasSource(missing) error = nil, want a read error")
-	}
-}
-
-func TestEntries(
-	t *testing.T,
-) {
-	root := t.TempDir()
-	writeFile(
-		t,
-		filepath.Join(
-			root,
-			"a.go",
-		),
-		"package a\n",
-	)
-	writeFile(
-		t,
-		filepath.Join(
-			root,
-			"a_test.go",
-		),
-		"package a\n",
-	)
-	writeFile(
-		t,
-		filepath.Join(
-			root,
-			"child/b.go",
-		),
-		"package b\n",
-	)
-	paths, err := source.Entries(root)
-	if err != nil {
-		t.Fatalf(
-			"Entries() error = %v",
-			err,
-		)
-	}
-
-	if !slices.Equal(
-		paths,
-		[]string{filepath.Join(
-			root,
-			"a.go",
-		)},
-	) {
-		t.Errorf(
-			"Entries() = %v, want only a.go",
-			paths,
 		)
 	}
 }

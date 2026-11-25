@@ -31,21 +31,12 @@ func Source(
 			err
 	}
 
-	paths, err := selected(
+	return parseAll(
+		root,
 		slices.DeleteFunc(
 			found.files,
 			IsTest,
 		),
-		handWrittenPath,
-	)
-	if err != nil {
-		return nil,
-			err
-	}
-
-	return parseAll(
-		root,
-		paths,
 	)
 }
 
@@ -206,6 +197,13 @@ func headerComments(
 			)
 	}
 
+	return leadingComments(syntax),
+		nil
+}
+
+func leadingComments(
+	syntax *ast.File,
+) (comments []*ast.Comment) {
 	for _, group := range syntax.Comments {
 		comments = append(
 			comments,
@@ -216,8 +214,7 @@ func headerComments(
 		)
 	}
 
-	return comments,
-		nil
+	return comments
 }
 
 func commentsBefore(
@@ -296,11 +293,19 @@ func parse(
 			)
 	}
 
-	return Parse(
+	file, err = Parse(
 		root,
 		path,
 		content,
 	)
+	if err != nil {
+		return File{},
+			err
+	}
+
+	file.IsGenerated = isGeneratedHeader(leadingComments(file.Syntax)) && hasProvenance(path)
+	return file,
+		nil
 }
 
 func selected(
@@ -330,24 +335,6 @@ func selected(
 		nil
 }
 
-func handWrittenPath(
-	path string,
-) (kept []string, err error) {
-	generated, err := IsGenerated(path)
-	if err != nil {
-		return nil,
-			err
-	}
-
-	if generated {
-		return nil,
-			nil
-	}
-
-	return []string{path},
-		nil
-}
-
 func unitTestPath(
 	path string,
 ) (kept []string, err error) {
@@ -358,14 +345,28 @@ func unitTestPath(
 	}
 
 	tagged, err := hasIntegrationTag(comments)
-	isExcluded := tagged || isGeneratedHeader(comments)
-	if isExcluded {
+	if tagged {
 		return nil,
 			err
 	}
 
 	return []string{path},
 		err
+}
+
+func HandWritten(
+	files []File,
+) (kept []File) {
+	return slices.DeleteFunc(
+		slices.Clone(files),
+		isGeneratedFile,
+	)
+}
+
+func isGeneratedFile(
+	file File,
+) (generated bool) {
+	return file.IsGenerated
 }
 
 func isNotTest(

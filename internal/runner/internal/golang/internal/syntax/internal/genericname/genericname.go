@@ -16,7 +16,7 @@ const (
 	snippet           = "%s %s: name what it does or holds"
 	prefixReason      = "opens with %q, which tells nothing about it"
 	contentFreeReason = "is built only from content-free words"
-	numberedReason    = "differs from a sibling name only by its number"
+	numberedReason    = "is told apart by a trailing number, not by what it does"
 	programEntry      = "main"
 	packageSetup      = "init"
 	blank             = "_"
@@ -38,24 +38,14 @@ func Genericname(
 func fileFindings(
 	file source.File,
 ) (findings []report.Finding) {
-	identifiers := slices.DeleteFunc(
+	for _, identifier := range slices.DeleteFunc(
 		declaredNames(file.Syntax),
-		isExempt,
-	)
-	siblings := []string{}
-	for _, identifier := range identifiers {
-		siblings = append(
-			siblings,
-			identifier.Name,
-		)
-	}
-
-	for _, identifier := range identifiers {
+		isExemptIn(file.Syntax.Name.Name),
+	) {
 		findings = append(
 			findings,
 			identifierFindings(
 				file,
-				siblings,
 				identifier,
 			)...,
 		)
@@ -66,13 +56,9 @@ func fileFindings(
 
 func identifierFindings(
 	file source.File,
-	siblings []string,
 	identifier *ast.Ident,
 ) (findings []report.Finding) {
-	reason := genericReason(
-		identifier.Name,
-		siblings,
-	)
+	reason := genericReason(identifier.Name)
 	if reason == "" {
 		return nil
 	}
@@ -90,7 +76,6 @@ func identifierFindings(
 
 func genericReason(
 	name string,
-	siblings []string,
 ) (reason string) {
 	words := Words(name)
 	switch {
@@ -101,10 +86,7 @@ func genericReason(
 		)
 	case isContentFree(words):
 		return contentFreeReason
-	case isNumberedSibling(
-		name,
-		siblings,
-	):
+	case isNumbered(name):
 		return numberedReason
 	}
 
@@ -155,24 +137,6 @@ func isFiller(
 	)
 }
 
-func isNumberedSibling(
-	name string,
-	siblings []string,
-) (numbered bool) {
-	stem := unnumbered(name)
-	isNumbered := stem != name && stem != "" && unicode.IsLower(rune(stem[len(stem)-1]))
-	if !isNumbered {
-		return false
-	}
-
-	for _, sibling := range siblings {
-		isSibling := sibling != name && unnumbered(sibling) == stem
-		numbered = numbered || isSibling
-	}
-
-	return numbered
-}
-
 func unnumbered(
 	name string,
 ) (stem string) {
@@ -191,7 +155,10 @@ func isNumber(
 func declaredNames(
 	syntax *ast.File,
 ) (identifiers []*ast.Ident) {
-	for _, function := range source.Nodes[*ast.FuncDecl](syntax) {
+	for _, function := range slices.DeleteFunc(
+		source.Nodes[*ast.FuncDecl](syntax),
+		isInterfaceMethod,
+	) {
 		identifiers = append(
 			identifiers,
 			function.Name,
@@ -273,13 +240,41 @@ func closureTarget(
 	return []*ast.Ident{identifier}
 }
 
-func isExempt(
-	identifier *ast.Ident,
-) (exempt bool) {
-	return identifier.IsExported() || slices.Contains(
-		[]string{programEntry, packageSetup, blank},
-		identifier.Name,
+func isExemptIn(
+	packageName string,
+) (isExempt func(*ast.Ident) bool) {
+	return func(
+		identifier *ast.Ident,
+	) (exempt bool) {
+		return strings.EqualFold(
+			identifier.Name,
+			packageName,
+		) || slices.Contains(
+			[]string{programEntry, packageSetup, blank},
+			identifier.Name,
+		)
+	}
+}
+
+func isInterfaceMethod(
+	function *ast.FuncDecl,
+) (forced bool) {
+	return function.Recv != nil && slices.Contains(
+		interfaceMethods(),
+		function.Name.Name,
 	)
+}
+
+func interfaceMethods() (names []string) {
+	return []string{
+		"Error", "String", "GoString", "Format", "Read", "Write", "Close", "Seek",
+		"ReadAt", "WriteAt", "ReadFrom", "WriteTo", "ReadByte", "WriteByte", "ReadRune",
+		"WriteString", "ServeHTTP", "RoundTrip", "Len", "Less", "Swap", "Push", "Pop",
+		"Unwrap", "Is", "As", "Timeout", "Temporary", "MarshalJSON", "UnmarshalJSON",
+		"MarshalText", "UnmarshalText", "MarshalBinary", "UnmarshalBinary", "Scan", "Value",
+		"Do", "Handle", "Enabled", "WithAttrs", "WithGroup", "Deadline", "Done", "Err",
+		"Lock", "Unlock", "RLock", "RUnlock", "Sum", "Size", "BlockSize", "Reset", "Helper",
+	}
 }
 
 func prefixWords() (words []string) {
