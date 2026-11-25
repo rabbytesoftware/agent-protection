@@ -18,6 +18,7 @@ const (
 	moduleRoot        = "."
 	internalDirectory = "internal"
 	mainPackage       = "main"
+	sentinelPrefix    = "Err"
 )
 
 func Compositionroot(

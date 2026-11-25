@@ -50,6 +50,14 @@ func TestPublicapi(
 				want: []string{"R14 internal/svc/svc.go:3"},
 			},
 			{
+				name: "mock file that production code calls is checked as production",
+				files: map[string]string{
+					"fake.go":      "package arith\n\ntype fake struct{}\n\nfunc newFake() (f *fake) {\n\treturn &fake{}\n}\n",
+					"container.go": "package arith\n\nfunc Arith() (f any) {\n\treturn newFake()\n}\n",
+				},
+				want: []string{"R14 fake.go:3", "R14 fake.go:5"},
+			},
+			{
 				name: "mock files and mock directories pass",
 				files: map[string]string{
 					"store/mock_store.go":  "package store\n\nfunc helper() {}\n",

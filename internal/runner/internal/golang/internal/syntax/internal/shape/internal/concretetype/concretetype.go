@@ -23,7 +23,7 @@ func Concretetype(
 ) (findings []report.Finding) {
 	packages := map[string][]source.File{}
 	for _, file := range slices.DeleteFunc(
-		slices.Clone(files),
+		source.WithoutMocks(files),
 		isExempt,
 	) {
 		directory := filepath.Dir(file.Rel)
@@ -235,7 +235,6 @@ func isExempt(
 	file source.File,
 ) (exempt bool) {
 	return source.IsTest(file.Path) ||
-		source.IsMock(file.Rel) ||
 		source.IsExample(file.Rel) ||
 		file.Syntax.Name.Name == mainPackage
 }

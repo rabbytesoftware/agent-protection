@@ -49,7 +49,7 @@ func Entrypoint(
 	return filesFindings(
 			modulePath,
 			directoriesOf(paths),
-			files,
+			source.WithoutMocks(files),
 		),
 		nil
 }
@@ -138,8 +138,7 @@ func roleOf(
 	file source.File,
 	sourceDirectories []string,
 ) (role string) {
-	isExempt := source.IsMock(file.Rel) || source.IsExample(file.Rel)
-	if isExempt {
+	if source.IsExample(file.Rel) {
 		return noRole
 	}
 

@@ -107,6 +107,11 @@ func TestDeclarationPackages(
 		),
 		parsedAt(
 			t,
+			"money/price.go",
+			"package money\n\ntype Price int\n\nfunc (p Price) String() string {\n\tif p > 10 {\n\t\treturn \"big\"\n\t}\n\n\treturn \"small\"\n}\n",
+		),
+		parsedAt(
+			t,
 			"root.go",
 			"package root\n\nimport \"fmt\"\n\nvar _ = fmt.Sprint\n",
 		),
@@ -141,6 +146,68 @@ func TestErrorMethods(
 		t.Errorf(
 			"ErrorMethods() = %v",
 			source.ErrorMethods(),
+		)
+	}
+}
+
+func TestIsPlainRendering(
+	t *testing.T,
+) {
+	cases := []struct {
+		body string
+		want bool
+	}{
+		{body: "return r.message", want: true},
+		{body: "return \"failed: \" + r.message", want: true},
+		{body: "return string(r.code)", want: true},
+		{body: "return r.cause.Error()", want: true},
+		{body: "return fmt.Sprintf(\"%s\", r.message)", want: true},
+		{body: "return errors.Unwrap(r.cause)", want: true},
+		{body: "return", want: true},
+		{body: "return r.message, r.place", want: false},
+		{body: "r.count++\nreturn r.message", want: false},
+		{body: "panic(r.message)", want: false},
+		{body: "return strings.ToUpper(r.message)", want: false},
+		{body: "return fmt.Sprintf(\"%s\", strings.ToUpper(r.message))", want: false},
+		{body: "return r.count * 2", want: false},
+		{body: "return string(r.count * 2)", want: false},
+		{body: "return r.names[0]", want: false},
+		{body: "return r.cause.Error(r.message)", want: false},
+		{body: "return format(r.message)", want: false},
+		{body: "return r.format().Text", want: false},
+	}
+	for _, tc := range cases {
+		assertPlainRendering(
+			t,
+			tc.body,
+			tc.want,
+		)
+	}
+
+	if !source.IsPlainRendering(nil) {
+		t.Error("IsPlainRendering(nil) = false, want true for a body-less declaration")
+	}
+}
+
+func assertPlainRendering(
+	t *testing.T,
+	body string,
+	want bool,
+) {
+	t.Helper()
+	file := parsedAt(
+		t,
+		"r.go",
+		"package r\n\nfunc (r R) String() string {\n\t"+body+"\n}\n",
+	)
+	function := source.Nodes[*ast.FuncDecl](file.Syntax)[0]
+	got := source.IsPlainRendering(function.Body)
+	if got != want {
+		t.Errorf(
+			"IsPlainRendering(%q) = %v, want %v",
+			body,
+			got,
+			want,
 		)
 	}
 }

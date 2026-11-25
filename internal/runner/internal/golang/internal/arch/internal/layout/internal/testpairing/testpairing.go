@@ -23,7 +23,7 @@ const (
 func Testpairing(
 	root string,
 ) (findings []report.Finding, err error) {
-	paths, err := source.Paths(root)
+	files, err := source.Source(root)
 	if err != nil {
 		return nil,
 			fmt.Errorf(
@@ -43,8 +43,9 @@ func Testpairing(
 
 	findings, err = pairingFindings(
 		root,
-		paths,
+		pathsOf(files),
 		tests,
+		source.MockFiles(files),
 	)
 	if err != nil {
 		return nil,
@@ -58,15 +59,30 @@ func Testpairing(
 		nil
 }
 
+func pathsOf(
+	files []source.File,
+) (paths []string) {
+	for _, file := range files {
+		paths = append(
+			paths,
+			file.Path,
+		)
+	}
+
+	return paths
+}
+
 func pairingFindings(
 	root string,
 	paths []string,
 	tests []string,
+	mocks []string,
 ) (findings []report.Finding, err error) {
 	untested, untestedErr := untestedSources(
 		root,
 		paths,
 		tests,
+		mocks,
 	)
 	orphans, orphansErr := orphanTests(
 		root,
@@ -87,6 +103,7 @@ func untestedSources(
 	root string,
 	paths []string,
 	tests []string,
+	mocks []string,
 ) (findings []report.Finding, err error) {
 	failures := []error{}
 	for _, path := range paths {
@@ -94,6 +111,7 @@ func untestedSources(
 			root,
 			path,
 			tests,
+			mocks,
 		)
 		findings = append(
 			findings,
@@ -113,6 +131,7 @@ func untestedSource(
 	root string,
 	path string,
 	tests []string,
+	mocks []string,
 ) (findings []report.Finding, err error) {
 	syntax, err := handWritten(path)
 	if syntax == nil ||
@@ -143,6 +162,7 @@ func untestedSource(
 		root,
 		path,
 		tests,
+		mocks,
 	)
 }
 
@@ -238,6 +258,7 @@ func missingTestFindings(
 	root string,
 	path string,
 	tests []string,
+	mocks []string,
 ) (findings []report.Finding, err error) {
 	location, err := source.RelPath(
 		root,
@@ -252,7 +273,10 @@ func missingTestFindings(
 		path,
 		goExtension,
 	) + testSuffix
-	isPaired := source.IsMock(location) || slices.Contains(
+	isPaired := slices.Contains(
+		mocks,
+		location,
+	) || slices.Contains(
 		tests,
 		test,
 	)

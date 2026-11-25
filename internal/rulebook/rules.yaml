@@ -89,19 +89,19 @@ R15:
 R16:
     id: R16
     level: L1
-    text: "Siblings form one layer: a package may import a sibling (same parent directory, in any tree) only if that sibling imports no sibling of its own. Every in-module import is judged at the lowest common ancestor directory of importer and imported: both ends are lifted to the two child directories of that ancestor, so importing internal/store/order from internal/checkout is an edge from checkout to store, and anything below store importing a sibling of store makes store a non-foundation. Each lifted edge is reported once, at its first import by path and line, with how many imports in how many packages make it"
+    text: "Siblings form one layer: a package may import a sibling (same parent directory, in any tree) only if that sibling imports no sibling with logic of its own. Importing a declaration-only sibling (types, constants, Err sentinels and single-return Error/String methods, such as a model or contracts package) does not make a package a non-foundation, exactly as declaration-only siblings do not count toward R47. Every in-module import is judged at the lowest common ancestor directory of importer and imported: both ends are lifted to the two child directories of that ancestor, so importing internal/store/order from internal/checkout is an edge from checkout to store, and anything below store importing a sibling package with logic makes store a non-foundation. Each lifted edge is reported once, at its first import by path and line, with how many imports in how many packages make it"
     enforcement: arch
-    rationale: "Packages that share a parent are one layer. When siblings import siblings that import siblings, the directory hides a dependency chain nobody can see from the tree, and the parent's container.go stops being where the wiring is. Importing a cousin (a package below a sibling) instead of the sibling itself hides the same chain one level deeper. Code anywhere under an internal/ directory counts as that internal/ directory, so internal/a importing contracts is an edge from internal/ to contracts."
-    fix_strategy: "Declare the interface you need in the consuming package and let the parent's container.go pass the implementation in, or make the imported sibling a foundation by removing its own sibling imports (a vocabulary package such as contracts must not import store). Foundation or vocabulary siblings whose whole subtree imports no sibling may be imported directly. One finding can stand for many imports: fix the edge, not the import line."
-    not_a_fix: "Moving the import into a file named after the package or into the child's own container.go; renaming the imported package models or contracts; nesting one sibling under the other only to break the edge; importing a package below the sibling instead of the sibling; moving the import into a child package of the importer; duplicating the code."
+    rationale: "Packages that share a parent are one layer. When siblings import siblings that import siblings, the directory hides a dependency chain nobody can see from the tree, and the parent's container.go stops being where the wiring is. Importing a cousin (a package below a sibling) instead of the sibling itself hides the same chain one level deeper. Code anywhere under an internal/ directory counts as that internal/ directory, so internal/a importing contracts is an edge from internal/ to contracts. A declaration-only sibling carries no behavior, so a shared helper that maps between model types stays a foundation; counting it would push agents to copy the helper into every consumer."
+    fix_strategy: "Declare the interface you need in the consuming package and let the parent's container.go pass the implementation in, or make the imported sibling a foundation by removing its imports of siblings with logic (a vocabulary package such as contracts must not import store). Foundation siblings, including ones that import only declaration-only siblings, may be imported directly. One finding can stand for many imports: fix the edge, not the import line."
+    not_a_fix: "Moving the import into a file named after the package or into the child's own container.go; renaming the imported package models or contracts; nesting one sibling under the other only to break the edge; importing a package below the sibling instead of the sibling; moving the import into a child package of the importer; duplicating the code; moving behavior into the declaration-only sibling so the helper stops importing anything else."
 R19:
     id: R19
     level: L1
-    text: Nest internal/ at the lowest module that needs it; a package imported by exactly one other internal package must live nested under that importer's own internal/ subtree, not exposed at a shallower level
+    text: "Nest internal/ at the lowest module that needs it; a package imported by exactly one other internal package does not stay exposed at a shallower level: when that importer is a module (it has internal/ children) or a public package, the package moves under the importer's own internal/; when the importer is a leaf internal package, the package is merged into the importer"
     enforcement: arch
-    rationale: A package sitting above its sole consumer's internal/ boundary is importable by anything else in the module even though nothing else uses it; the encapsulation only exists by accident, not by Go's own visibility enforcement, and the first stray import from elsewhere quietly turns an implementation detail into a load-bearing dependency.
-    fix_strategy: Move the package under its sole importer's own internal/ subtree (e.g. importer/internal/<package>), so Go's internal/ visibility rule actually restricts it to that one consumer.
-    not_a_fix: "Adding a token import from a second package only so the package counts as shared; moving it to a directory the rule does not walk; copying the package under its importer while the old exposed copy stays in place."
+    rationale: "A package sitting above its sole consumer's internal/ boundary is importable by anything else in the module even though nothing else uses it; the encapsulation only exists by accident, not by Go's own visibility enforcement, and the first stray import from elsewhere quietly turns an implementation detail into a load-bearing dependency. Nesting it under a leaf importer would give that importer a lone internal/ child, which R51 rejects, and would turn the importer into a module that must then be API-only, so for a leaf the package becomes part of the importer instead."
+    fix_strategy: "Read the finding: for a leaf importer, move the package's files into the importer's directory as same-package files (tests beside them, exported names unexported where only the importer used them) and delete the old directory; for a module or public importer, move the package under importer/internal/<package> and wire it from the importer's container.go."
+    not_a_fix: "Adding a token import from a second package only so the package counts as shared; moving it to a directory the rule does not walk; copying the package under its importer while the old exposed copy stays in place; nesting it under a leaf importer's internal/ and then adding a placeholder sibling to quiet R51."
 R21:
     id: R21
     level: L1
@@ -241,11 +241,11 @@ R47:
 R48:
     id: R48
     level: L0
-    text: "A package with internal/ children has a container.go, and only container.go imports that package's internal/ children; the one exception is an API file that imports a declaration-only internal package solely to re-export its types and constants (type X = vocab.X, const Y = vocab.Y)"
+    text: "A package with internal/ children has a container.go, and only container.go imports that package's internal/ children; the one exception is an API file that imports a declaration-only internal package solely to re-export its types, constants and sentinels (type X = vocab.X, const Y = vocab.Y, var ErrZ = vocab.ErrZ)"
     enforcement: arch
-    rationale: "container.go is where a human or agent looks to see how a module is assembled. If another file imports the internals, or there is no container, the assembly is scattered and cannot be found. Internal packages cannot import their module root, so shared vocabulary lives in a declaration-only internal package; re-exporting it through aliases assembles nothing and keeps one named type on both sides of the boundary."
-    fix_strategy: "Create container.go in the module directory, construct the internal packages there, and keep every other file in the directory to API declarations. When the API and its internals need the same named types, move those types into a declaration-only package under internal/ (types, constants and Err sentinels only), import it from the internals, and re-export it from an API file with type aliases and constants."
-    not_a_fix: "An empty container.go beside files that still import internals; a container.go that forwards to a child doing the real wiring; moving internals up into the module directory to avoid importing them; using the vocabulary import outside alias and const declarations (struct fields, vars, functions); adding behavior to the vocabulary package once it is aliased."
+    rationale: "container.go is where a human or agent looks to see how a module is assembled. If another file imports the internals, or there is no container, the assembly is scattered and cannot be found. Internal packages cannot import their module root, so shared vocabulary lives in a declaration-only internal package; re-exporting it through aliases and sentinel bindings assembles nothing and keeps one named type or one error value on both sides of the boundary, so errors.Is works for callers of the root."
+    fix_strategy: "Create container.go in the module directory, construct the internal packages there, and keep every other file in the directory to API declarations. When the API and its internals need the same named types or sentinel errors, move them into a declaration-only package under internal/ (types, constants and Err sentinels only), import it from the internals, and re-export it from an API file with type aliases, constants and var ErrX = vocab.ErrX bindings."
+    not_a_fix: "An empty container.go beside files that still import internals; a container.go that forwards to a child doing the real wiring; moving internals up into the module directory to avoid importing them; using the vocabulary import outside alias, const and Err sentinel declarations (struct fields, other vars, functions, wrapping a sentinel with fmt.Errorf); declaring a type Error string in the root only to restate sentinels; adding behavior to the vocabulary package once it is aliased."
 R50:
     id: R50
     level: L0
@@ -257,10 +257,10 @@ R50:
 R51:
     id: R51
     level: L0
-    text: A directory literally named internal with exactly one child package (no siblings) has nothing to hide that child from; merge its contents into the grandparent package, eliminating the internal/ layer entirely
+    text: "A directory literally named internal with exactly one child package (no siblings), under a package that is itself internal, has nothing to hide that child from; merge its contents into the grandparent package, eliminating the internal/ layer entirely. A public package or the module root keeps its internal/ even with one child, because its directory holds only API"
     enforcement: arch
-    rationale: internal/ exists to restrict visibility among siblings. A sole child has no sibling to be restricted from, and its real consumer (the package one level up, already the only thing that could ever reach it) sits right next to it; the boundary is pure indirection with nothing on the other side.
-    fix_strategy: Move the child's files up to the grandparent's directory as same-package companion files (or merge into its container file directly), then remove the now-empty internal/ directory.
+    rationale: "internal/ exists to restrict visibility among siblings. A sole child has no sibling to be restricted from, and its real consumer (the package one level up, already the only thing that could ever reach it) sits right next to it; the boundary is pure indirection with nothing on the other side. A public package is different: R14 keeps implementation out of its directory, so its single internal child is the only place the implementation can live."
+    fix_strategy: "Move the child's files up to the grandparent's directory as same-package companion files (or merge into its container file directly), then remove the now-empty internal/ directory."
     not_a_fix: "Adding an empty or placeholder sibling package so internal/ has two children; renaming internal/ to another name so the rule stops applying while the indirection stays."
 R52:
     id: R52
@@ -305,11 +305,11 @@ R56:
 R57:
     id: R57
     level: L1
-    text: "Vocabulary packages (models, model, contracts, contract, types, dto, ports, api, options, entities, schema) hold declarations only: types, constants and errors, no functions or methods beyond Error, Unwrap, Is, As and String"
+    text: "Vocabulary packages (models, model, contracts, contract, types, dto, ports, api, options, entities, schema), and any internal package an API file re-exports through type aliases whose only methods are Error, Unwrap, Is, As and String, hold declarations only: types, constants and errors, no functions or methods beyond Error, Unwrap, Is, As and String, and those methods are a single return of a field, a literal, a concatenation or one fmt.Sprintf, fmt.Errorf or errors call"
     enforcement: arch
-    rationale: "A package named for vocabulary is imported freely by many packages. Behavior hidden there spreads into every importer without the layering, tests and container behavior needs."
-    fix_strategy: "Move each function or method into the package whose behavior it is, under internal/, and keep the vocabulary package to declarations."
-    not_a_fix: "Renaming the package to dodge the list; turning methods into func-typed fields or exported vars holding closures; moving the behavior into init."
+    rationale: "A package named for vocabulary, or re-exported as the module's vocabulary, is imported freely by many packages and reaches callers through the API. Behavior hidden there, including a String or Error method that computes, spreads into every importer without the layering, tests and container behavior needs."
+    fix_strategy: "Move each function or method, or the logic inside an Error or String method, into the package whose behavior it is, under internal/, and keep the vocabulary package to declarations with single-return rendering methods."
+    not_a_fix: "Renaming the package to dodge the list; turning methods into func-typed fields or exported vars holding closures; moving the behavior into init; hiding computation in String or Error because those names are allowed."
 R58:
     id: R58
     level: L1
@@ -361,11 +361,11 @@ R66:
 R63:
     id: R63
     level: L0
-    text: "Production code never imports a mock or fake package (a directory named mock, mocks, fake or fakes, or a mock_x/x_mock/fake_x/x_fake package); mocks exist for tests only"
+    text: "Production code never imports a mock or fake package (a directory named mock, mocks, fake or fakes, or a mock_x/x_mock/fake_x/x_fake package) and never uses declarations from a mock-named file (mock.go, fake.go, mock_x.go, x_mock.go, fake_x.go, x_fake.go); mocks exist for tests only, and a mock file or mock directory that production code references is checked as production code"
     enforcement: arch
-    rationale: "Mock and fake packages are exempt from the shape, test and coverage rules because they exist only to stand in for real dependencies in tests. Wiring one into production code smuggles untested implementation past every rule and ships a stand-in as the real thing."
-    fix_strategy: "Write the real implementation in an internal package named for what it does, with its own tests, and wire that from container.go. Import the mock or fake only from _test.go files or a test-support package that imports testing."
-    not_a_fix: "Renaming the fakes directory so it no longer looks like a mock while it still holds the stand-in; copying the fake into a production package unchanged; importing testing in the production file so it looks like test support."
+    rationale: "Mock and fake files are exempt from the shape, test and coverage rules because they exist only to stand in for real dependencies in tests. Wiring one into production code, by import or by calling a mock-named file of the same package, smuggles untested implementation past every rule and ships a stand-in as the real thing. The exemption therefore holds only while nothing but _test.go files, test-support files that import testing, and other test-only mocks reference the mock's declarations."
+    fix_strategy: "Write the real implementation in a file and package named for what it does, with its own tests, and wire that from container.go. Reference the mock or fake only from _test.go files or a test-support package that imports testing."
+    not_a_fix: "Renaming the fakes directory or the fake.go file so it no longer looks like a mock while it still holds the stand-in; copying the fake into a production package unchanged; importing testing in the production file so it looks like test support; reaching the mock through another mock file that production calls."
 R64:
     id: R64
     level: L0

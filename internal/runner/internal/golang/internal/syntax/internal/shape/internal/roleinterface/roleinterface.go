@@ -23,7 +23,7 @@ func Roleinterface(
 ) (findings []report.Finding) {
 	embedded, plain := usages(files)
 	for _, file := range slices.DeleteFunc(
-		slices.Clone(files),
+		source.WithoutMocks(files),
 		isExempt,
 	) {
 		findings = append(
@@ -175,7 +175,7 @@ func isNotInterface(
 func isExempt(
 	file source.File,
 ) (exempt bool) {
-	return source.IsTest(file.Path) || source.IsMock(file.Rel) || !source.IsInternalTree(packageDirectory(file))
+	return source.IsTest(file.Path) || !source.IsInternalTree(packageDirectory(file))
 }
 
 func declaredPackageNames(

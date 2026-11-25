@@ -3,6 +3,8 @@ package mockimport
 import (
 	"fmt"
 	"go/ast"
+	"maps"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -15,13 +17,14 @@ const (
 	importQuotes   = "\"`"
 	testingPackage = "testing"
 	snippetFormat  = "production file imports mock package %s: mocks and fakes exist for tests only; wire the real implementation here and import %s only from _test.go files"
+	usedFormat     = "%s is named like a mock but production file %s uses its declarations: mocks and fakes exist for tests only, so it is checked as production code; name the file after what it implements and give it its own test, or reference it only from _test.go files"
 )
 
 func Mockimport(
 	files []source.File,
 ) (findings []report.Finding) {
 	for _, file := range slices.DeleteFunc(
-		slices.Clone(files),
+		source.WithoutMocks(files),
 		isExempt,
 	) {
 		findings = append(
@@ -30,7 +33,39 @@ func Mockimport(
 		)
 	}
 
+	users := source.MockUsers(files)
+	for _, mock := range slices.Sorted(maps.Keys(users)) {
+		findings = append(
+			findings,
+			usedMockFindings(
+				mock,
+				users[mock],
+			)...,
+		)
+	}
+
 	return findings
+}
+
+func usedMockFindings(
+	mock string,
+	user string,
+) (findings []report.Finding) {
+	directory := filepath.Dir(mock)
+	isReportedByImport := filepath.Dir(user) != directory && source.IsMock(directory)
+	if isReportedByImport {
+		return nil
+	}
+
+	return []report.Finding{{
+		Rule:     rule,
+		Location: mock,
+		Snippet: fmt.Sprintf(
+			usedFormat,
+			filepath.Base(mock),
+			user,
+		),
+	}}
 }
 
 func fileFindings(
@@ -72,7 +107,7 @@ func importFindings(
 func isExempt(
 	file source.File,
 ) (exempt bool) {
-	return source.IsTest(file.Rel) || source.IsMock(file.Rel) || slices.Contains(
+	return source.IsTest(file.Rel) || slices.Contains(
 		importPaths(file.Syntax),
 		testingPackage,
 	)

@@ -27,14 +27,42 @@ const (
 func chainsOf(
 	modulePath string,
 	files []source.File,
+	logic map[string]bool,
 ) (findings []report.Finding) {
 	directories := directoryNodes(files)
-	lifted := liftedGraph(moduleEdges(
+	lifted := behaviorGraph(
+		moduleEdges(
+			modulePath,
+			directories,
+			files,
+		),
+		logic,
+	)
+	for _, group := range groupedByEdge(offensesOf(
 		modulePath,
 		directories,
+		lifted,
 		files,
-	))
-	offenses := []offense{}
+	)) {
+		findings = append(
+			findings,
+			chainFinding(
+				directories,
+				lifted,
+				group,
+			),
+		)
+	}
+
+	return findings
+}
+
+func offensesOf(
+	modulePath string,
+	directories map[string]bool,
+	lifted map[string][]string,
+	files []source.File,
+) (offenses []offense) {
 	for _, file := range files {
 		offenses = append(
 			offenses,
@@ -51,18 +79,45 @@ func chainsOf(
 		offenses,
 		byPosition,
 	)
-	for _, group := range groupedByEdge(offenses) {
-		findings = append(
-			findings,
-			chainFinding(
-				directories,
-				lifted,
-				group,
-			),
+	return offenses
+}
+
+func behaviorGraph(
+	edges []edge,
+	logic map[string]bool,
+) (lifted map[string][]string) {
+	return liftedGraph(behaviorEdges(
+		edges,
+		logic,
+	))
+}
+
+func behaviorEdges(
+	edges []edge,
+	logic map[string]bool,
+) (kept []edge) {
+	for _, found := range edges {
+		kept = append(
+			kept,
+			behaviorEdge(
+				found,
+				logic,
+			)...,
 		)
 	}
 
-	return findings
+	return kept
+}
+
+func behaviorEdge(
+	found edge,
+	logic map[string]bool,
+) (kept []edge) {
+	if !logic[found.imported] {
+		return nil
+	}
+
+	return []edge{found}
 }
 
 func fileOffenses(

@@ -104,9 +104,71 @@ func declarationReExports(
 		return aliasTargets(general)
 	case token.CONST:
 		return []ast.Node{general}
+	case token.VAR:
+		return sentinelTargets(general)
 	}
 
 	return nil
+}
+
+func sentinelTargets(
+	general *ast.GenDecl,
+) (nodes []ast.Node) {
+	for _, spec := range source.Nodes[*ast.ValueSpec](general) {
+		nodes = append(
+			nodes,
+			sentinelTarget(spec)...,
+		)
+	}
+
+	return nodes
+}
+
+func sentinelTarget(
+	spec *ast.ValueSpec,
+) (nodes []ast.Node) {
+	isAliasing := len(spec.Values) == len(spec.Names) && !slices.ContainsFunc(
+		spec.Names,
+		isNotSentinel,
+	)
+	if !isAliasing {
+		return nil
+	}
+
+	for _, value := range spec.Values {
+		nodes = append(
+			nodes,
+			sentinelSelector(value)...,
+		)
+	}
+
+	return nodes
+}
+
+func sentinelSelector(
+	value ast.Expr,
+) (nodes []ast.Node) {
+	selector, isSelector := value.(*ast.SelectorExpr)
+	if !isSelector {
+		return nil
+	}
+
+	_, isQualified := selector.X.(*ast.Ident)
+	if !isQualified ||
+		isNotSentinel(selector.Sel) {
+		return nil
+	}
+
+	return []ast.Node{selector}
+}
+
+func isNotSentinel(
+	name *ast.Ident,
+) (excluded bool) {
+	return !name.IsExported() || !strings.HasPrefix(
+		name.Name,
+		sentinelPrefix,
+	)
 }
 
 func aliasTargets(

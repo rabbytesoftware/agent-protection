@@ -33,10 +33,6 @@ func scopeOf(
 	functions map[string][]string,
 	vocabularies []string,
 ) (found scope) {
-	if source.IsMock(file.Rel) {
-		return scope{}
-	}
-
 	directory := filepath.ToSlash(filepath.Dir(file.Rel))
 	packageName := file.Syntax.Name.Name
 	isModule := source.IsModule(

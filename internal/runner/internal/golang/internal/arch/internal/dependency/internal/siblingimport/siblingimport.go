@@ -30,15 +30,14 @@ func Siblingimport(
 			)
 	}
 
-	files = slices.DeleteFunc(
-		slices.Clone(files),
-		isMock,
-	)
+	files = source.WithoutMocks(files)
 	packages := packageNodes(files)
+	logic := logicDirectories(files)
 	return slices.Concat(
 			chainsOf(
 				modulePath,
 				files,
+				logic,
 			),
 			wiringFindings(
 				packages,
@@ -47,7 +46,7 @@ func Siblingimport(
 					packages,
 					files,
 				),
-				logicDirectories(files),
+				logic,
 			),
 		),
 		nil
@@ -152,10 +151,4 @@ func importedDirectory(
 	)
 	return filepath.FromSlash(imported),
 		inModule
-}
-
-func isMock(
-	file source.File,
-) (mock bool) {
-	return source.IsMock(file.Rel)
 }

@@ -23,10 +23,7 @@ const (
 func Cqs(
 	files []source.File,
 ) (findings []report.Finding) {
-	checked := slices.DeleteFunc(
-		slices.Clone(files),
-		isMock,
-	)
+	checked := source.WithoutMocks(files)
 	effects := map[string]map[string][]int{}
 	fields := map[string]map[string]ast.Expr{}
 	qualified := qualifiedMethods(checked)
@@ -67,12 +64,6 @@ func packagesOf(
 	}
 
 	return packages
-}
-
-func isMock(
-	file source.File,
-) (excluded bool) {
-	return source.IsMock(file.Rel)
 }
 
 func packageKey(

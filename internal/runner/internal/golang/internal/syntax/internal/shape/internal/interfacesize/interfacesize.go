@@ -22,7 +22,7 @@ func Interfacesize(
 	files []source.File,
 ) (findings []report.Finding) {
 	checked := slices.DeleteFunc(
-		slices.Clone(files),
+		source.WithoutMocks(files),
 		isExcluded,
 	)
 	indexed := catalogue(checked)
@@ -42,7 +42,7 @@ func Interfacesize(
 func isExcluded(
 	file source.File,
 ) (excluded bool) {
-	return source.IsTest(file.Path) || source.IsMock(file.Rel)
+	return source.IsTest(file.Path)
 }
 
 func fileFindings(
