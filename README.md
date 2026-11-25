@@ -58,7 +58,14 @@ file and how many there were, and exits non-zero on a parse or write
 error. It supports Go only; a Cargo.toml or package.json component is
 refused. Every other rule still needs a human, so run `ap check .` after it.
 
-See `.ap.yaml.example` for the one config file a consuming repo owns.
+`.ap.yaml.example` is the one config file a consuming repo owns: copy it to
+`.ap.yaml` at the root of the component folder an instance of Agent
+Protection checks (one language per folder). It pins `version`, which
+lefthook.yml, `.claude/settings.json` and the CI workflow all read instead of
+hardcoding their own copy. `exclude` lists paths left out of the checks
+(vendored dependencies), and `go_build_tags` names the build tags a Go module
+needs to type-check, for example a `//go:embed` target that only exists after
+a separate frontend build.
 
 In GitHub Actions, use the composite action. On pull requests it keeps one
 comment per component up to date: the violation count, a collapsed section
