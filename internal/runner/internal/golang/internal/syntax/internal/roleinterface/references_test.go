@@ -33,13 +33,13 @@ func TestRoleinterfaceReferences(
 			want: nil,
 		},
 		{
-			name: "use from an external test package passes",
+			name: "use from an external test package does not count as a use",
 			files: map[string]string{
 				"internal/jobs/job.go":       embedder,
 				"internal/jobs/progress.go":  progress,
 				"internal/jobs/jobs_test.go": "package jobs_test\n\nimport \"example.com/m/internal/jobs\"\n\nvar _ jobs.Progress = nil\n",
 			},
-			want: nil,
+			want: []string{onlyFound},
 		},
 		{
 			name: "bare name in an external test package does not count as a use",

@@ -16,12 +16,17 @@ linters:
     - errcheck
     - nakedret
     - interfacebloat
+    - ineffassign
+    - staticcheck
   settings:
     errcheck:
       check-blank: true
       check-type-assertions: true
     interfacebloat:
       max: 3
+    staticcheck:
+      checks:
+        - SA4006
     nakedret:
       max-func-lines: 0
     gocyclo:

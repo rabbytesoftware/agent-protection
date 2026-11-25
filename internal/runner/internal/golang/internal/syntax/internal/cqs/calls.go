@@ -3,6 +3,7 @@ package cqs
 import (
 	"go/ast"
 	"go/token"
+	"go/types"
 	"slices"
 )
 
@@ -73,10 +74,13 @@ func callMutations(
 		positions = appendPosition(
 			positions,
 			everySlot(caller),
-			passedPointer(argumentAt(
-				call,
+			passedName(
+				argumentAt(
+					call,
+					calleePosition,
+				),
 				calleePosition,
-			)),
+			),
 		)
 	}
 
@@ -92,7 +96,10 @@ func calleeKey(
 		return identifierName(call.Fun)
 	}
 
-	receiverType := caller.types[identifierName(selector.X)]
+	receiverType := typeName(resolvedType(
+		caller,
+		selector.X,
+	))
 	if receiverType == "" {
 		return ""
 	}
@@ -130,6 +137,19 @@ func receiverOf(
 	return selector.X
 }
 
+func passedName(
+	argument ast.Expr,
+	position int,
+) (name string) {
+	name = passedPointer(argument)
+	isSettled := name != "" || position != receiverPosition
+	if isSettled {
+		return name
+	}
+
+	return rootName(argument)
+}
+
 func passedPointer(
 	argument ast.Expr,
 ) (name string) {
@@ -158,10 +178,5 @@ func addressedRoot(
 func calleeName(
 	call *ast.CallExpr,
 ) (name string) {
-	selector, isSelector := call.Fun.(*ast.SelectorExpr)
-	if !isSelector {
-		return identifierName(call.Fun)
-	}
-
-	return identifierName(selector.X) + methodSeparator + selector.Sel.Name
+	return types.ExprString(call.Fun)
 }

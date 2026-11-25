@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"path/filepath"
+	"slices"
 	"unicode"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
@@ -11,9 +12,11 @@ import (
 )
 
 const (
-	rule          = "R08"
-	goExtension   = ".go"
-	wordSeparator = "_"
+	rule             = "R08"
+	goExtension      = ".go"
+	wordSeparator    = "_"
+	localFormat      = "type %s is declared inside a function body: declare it at package level in its own file %s"
+	anonymousSnippet = "anonymous struct type outside a test file: declare it as a named type in its own file named after it"
 )
 
 func Onetypeperfile(
@@ -30,6 +33,110 @@ func Onetypeperfile(
 }
 
 func fileFindings(
+	file source.File,
+) (findings []report.Finding) {
+	return slices.Concat(
+		topLevelFindings(file),
+		localFindings(file),
+		anonymousFindings(file),
+	)
+}
+
+func localFindings(
+	file source.File,
+) (findings []report.Finding) {
+	topLevel := topLevelTypes(file.Syntax)
+	for _, spec := range source.Nodes[*ast.TypeSpec](file.Syntax) {
+		findings = appendLocal(
+			findings,
+			file,
+			spec,
+			topLevel,
+		)
+	}
+
+	return findings
+}
+
+func appendLocal(
+	findings []report.Finding,
+	file source.File,
+	spec *ast.TypeSpec,
+	topLevel []*ast.TypeSpec,
+) (extended []report.Finding) {
+	if slices.Contains(
+		topLevel,
+		spec,
+	) {
+		return findings
+	}
+
+	return append(
+		findings,
+		report.Finding{
+			Rule:     rule,
+			Location: file.Location(spec),
+			Snippet: fmt.Sprintf(
+				localFormat,
+				spec.Name.Name,
+				snakeCase(spec.Name.Name)+goExtension,
+			),
+		},
+	)
+}
+
+func anonymousFindings(
+	file source.File,
+) (findings []report.Finding) {
+	specs := source.Nodes[*ast.TypeSpec](file.Syntax)
+	for _, structType := range source.Nodes[*ast.StructType](file.Syntax) {
+		findings = appendAnonymous(
+			findings,
+			file,
+			structType,
+			specs,
+		)
+	}
+
+	return findings
+}
+
+func appendAnonymous(
+	findings []report.Finding,
+	file source.File,
+	structType *ast.StructType,
+	specs []*ast.TypeSpec,
+) (extended []report.Finding) {
+	isAnonymous := structType.Fields.NumFields() > 0 && !isDeclared(
+		structType,
+		specs,
+	)
+	if !isAnonymous {
+		return findings
+	}
+
+	return append(
+		findings,
+		report.Finding{
+			Rule:     rule,
+			Location: file.Location(structType),
+			Snippet:  anonymousSnippet,
+		},
+	)
+}
+
+func isDeclared(
+	node ast.Node,
+	specs []*ast.TypeSpec,
+) (declared bool) {
+	for _, spec := range specs {
+		declared = declared || spec.Pos() <= node.Pos() && node.End() <= spec.End()
+	}
+
+	return declared
+}
+
+func topLevelFindings(
 	file source.File,
 ) (findings []report.Finding) {
 	specs := topLevelTypes(file.Syntax)

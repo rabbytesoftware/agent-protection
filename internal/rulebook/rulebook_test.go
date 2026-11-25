@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/rabbytesoftware/agent-protection/internal/rulebook"
 )
 
@@ -56,6 +58,16 @@ func TestEveryEmittedRuleIsRegistered(
 			"Rules() error = %v",
 			err,
 		)
+	}
+
+	pending := pendingRules(t)
+	for id, rule := range pending {
+		assertComplete(
+			t,
+			id,
+			rule,
+		)
+		registry[id] = rule
 	}
 
 	scanned := &scanner{}
@@ -141,6 +153,62 @@ func assertRegistered(
 		t.Errorf(
 			"rule %s is emitted by the runner but missing from rules.yaml",
 			id,
+		)
+	}
+}
+
+func pendingRules(
+	t *testing.T,
+) (pending map[string]rulebook.Rule) {
+	t.Helper()
+	paths, err := filepath.Glob(filepath.Join(
+		"..",
+		"..",
+		"RULES-*.yaml",
+	))
+	if err != nil {
+		t.Fatalf(
+			"glob pending rule files: %v",
+			err,
+		)
+	}
+
+	pending = map[string]rulebook.Rule{}
+	for _, path := range paths {
+		mergePending(
+			t,
+			pending,
+			path,
+		)
+	}
+
+	return pending
+}
+
+func mergePending(
+	t *testing.T,
+	pending map[string]rulebook.Rule,
+	path string,
+) {
+	t.Helper()
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf(
+			"read %s: %v",
+			path,
+			err,
+		)
+	}
+
+	err = yaml.Unmarshal(
+		content,
+		&pending,
+	)
+	if err != nil {
+		t.Fatalf(
+			"parse %s: %v",
+			path,
+			err,
 		)
 	}
 }

@@ -199,5 +199,7 @@ func linterRules() (rules map[string]string) {
 		"errcheck":         "R26",
 		"nakedret":         "R04",
 		"interfacebloat":   "R28",
+		"ineffassign":      "R26",
+		"staticcheck":      "R26",
 	}
 }

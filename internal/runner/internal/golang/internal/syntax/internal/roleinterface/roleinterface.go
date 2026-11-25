@@ -45,7 +45,10 @@ func usages(
 	packageNames := declaredPackageNames(files)
 	modulePath := derivedModulePath(files)
 	references := []reference{}
-	for _, file := range files {
+	for _, file := range slices.DeleteFunc(
+		slices.Clone(files),
+		isTestFile,
+	) {
 		references = append(
 			references,
 			fileReferences(
