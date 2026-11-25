@@ -288,13 +288,41 @@ func isNotIdentifierRune(
 }
 
 func bareDirectiveNames() (names []string) {
-	return []string{"noinline", "nosplit", "noescape", "norace", "nocheckptr", "uintptrescapes", "uintptrkeepalive", "systemstack", "nowritebarrier", "nowritebarrierrec", "yeswritebarrierrec", "notinheap"}
+	return []string{
+		"noinline",
+		"nosplit",
+		"noescape",
+		"norace",
+		"nocheckptr",
+		"uintptrescapes",
+		"uintptrkeepalive",
+		"systemstack",
+		"nowritebarrier",
+		"nowritebarrierrec",
+		"yeswritebarrierrec",
+		"notinheap",
+	}
 }
 
 func argumentDirectiveNames() (names []string) {
-	return []string{"embed", "cgo_import_dynamic", "cgo_import_static", "cgo_export_static", "cgo_export_dynamic", "cgo_ldflag", "cgo_unsafe_args", "cgo_dynamic_linker"}
+	return []string{
+		"embed",
+		"cgo_import_dynamic",
+		"cgo_import_static",
+		"cgo_export_static",
+		"cgo_export_dynamic",
+		"cgo_ldflag",
+		"cgo_unsafe_args",
+		"cgo_dynamic_linker",
+	}
 }
 
 func proseCommands() (commands []string) {
-	return []string{"echo", "true", "false", ":", "printf"}
+	return []string{
+		"echo",
+		"true",
+		"false",
+		":",
+		"printf",
+	}
 }

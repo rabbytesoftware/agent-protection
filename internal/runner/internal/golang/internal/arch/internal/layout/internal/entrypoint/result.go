@@ -85,7 +85,10 @@ func exposures(
 		return everyExposure(
 			found,
 			typeParameters,
-			[]ast.Expr{typed.Key, typed.Value},
+			[]ast.Expr{
+				typed.Key,
+				typed.Value,
+			},
 		)
 	case *ast.ChanType:
 		return exposures(
@@ -112,7 +115,10 @@ func namedExposures(
 		return everyExposure(
 			found,
 			typeParameters,
-			[]ast.Expr{typed.X, typed.Index},
+			[]ast.Expr{
+				typed.X,
+				typed.Index,
+			},
 		)
 	case *ast.IndexListExpr:
 		return everyExposure(
@@ -246,5 +252,28 @@ func internalExposure(
 }
 
 func predeclaredTypes() (names []string) {
-	return []string{"any", "bool", "byte", "comparable", "complex64", "complex128", "error", "float32", "float64", "int", "int8", "int16", "int32", "int64", "rune", "string", "uint", "uint8", "uint16", "uint32", "uint64", "uintptr"}
+	return []string{
+		"any",
+		"bool",
+		"byte",
+		"comparable",
+		"complex64",
+		"complex128",
+		"error",
+		"float32",
+		"float64",
+		"int",
+		"int8",
+		"int16",
+		"int32",
+		"int64",
+		"rune",
+		"string",
+		"uint",
+		"uint8",
+		"uint16",
+		"uint32",
+		"uint64",
+		"uintptr",
+	}
 }

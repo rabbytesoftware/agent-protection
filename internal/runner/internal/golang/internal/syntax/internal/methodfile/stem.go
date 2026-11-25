@@ -116,12 +116,57 @@ func nextIsLower(
 }
 
 func fillerWords() (words []string) {
-	return []string{"part", "file", "chunk", "piece", "section", "segment", "split", "extra", "more", "rest", "misc", "tmp", "temp", "copy", "new", "old"}
+	return []string{
+		"part",
+		"file",
+		"chunk",
+		"piece",
+		"section",
+		"segment",
+		"split",
+		"extra",
+		"more",
+		"rest",
+		"misc",
+		"tmp",
+		"temp",
+		"copy",
+		"new",
+		"old",
+	}
 }
 
 func platforms() (names []string) {
 	return []string{
-		"aix", "android", "darwin", "dragonfly", "freebsd", "illumos", "ios", "js", "linux", "netbsd", "openbsd", "plan9", "solaris", "wasip1", "windows", "unix",
-		"386", "amd64", "arm", "arm64", "loong64", "mips", "mipsle", "mips64", "mips64le", "ppc64", "ppc64le", "riscv64", "s390x", "wasm",
+		"aix",
+		"android",
+		"darwin",
+		"dragonfly",
+		"freebsd",
+		"illumos",
+		"ios",
+		"js",
+		"linux",
+		"netbsd",
+		"openbsd",
+		"plan9",
+		"solaris",
+		"wasip1",
+		"windows",
+		"unix",
+		"386",
+		"amd64",
+		"arm",
+		"arm64",
+		"loong64",
+		"mips",
+		"mipsle",
+		"mips64",
+		"mips64le",
+		"ppc64",
+		"ppc64le",
+		"riscv64",
+		"s390x",
+		"wasm",
 	}
 }

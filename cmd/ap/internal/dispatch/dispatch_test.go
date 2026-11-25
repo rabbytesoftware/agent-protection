@@ -40,7 +40,12 @@ func assertDispatch(
 	t.Helper()
 	code := Dispatch(
 		arguments,
-		Commands{Check: check, Fix: fix, Markdown: markdown, Guide: guide},
+		Commands{
+			Check:    check,
+			Fix:      fix,
+			Markdown: markdown,
+			Guide:    guide,
+		},
 	)
 	if code != wantCode {
 		t.Errorf(

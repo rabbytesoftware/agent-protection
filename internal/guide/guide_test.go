@@ -11,7 +11,12 @@ func TestGuide(
 	t *testing.T,
 ) {
 	missing := []string{}
-	for _, heading := range []string{"NO COMMENTS", "THE MODULE MODEL", "container.go", "HOW TO WORK"} {
+	for _, heading := range []string{
+		"NO COMMENTS",
+		"THE MODULE MODEL",
+		"container.go",
+		"HOW TO WORK",
+	} {
 		missing = appendMissing(
 			missing,
 			heading,

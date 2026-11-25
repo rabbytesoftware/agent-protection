@@ -157,7 +157,15 @@ func arguments(
 	configPath string,
 	buildTags string,
 ) (args []string) {
-	args = []string{"run", "-c", configPath, "--max-issues-per-linter=0", "--max-same-issues=0", "--tests=false", "./..."}
+	args = []string{
+		"run",
+		"-c",
+		configPath,
+		"--max-issues-per-linter=0",
+		"--max-same-issues=0",
+		"--tests=false",
+		"./...",
+	}
 	if buildTags == "" {
 		return args
 	}

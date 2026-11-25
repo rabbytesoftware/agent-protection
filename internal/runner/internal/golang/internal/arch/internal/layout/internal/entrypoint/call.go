@@ -218,5 +218,10 @@ func importNamed(
 }
 
 func allowedCalls() (qualified []string) {
-	return []string{"errors.New", "errors.Join", "fmt.Errorf", "slices.Concat"}
+	return []string{
+		"errors.New",
+		"errors.Join",
+		"fmt.Errorf",
+		"slices.Concat",
+	}
 }

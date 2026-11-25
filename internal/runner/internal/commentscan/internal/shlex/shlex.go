@@ -75,7 +75,12 @@ func isShell(
 	name string,
 ) (matched bool) {
 	return slices.Contains(
-		[]string{".sh", ".bash", ".zsh", ".ksh"},
+		[]string{
+			".sh",
+			".bash",
+			".zsh",
+			".ksh",
+		},
 		filepath.Ext(name),
 	)
 }

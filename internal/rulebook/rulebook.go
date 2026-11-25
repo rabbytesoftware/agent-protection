@@ -38,7 +38,12 @@ func Docs() (docs map[string]report.RuleDoc, err error) {
 
 	docs = map[string]report.RuleDoc{}
 	for id, rule := range registry {
-		docs[id] = report.RuleDoc{Text: rule.Text, Rationale: rule.Rationale, FixStrategy: rule.FixStrategy, NotAFix: rule.NotAFix}
+		docs[id] = report.RuleDoc{
+			Text:        rule.Text,
+			Rationale:   rule.Rationale,
+			FixStrategy: rule.FixStrategy,
+			NotAFix:     rule.NotAFix,
+		}
 	}
 
 	return docs,

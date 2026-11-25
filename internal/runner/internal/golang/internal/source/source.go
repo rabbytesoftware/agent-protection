@@ -147,7 +147,13 @@ func Parse(
 			err
 	}
 
-	return File{Path: path, Rel: rel, FileSet: fileSet, Syntax: syntax, Content: content},
+	return File{
+			Path:    path,
+			Rel:     rel,
+			FileSet: fileSet,
+			Syntax:  syntax,
+			Content: content,
+		},
 		nil
 }
 

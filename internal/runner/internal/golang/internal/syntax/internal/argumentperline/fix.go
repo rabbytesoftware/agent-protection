@@ -19,6 +19,18 @@ func Edits(
 		)
 	}
 
+	for _, literal := range brokenLiterals(file) {
+		edits = append(
+			edits,
+			source.Breaks(
+				file,
+				literal.Lbrace,
+				elementExtents(literal),
+				literal.Rbrace,
+			)...,
+		)
+	}
+
 	return edits
 }
 
@@ -44,7 +56,10 @@ func argumentExtents(
 	for _, argument := range call.Args {
 		extents = append(
 			extents,
-			source.Extent{Start: argument.Pos(), End: argument.End()},
+			source.Extent{
+				Start: argument.Pos(),
+				End:   argument.End(),
+			},
 		)
 	}
 

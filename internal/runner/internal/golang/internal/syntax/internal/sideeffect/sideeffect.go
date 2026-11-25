@@ -139,13 +139,37 @@ func isNotWriteVerb(
 }
 
 func queryPrefixes() (prefixes []string) {
-	return []string{"Get", "Find", "Compute", "List", "Calc", "Calculate", "Is", "Has"}
+	return []string{
+		"Get",
+		"Find",
+		"Compute",
+		"List",
+		"Calc",
+		"Calculate",
+		"Is",
+		"Has",
+	}
 }
 
 func writeVerbs() (verbs []string) {
 	return []string{
-		"Write", "WriteFile", "Save", "Delete", "Remove", "RemoveAll", "Create",
-		"Update", "Insert", "Exec", "ExecContext", "Post", "Put", "Patch", "Send",
-		"Set", "MkdirAll", "Store",
+		"Write",
+		"WriteFile",
+		"Save",
+		"Delete",
+		"Remove",
+		"RemoveAll",
+		"Create",
+		"Update",
+		"Insert",
+		"Exec",
+		"ExecContext",
+		"Post",
+		"Put",
+		"Patch",
+		"Send",
+		"Set",
+		"MkdirAll",
+		"Store",
 	}
 }

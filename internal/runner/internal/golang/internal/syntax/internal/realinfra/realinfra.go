@@ -229,7 +229,17 @@ func livePackages() (names []string) {
 }
 
 func liveCalls() (names []string) {
-	return []string{"Get", "Post", "Put", "Patch", "Do", "Dial", "DialContext", "Open", "OpenDB"}
+	return []string{
+		"Get",
+		"Post",
+		"Put",
+		"Patch",
+		"Do",
+		"Dial",
+		"DialContext",
+		"Open",
+		"OpenDB",
+	}
 }
 
 func loopbackSelectors() (names []string) {

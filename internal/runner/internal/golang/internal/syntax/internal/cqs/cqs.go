@@ -119,7 +119,11 @@ func appendFinding(
 
 	return append(
 		findings,
-		report.Finding{Rule: rule, Location: file.Location(function), Snippet: snippet},
+		report.Finding{
+			Rule:     rule,
+			Location: file.Location(function),
+			Snippet:  snippet,
+		},
 	)
 }
 

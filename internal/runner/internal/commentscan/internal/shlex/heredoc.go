@@ -46,7 +46,10 @@ func heredocAt(
 		return token{next: at + len(heredocOperator)}
 	}
 
-	return token{next: end, delimiters: []string{delimiter}}
+	return token{
+		next:       end,
+		delimiters: []string{delimiter},
+	}
 }
 
 func skipStripTabs(

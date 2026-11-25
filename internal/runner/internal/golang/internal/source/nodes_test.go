@@ -130,7 +130,13 @@ func TestErrorMethods(
 ) {
 	if !slices.Equal(
 		source.ErrorMethods(),
-		[]string{"Error", "Unwrap", "Is", "As", "String"},
+		[]string{
+			"Error",
+			"Unwrap",
+			"Is",
+			"As",
+			"String",
+		},
 	) {
 		t.Errorf(
 			"ErrorMethods() = %v",

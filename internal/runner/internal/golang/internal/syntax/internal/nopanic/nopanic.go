@@ -172,7 +172,14 @@ func importName(
 
 func terminators() (names map[string][]string) {
 	return map[string][]string{
-		logPath:     {"Fatal", "Fatalf", "Fatalln", "Panic", "Panicf", "Panicln"},
+		logPath: {
+			"Fatal",
+			"Fatalf",
+			"Fatalln",
+			"Panic",
+			"Panicf",
+			"Panicln",
+		},
 		osPath:      {"Exit"},
 		runtimePath: {"Goexit"},
 	}

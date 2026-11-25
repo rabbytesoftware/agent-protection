@@ -38,7 +38,12 @@ func TestShellMatches(
 	assertMatches(
 		t,
 		shlex.Shell(),
-		[]string{"a.sh", "b.bash", "c.zsh", "d.ksh"},
+		[]string{
+			"a.sh",
+			"b.bash",
+			"c.zsh",
+			"d.ksh",
+		},
 		[]string{"a.py", "sh"},
 	)
 }
@@ -60,7 +65,12 @@ func TestMakefileMatches(
 	assertMatches(
 		t,
 		shlex.Makefile(),
-		[]string{"Makefile", "makefile", "GNUmakefile", "rules.mk"},
+		[]string{
+			"Makefile",
+			"makefile",
+			"GNUmakefile",
+			"rules.mk",
+		},
 		[]string{"Makefile.go", "make"},
 	)
 }
@@ -71,7 +81,13 @@ func TestDockerfileMatches(
 	assertMatches(
 		t,
 		shlex.Dockerfile(),
-		[]string{"Dockerfile", "Dockerfile.dev", "Containerfile", "api.Dockerfile", "api.dockerfile"},
+		[]string{
+			"Dockerfile",
+			"Dockerfile.dev",
+			"Containerfile",
+			"api.Dockerfile",
+			"api.dockerfile",
+		},
 		[]string{"dockerfile.go", "Docker"},
 	)
 }

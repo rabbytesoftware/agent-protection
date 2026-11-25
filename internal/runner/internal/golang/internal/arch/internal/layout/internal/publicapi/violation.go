@@ -61,7 +61,12 @@ func functionViolations(
 		)
 	}
 
-	return []violation{{node: function, kind: methodKind, name: receiver + "." + name, exported: function.Name.IsExported()}}
+	return []violation{{
+		node:     function,
+		kind:     methodKind,
+		name:     receiver + "." + name,
+		exported: function.Name.IsExported(),
+	}}
 }
 
 func generalViolations(
@@ -130,7 +135,12 @@ func nameViolation(
 		return nil
 	}
 
-	return []violation{{node: name, kind: kind, name: name.Name, exported: name.IsExported()}}
+	return []violation{{
+		node:     name,
+		kind:     kind,
+		name:     name.Name,
+		exported: name.IsExported(),
+	}}
 }
 
 func allowedValue(

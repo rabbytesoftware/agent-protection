@@ -122,7 +122,10 @@ func blankRemovals(
 	) {
 		edits = append(
 			edits,
-			source.Edit{Start: file.LineOffset(line), End: file.LineOffset(line + 1)},
+			source.Edit{
+				Start: file.LineOffset(line),
+				End:   file.LineOffset(line + 1),
+			},
 		)
 	}
 

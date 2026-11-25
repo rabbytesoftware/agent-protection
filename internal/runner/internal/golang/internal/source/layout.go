@@ -187,7 +187,12 @@ func isMockDirectory(
 	segment string,
 ) (matches bool) {
 	return slices.Contains(
-		[]string{"mock", "mocks", "fake", "fakes"},
+		[]string{
+			"mock",
+			"mocks",
+			"fake",
+			"fakes",
+		},
 		segment,
 	)
 }
@@ -458,9 +463,30 @@ func isNonEmptyFile(
 }
 
 func inertCommands() (names []string) {
-	return []string{"echo", "true", "false", ":", "printf", "exit", "sleep", "test", "["}
+	return []string{
+		"echo",
+		"true",
+		"false",
+		":",
+		"printf",
+		"exit",
+		"sleep",
+		"test",
+		"[",
+	}
 }
 
 func generatorConfigs() (names []string) {
-	return []string{"buf.gen.yaml", "buf.gen.yml", "sqlc.yaml", "sqlc.yml", "sqlc.json", "gqlgen.yml", "gqlgen.yaml", ".mockery.yaml", ".mockery.yml", "oapi-codegen.yaml"}
+	return []string{
+		"buf.gen.yaml",
+		"buf.gen.yml",
+		"sqlc.yaml",
+		"sqlc.yml",
+		"sqlc.json",
+		"gqlgen.yml",
+		"gqlgen.yaml",
+		".mockery.yaml",
+		".mockery.yml",
+		"oapi-codegen.yaml",
+	}
 }

@@ -13,7 +13,14 @@ func TestWalkerSkipsVendoredTreesOnlyAtTheRoot(
 	t *testing.T,
 ) {
 	root := t.TempDir()
-	for _, path := range []string{"a/a.go", "vendor/v/v.go", ".git/g.go", "node_modules/n/n.go", "a/vendor/v.go", "a/node_modules/n.go"} {
+	for _, path := range []string{
+		"a/a.go",
+		"vendor/v/v.go",
+		".git/g.go",
+		"node_modules/n/n.go",
+		"a/vendor/v.go",
+		"a/node_modules/n.go",
+	} {
 		writeFile(
 			t,
 			filepath.Join(
@@ -32,16 +39,21 @@ func TestWalkerSkipsVendoredTreesOnlyAtTheRoot(
 		)
 	}
 
-	want := []string{root, filepath.Join(
+	want := []string{
 		root,
-		"a",
-	), filepath.Join(
-		root,
-		"a/node_modules",
-	), filepath.Join(
-		root,
-		"a/vendor",
-	)}
+		filepath.Join(
+			root,
+			"a",
+		),
+		filepath.Join(
+			root,
+			"a/node_modules",
+		),
+		filepath.Join(
+			root,
+			"a/vendor",
+		),
+	}
 	if !slices.Equal(
 		directories,
 		want,

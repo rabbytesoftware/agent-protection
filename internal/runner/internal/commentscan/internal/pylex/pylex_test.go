@@ -49,7 +49,13 @@ func TestRubyMatches(
 	assertMatches(
 		t,
 		pylex.Ruby(),
-		[]string{"a.rb", "Rakefile", "Gemfile", "x.gemspec", "t.rake"},
+		[]string{
+			"a.rb",
+			"Rakefile",
+			"Gemfile",
+			"x.gemspec",
+			"t.rake",
+		},
 		[]string{"a.r", "Gemfile.lock"},
 	)
 }

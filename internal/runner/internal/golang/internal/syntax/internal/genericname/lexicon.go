@@ -40,7 +40,12 @@ func Stem(
 ) (root string) {
 	root = uninflected(
 		singular(word),
-		[]string{gerundSuffix, pastSuffix, agentSuffix, agentSuffixLong},
+		[]string{
+			gerundSuffix,
+			pastSuffix,
+			agentSuffix,
+			agentSuffixLong,
+		},
 	)
 	if len(root) <= minimumRoot {
 		return root

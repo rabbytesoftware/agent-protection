@@ -141,7 +141,10 @@ func hasParameterPerLine(
 	for index := 1; index < len(spans); index++ {
 		gaps = append(
 			gaps,
-			span{first: spans[index-1].last, last: spans[index].first},
+			span{
+				first: spans[index-1].last,
+				last:  spans[index].first,
+			},
 		)
 	}
 
@@ -175,13 +178,16 @@ func parameterSpans(
 	for _, extent := range parameterExtents(params) {
 		spans = append(
 			spans,
-			span{first: lineOf(
-				file,
-				extent.Start,
-			), last: lineOf(
-				file,
-				extent.End,
-			)},
+			span{
+				first: lineOf(
+					file,
+					extent.Start,
+				),
+				last: lineOf(
+					file,
+					extent.End,
+				),
+			},
 		)
 	}
 

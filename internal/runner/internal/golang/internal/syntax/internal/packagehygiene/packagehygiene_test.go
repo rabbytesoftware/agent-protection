@@ -76,7 +76,12 @@ func TestPackagehygieneDirectories(
 		{
 			name:  "directory not named after its package is reported",
 			files: map[string]string{"internal/Helpers/handlers.go": "package handlers\n"},
-			want:  []string{"R21 internal/Helpers/handlers.go:1", "R21 internal/Helpers", "R21 internal/Helpers", "R22 internal/Helpers"},
+			want: []string{
+				"R21 internal/Helpers/handlers.go:1",
+				"R21 internal/Helpers",
+				"R21 internal/Helpers",
+				"R22 internal/Helpers",
+			},
 		},
 		{
 			name:  "directory with a generic underscored name is reported",
@@ -146,7 +151,12 @@ func parsed(
 		)
 	}
 
-	return source.File{Path: rel, Rel: rel, FileSet: fileSet, Syntax: syntax}
+	return source.File{
+		Path:    rel,
+		Rel:     rel,
+		FileSet: fileSet,
+		Syntax:  syntax,
+	}
 }
 
 func assertFindings(

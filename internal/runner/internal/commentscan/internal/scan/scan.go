@@ -157,5 +157,16 @@ func hasGeneratedName(
 }
 
 func generatedNameMarkers() (markers []string) {
-	return []string{".pb.", "_pb2.", "_pb2_grpc.", "_pb.", "_grpc_pb.", ".min.", ".generated.", ".gen.", "_gen.", "_generated."}
+	return []string{
+		".pb.",
+		"_pb2.",
+		"_pb2_grpc.",
+		"_pb.",
+		"_grpc_pb.",
+		".min.",
+		".generated.",
+		".gen.",
+		"_gen.",
+		"_generated.",
+	}
 }

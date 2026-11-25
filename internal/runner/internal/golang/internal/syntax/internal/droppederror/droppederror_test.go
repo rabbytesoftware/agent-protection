@@ -102,5 +102,10 @@ func parsedAt(
 		)
 	}
 
-	return source.File{Path: path, Rel: path, FileSet: fileSet, Syntax: syntax}
+	return source.File{
+		Path:    path,
+		Rel:     path,
+		FileSet: fileSet,
+		Syntax:  syntax,
+	}
 }

@@ -82,7 +82,12 @@ func parsed(
 		)
 	}
 
-	return source.File{Path: "p.go", Rel: "p.go", FileSet: fileSet, Syntax: syntax}
+	return source.File{
+		Path:    "p.go",
+		Rel:     "p.go",
+		FileSet: fileSet,
+		Syntax:  syntax,
+	}
 }
 
 func assertLocations(

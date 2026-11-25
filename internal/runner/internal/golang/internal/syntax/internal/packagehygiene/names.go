@@ -104,35 +104,158 @@ func isSeparator(
 }
 
 func genericNames() (names []string) {
+	return slices.Concat(
+		bucketNames(),
+		vagueNames(),
+		temporaryNames(),
+	)
+}
+
+func bucketNames() (names []string) {
 	return []string{
-		"util", "utils", "common", "helpers", "helper", "base", "misc", "shared",
-		"core", "kit", "lib", "libs", "support", "toolbox", "impl", "logic", "pkg", "stuff",
-		"processing", "manager", "managers", "part", "parts", "extra", "extras", "more", "other", "others",
-		"legacy", "compat", "tmp", "temp", "temporary", "wip", "hack", "hacks", "glue", "data", "generic",
-		"generics", "old", "new", "deprecated", "unused", "todo", "workaround", "junk", "general", "various",
+		"util",
+		"utils",
+		"common",
+		"helpers",
+		"helper",
+		"base",
+		"misc",
+		"shared",
+		"core",
+		"kit",
+		"lib",
+		"libs",
+		"support",
+		"toolbox",
+		"impl",
+		"logic",
+		"pkg",
+	}
+}
+
+func vagueNames() (names []string) {
+	return []string{
+		"stuff",
+		"processing",
+		"manager",
+		"managers",
+		"part",
+		"parts",
+		"extra",
+		"extras",
+		"more",
+		"other",
+		"others",
+		"data",
+		"generic",
+		"generics",
+		"general",
+		"various",
+		"glue",
+	}
+}
+
+func temporaryNames() (names []string) {
+	return []string{
+		"legacy",
+		"compat",
+		"tmp",
+		"temp",
+		"temporary",
+		"wip",
+		"hack",
+		"hacks",
+		"old",
+		"new",
+		"deprecated",
+		"unused",
+		"todo",
+		"workaround",
+		"junk",
 	}
 }
 
 func genericAffixes() (affixes []string) {
-	return []string{"util", "utils", "helper", "helpers", "legacy", "compat", "deprecated"}
+	return []string{
+		"util",
+		"utils",
+		"helper",
+		"helpers",
+		"legacy",
+		"compat",
+		"deprecated",
+	}
 }
 
 func singularEndings() (endings []string) {
-	return []string{"ss", "us", "is", "ics"}
+	return []string{
+		"ss",
+		"us",
+		"is",
+		"ics",
+	}
 }
 
 func singularNames() (names []string) {
 	return []string{
-		"mocks", "fakes", "examples", "news", "series", "species", "alias", "atlas", "canvas",
-		"chaos", "lens", "postgres", "kubernetes", "windows", "macos", "https", "cors", "jwks",
-		"models", "contracts", "types", "ports", "options", "entities",
+		"mocks",
+		"fakes",
+		"examples",
+		"news",
+		"series",
+		"species",
+		"alias",
+		"atlas",
+		"canvas",
+		"chaos",
+		"lens",
+		"postgres",
+		"kubernetes",
+		"windows",
+		"macos",
+		"https",
+		"cors",
+		"jwks",
+		"models",
+		"contracts",
+		"types",
+		"ports",
+		"options",
+		"entities",
 	}
 }
 
 func numberedTerms() (terms []string) {
 	return []string{
-		"oauth1", "oauth2", "s3", "ec2", "sha1", "sha256", "sha512", "md5", "base32", "base58", "base64",
-		"utf8", "utf16", "http2", "http3", "h2", "x509", "ipv4", "ipv6", "crc32", "crc64", "adler32",
-		"ed25519", "x25519", "argon2", "bzip2", "pkcs7", "pkcs8", "pkcs12", "p256",
+		"oauth1",
+		"oauth2",
+		"s3",
+		"ec2",
+		"sha1",
+		"sha256",
+		"sha512",
+		"md5",
+		"base32",
+		"base58",
+		"base64",
+		"utf8",
+		"utf16",
+		"http2",
+		"http3",
+		"h2",
+		"x509",
+		"ipv4",
+		"ipv6",
+		"crc32",
+		"crc64",
+		"adler32",
+		"ed25519",
+		"x25519",
+		"argon2",
+		"bzip2",
+		"pkcs7",
+		"pkcs8",
+		"pkcs12",
+		"p256",
 	}
 }

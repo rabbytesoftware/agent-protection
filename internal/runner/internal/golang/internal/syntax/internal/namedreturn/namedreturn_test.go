@@ -41,7 +41,7 @@ func TestNamedreturn(
 		},
 		{
 			name: "var declared only to be returned is reported at its name",
-			code: "package p\n\nfunc f() int {\n\tvar total int\n\ttotal++\n\treturn total\n}\n",
+			code: "package p\n\nfunc f() (count int) {\n\tvar total int\n\ttotal++\n\treturn total\n}\n",
 			want: []string{"p.go:4"},
 		},
 		{
@@ -61,7 +61,7 @@ func TestNamedreturn(
 		},
 		{
 			name: "var returned by a nested literal is reported once",
-			code: "package p\n\nfunc f() (result int) {\n\tg := func() int {\n\t\tvar total int\n\t\treturn total\n\t}\n\treturn g()\n}\n",
+			code: "package p\n\nfunc f() (result int) {\n\tg := func() (count int) {\n\t\tvar total int\n\t\treturn total\n\t}\n\treturn g()\n}\n",
 			want: []string{"p.go:5"},
 		},
 	}
@@ -97,7 +97,12 @@ func parsed(
 		)
 	}
 
-	return source.File{Path: "p.go", Rel: "p.go", FileSet: fileSet, Syntax: syntax}
+	return source.File{
+		Path:    "p.go",
+		Rel:     "p.go",
+		FileSet: fileSet,
+		Syntax:  syntax,
+	}
 }
 
 func assertLocations(

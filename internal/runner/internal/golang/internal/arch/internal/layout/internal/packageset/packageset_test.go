@@ -92,11 +92,14 @@ func TestPackageset(
 func TestPackagesetRejectsUnrelatablePaths(
 	t *testing.T,
 ) {
-	file := source.File{Path: filepath.Join(
-		t.TempDir(),
-		"a",
-		"a.go",
-	), Syntax: &ast.File{Name: ast.NewIdent("a")}}
+	file := source.File{
+		Path: filepath.Join(
+			t.TempDir(),
+			"a",
+			"a.go",
+		),
+		Syntax: &ast.File{Name: ast.NewIdent("a")},
+	}
 	_, err := packageset.Packageset(
 		"relative",
 		[]source.File{file},

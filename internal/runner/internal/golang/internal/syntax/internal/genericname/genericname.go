@@ -266,14 +266,102 @@ func isInterfaceMethod(
 }
 
 func interfaceMethods() (names []string) {
+	return slices.Concat(
+		errorMethods(),
+		streamMethods(),
+		serviceMethods(),
+		collectionMethods(),
+		encodingMethods(),
+		hashMethods(),
+		contextMethods(),
+	)
+}
+
+func errorMethods() (names []string) {
 	return []string{
-		"Error", "String", "GoString", "Format", "Read", "Write", "Close", "Seek",
-		"ReadAt", "WriteAt", "ReadFrom", "WriteTo", "ReadByte", "WriteByte", "ReadRune",
-		"WriteString", "ServeHTTP", "RoundTrip", "Len", "Less", "Swap", "Push", "Pop",
-		"Unwrap", "Is", "As", "Timeout", "Temporary", "MarshalJSON", "UnmarshalJSON",
-		"MarshalText", "UnmarshalText", "MarshalBinary", "UnmarshalBinary", "Scan", "Value",
-		"Do", "Handle", "Enabled", "WithAttrs", "WithGroup", "Deadline", "Done", "Err",
-		"Lock", "Unlock", "RLock", "RUnlock", "Sum", "Size", "BlockSize", "Reset", "Helper",
+		"Error",
+		"String",
+		"GoString",
+		"Format",
+		"Unwrap",
+		"Is",
+		"As",
+		"Timeout",
+		"Temporary",
+	}
+}
+
+func streamMethods() (names []string) {
+	return []string{
+		"Read",
+		"Write",
+		"Close",
+		"Seek",
+		"ReadAt",
+		"WriteAt",
+		"ReadFrom",
+		"WriteTo",
+		"ReadByte",
+		"WriteByte",
+		"ReadRune",
+		"WriteString",
+	}
+}
+
+func serviceMethods() (names []string) {
+	return []string{
+		"ServeHTTP",
+		"RoundTrip",
+		"Do",
+		"Handle",
+		"Enabled",
+		"WithAttrs",
+		"WithGroup",
+		"Helper",
+	}
+}
+
+func collectionMethods() (names []string) {
+	return []string{
+		"Len",
+		"Less",
+		"Swap",
+		"Push",
+		"Pop",
+		"Lock",
+		"Unlock",
+		"RLock",
+		"RUnlock",
+	}
+}
+
+func encodingMethods() (names []string) {
+	return []string{
+		"MarshalJSON",
+		"UnmarshalJSON",
+		"MarshalText",
+		"UnmarshalText",
+		"MarshalBinary",
+		"UnmarshalBinary",
+		"Scan",
+		"Value",
+	}
+}
+
+func hashMethods() (names []string) {
+	return []string{
+		"Sum",
+		"Size",
+		"BlockSize",
+		"Reset",
+	}
+}
+
+func contextMethods() (names []string) {
+	return []string{
+		"Deadline",
+		"Done",
+		"Err",
 	}
 }
 
@@ -283,16 +371,50 @@ func prefixWords() (words []string) {
 
 func fillerWords() (words []string) {
 	return []string{
-		"fn", "func", "f", "cb", "helper", "helpers", "impl", "do",
-		"tmp", "temp", "stuff", "thing", "things", "data", "util", "utils",
-		"misc", "aux", "body", "work", "logic", "part", "wrap", "wrapper",
-		"inner", "outer", "foo", "bar", "baz",
+		"fn",
+		"func",
+		"f",
+		"cb",
+		"helper",
+		"helpers",
+		"impl",
+		"do",
+		"tmp",
+		"temp",
+		"stuff",
+		"thing",
+		"things",
+		"data",
+		"util",
+		"utils",
+		"misc",
+		"aux",
+		"body",
+		"work",
+		"logic",
+		"part",
+		"wrap",
+		"wrapper",
+		"inner",
+		"outer",
+		"foo",
+		"bar",
+		"baz",
 	}
 }
 
 func roleWords() (words []string) {
 	return []string{
-		"handler", "handle", "callback", "run", "make", "exec", "execute",
-		"perform", "process", "call", "invoke",
+		"handler",
+		"handle",
+		"callback",
+		"run",
+		"make",
+		"exec",
+		"execute",
+		"perform",
+		"process",
+		"call",
+		"invoke",
 	}
 }

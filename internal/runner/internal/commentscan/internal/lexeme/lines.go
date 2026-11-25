@@ -95,7 +95,11 @@ func appendToRun(
 
 	return append(
 		merged[:len(merged)-1],
-		Span{Start: last.Start, End: current.End, IsLine: true},
+		Span{
+			Start:  last.Start,
+			End:    current.End,
+			IsLine: true,
+		},
 	)
 }
 

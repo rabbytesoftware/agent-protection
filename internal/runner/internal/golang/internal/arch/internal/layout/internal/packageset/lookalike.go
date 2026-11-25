@@ -117,9 +117,26 @@ func trimsTo(
 }
 
 func versionMarkers() (markers []string) {
-	return []string{"old", "new", "legacy", "next", "prev"}
+	return []string{
+		"old",
+		"new",
+		"legacy",
+		"next",
+		"prev",
+	}
 }
 
 func conceptSuffixes() (suffixes []string) {
-	return []string{"ions", "ment", "age", "ing", "ion", "es", "er", "or", "s", "e"}
+	return []string{
+		"ions",
+		"ment",
+		"age",
+		"ing",
+		"ion",
+		"es",
+		"er",
+		"or",
+		"s",
+		"e",
+	}
 }

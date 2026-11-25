@@ -50,7 +50,13 @@ func DeclarationPackages(
 }
 
 func ErrorMethods() (names []string) {
-	return []string{"Error", "Unwrap", "Is", "As", "String"}
+	return []string{
+		"Error",
+		"Unwrap",
+		"Is",
+		"As",
+		"String",
+	}
 }
 
 func appendMatching[T ast.Node](

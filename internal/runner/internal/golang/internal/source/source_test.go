@@ -24,7 +24,13 @@ func TestSource(
 	got := relPaths(files)
 	if !slices.Equal(
 		got,
-		[]string{"pkg/a.go", "pkg/doc.go", "pkg/gen.go", "pkg/late.go", "pkg/text.go"},
+		[]string{
+			"pkg/a.go",
+			"pkg/doc.go",
+			"pkg/gen.go",
+			"pkg/late.go",
+			"pkg/text.go",
+		},
 	) {
 		t.Errorf(
 			"Source() = %v, want every non-test source file",
@@ -35,7 +41,12 @@ func TestSource(
 	handWritten := relPaths(source.HandWritten(files))
 	if !slices.Equal(
 		handWritten,
-		[]string{"pkg/a.go", "pkg/doc.go", "pkg/late.go", "pkg/text.go"},
+		[]string{
+			"pkg/a.go",
+			"pkg/doc.go",
+			"pkg/late.go",
+			"pkg/text.go",
+		},
 	) {
 		t.Errorf(
 			"HandWritten() = %v, want every file but the generated one",
@@ -59,7 +70,12 @@ func TestTests(
 	got := relPaths(files)
 	if !slices.Equal(
 		got,
-		[]string{"pkg/a_test.go", "pkg/either_test.go", "pkg/gen_test.go", "pkg/unit_test.go"},
+		[]string{
+			"pkg/a_test.go",
+			"pkg/either_test.go",
+			"pkg/gen_test.go",
+			"pkg/unit_test.go",
+		},
 	) {
 		t.Errorf(
 			"Tests() = %v, want only the unit test files",
@@ -99,7 +115,13 @@ func TestPaths(
 	}
 
 	want := []string{}
-	for _, name := range []string{"a.go", "doc.go", "gen.go", "late.go", "text.go"} {
+	for _, name := range []string{
+		"a.go",
+		"doc.go",
+		"gen.go",
+		"late.go",
+		"text.go",
+	} {
 		want = append(
 			want,
 			filepath.Join(
@@ -303,7 +325,13 @@ func TestIsGenerated(
 	t *testing.T,
 ) {
 	root := fixtureModule(t)
-	cases := map[string]bool{"pkg/gen.go": true, "pkg/a.go": false, "pkg/doc.go": false, "pkg/text.go": false, "pkg/late.go": false}
+	cases := map[string]bool{
+		"pkg/gen.go":  true,
+		"pkg/a.go":    false,
+		"pkg/doc.go":  false,
+		"pkg/text.go": false,
+		"pkg/late.go": false,
+	}
 	for path, want := range cases {
 		assertGenerated(
 			t,

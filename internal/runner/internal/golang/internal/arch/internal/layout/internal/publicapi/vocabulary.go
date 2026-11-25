@@ -51,5 +51,17 @@ func vocabularyRemedy(
 }
 
 func vocabularyNames() (names []string) {
-	return []string{"models", "model", "contracts", "contract", "types", "dto", "ports", "api", "options", "entities", "schema"}
+	return []string{
+		"models",
+		"model",
+		"contracts",
+		"contract",
+		"types",
+		"dto",
+		"ports",
+		"api",
+		"options",
+		"entities",
+		"schema",
+	}
 }

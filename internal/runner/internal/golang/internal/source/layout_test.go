@@ -100,7 +100,12 @@ func TestIsDeclarationOnly(
 func TestIsInternalTree(
 	t *testing.T,
 ) {
-	cases := map[string]bool{"a/internal": true, "a/internal/b/c": true, "a/internalize": false, "a/b": false}
+	cases := map[string]bool{
+		"a/internal":     true,
+		"a/internal/b/c": true,
+		"a/internalize":  false,
+		"a/b":            false,
+	}
 	for dir, want := range cases {
 		assertBool(
 			t,
@@ -167,7 +172,12 @@ func TestIsModule(
 	t *testing.T,
 ) {
 	sources := []string{"a/internal/b", "c", "d/internalized"}
-	cases := map[string]bool{"a": true, "c": false, "d": false, "a/internal/b": false}
+	cases := map[string]bool{
+		"a":            true,
+		"c":            false,
+		"d":            false,
+		"a/internal/b": false,
+	}
 	for dir, want := range cases {
 		assertBool(
 			t,
@@ -184,7 +194,13 @@ func TestIsModule(
 func TestIsCompositionRoot(
 	t *testing.T,
 ) {
-	cases := map[string]bool{"x/container.go": true, "x/main.go": false, "x/wire.go": false, "x/arch.go": false, "x/helpers.go": false}
+	cases := map[string]bool{
+		"x/container.go": true,
+		"x/main.go":      false,
+		"x/wire.go":      false,
+		"x/arch.go":      false,
+		"x/helpers.go":   false,
+	}
 	for path, want := range cases {
 		assertBool(
 			t,

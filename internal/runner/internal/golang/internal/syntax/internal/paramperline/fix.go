@@ -56,13 +56,19 @@ func fieldExtents(
 	field *ast.Field,
 ) (extents []source.Extent) {
 	if len(field.Names) == 0 {
-		return []source.Extent{{Start: field.Pos(), End: field.End()}}
+		return []source.Extent{{
+			Start: field.Pos(),
+			End:   field.End(),
+		}}
 	}
 
 	for _, name := range field.Names {
 		extents = append(
 			extents,
-			source.Extent{Start: name.Pos(), End: name.End()},
+			source.Extent{
+				Start: name.Pos(),
+				End:   name.End(),
+			},
 		)
 	}
 

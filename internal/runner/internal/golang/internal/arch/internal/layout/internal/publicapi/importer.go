@@ -215,7 +215,11 @@ func fileImporter(
 			)
 	}
 
-	return []importer{{directory: directory, paths: importPaths(syntax), test: source.IsTest(path)}},
+	return []importer{{
+			directory: directory,
+			paths:     importPaths(syntax),
+			test:      source.IsTest(path),
+		}},
 		nil
 }
 

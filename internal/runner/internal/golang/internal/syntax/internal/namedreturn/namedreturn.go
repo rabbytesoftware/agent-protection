@@ -50,7 +50,10 @@ func fileFindings(
 		)
 	}
 
-	return findings
+	return append(
+		findings,
+		unnamedFindings(file)...,
+	)
 }
 
 func functionFindings(

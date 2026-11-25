@@ -145,7 +145,12 @@ func parsed(
 		)
 	}
 
-	return source.File{Path: rel, Rel: rel, FileSet: fileSet, Syntax: syntax}
+	return source.File{
+		Path:    rel,
+		Rel:     rel,
+		FileSet: fileSet,
+		Syntax:  syntax,
+	}
 }
 
 func assertFindings(

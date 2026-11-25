@@ -53,6 +53,13 @@ func TestEntrypointHiddenSelectionInContainer(
 				"calculator.go": "package arith\n\ntype Calculator interface {\n\tSquare(\n\t\tvalue int,\n\t) (result int)\n\tCube(\n\t\tvalue int,\n\t) (result int)\n}\n",
 			},
 		),
-		[]string{"R14 container.go:13", "R14 container.go:13", "R14 container.go:16", "R14 container.go:16", "R14 container.go:17", "R14 container.go:25"},
+		[]string{
+			"R14 container.go:13",
+			"R14 container.go:13",
+			"R14 container.go:16",
+			"R14 container.go:16",
+			"R14 container.go:17",
+			"R14 container.go:25",
+		},
 	)
 }

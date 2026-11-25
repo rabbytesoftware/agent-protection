@@ -131,7 +131,10 @@ func splitField(
 	for _, name := range names {
 		parameters = append(
 			parameters,
-			&ast.Field{Names: []*ast.Ident{name}, Type: field.Type},
+			&ast.Field{
+				Names: []*ast.Ident{name},
+				Type:  field.Type,
+			},
 		)
 	}
 

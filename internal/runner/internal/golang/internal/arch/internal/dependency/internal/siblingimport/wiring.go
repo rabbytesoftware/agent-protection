@@ -159,7 +159,13 @@ func isLogic(
 	function *ast.FuncDecl,
 ) (hasLogic bool) {
 	isErrorMethod := function.Recv != nil && slices.Contains(
-		[]string{"Error", "Unwrap", "Is", "As", "String"},
+		[]string{
+			"Error",
+			"Unwrap",
+			"Is",
+			"As",
+			"String",
+		},
 		function.Name.Name,
 	)
 	return function.Body != nil && !isErrorMethod

@@ -320,20 +320,39 @@ func rootName(
 
 func builtinWrites() (names []string) {
 	return []string{
-		"delete", "clear", "copy",
-		"slices.Sort", "slices.SortFunc", "slices.SortStableFunc", "slices.Reverse",
-		"sort.Sort", "sort.Stable", "sort.Ints", "sort.Strings", "sort.Float64s", "sort.Slice", "sort.SliceStable",
-		"maps.Copy", "maps.DeleteFunc",
+		"delete",
+		"clear",
+		"copy",
+		"slices.Sort",
+		"slices.SortFunc",
+		"slices.SortStableFunc",
+		"slices.Reverse",
+		"sort.Sort",
+		"sort.Stable",
+		"sort.Ints",
+		"sort.Strings",
+		"sort.Float64s",
+		"sort.Slice",
+		"sort.SliceStable",
+		"maps.Copy",
+		"maps.DeleteFunc",
 	}
 }
 
 func atomicMutators() (names []string) {
-	return []string{"Add", "Store", "Swap", "CompareAndSwap", "And", "Or"}
+	return []string{
+		"Add",
+		"Store",
+		"Swap",
+		"CompareAndSwap",
+		"And",
+		"Or",
+	}
 }
 
 func stdlibMutators() (methods map[string][]string) {
 	atomics := atomicMutators()
-	buffers := []string{"Write", "WriteString", "WriteByte", "WriteRune", "WriteTo", "ReadFrom", "Reset", "Grow", "Truncate"}
+	buffers := bufferMutators()
 	return map[string][]string{
 		"atomic.Bool":     atomics,
 		"atomic.Int32":    atomics,
@@ -343,9 +362,53 @@ func stdlibMutators() (methods map[string][]string) {
 		"atomic.Uintptr":  atomics,
 		"atomic.Pointer":  atomics,
 		"atomic.Value":    atomics,
-		"sync.Map":        {"Store", "LoadOrStore", "LoadAndDelete", "Delete", "Swap", "CompareAndSwap", "CompareAndDelete", "Clear"},
+		"sync.Map":        syncMapMutators(),
 		"bytes.Buffer":    buffers,
 		"strings.Builder": buffers,
-		"list.List":       {"PushBack", "PushFront", "PushBackList", "PushFrontList", "InsertBefore", "InsertAfter", "MoveToFront", "MoveToBack", "MoveBefore", "MoveAfter", "Remove", "Init"},
+		"list.List":       listMutators(),
+	}
+}
+
+func bufferMutators() (names []string) {
+	return []string{
+		"Write",
+		"WriteString",
+		"WriteByte",
+		"WriteRune",
+		"WriteTo",
+		"ReadFrom",
+		"Reset",
+		"Grow",
+		"Truncate",
+	}
+}
+
+func syncMapMutators() (names []string) {
+	return []string{
+		"Store",
+		"LoadOrStore",
+		"LoadAndDelete",
+		"Delete",
+		"Swap",
+		"CompareAndSwap",
+		"CompareAndDelete",
+		"Clear",
+	}
+}
+
+func listMutators() (names []string) {
+	return []string{
+		"PushBack",
+		"PushFront",
+		"PushBackList",
+		"PushFrontList",
+		"InsertBefore",
+		"InsertAfter",
+		"MoveToFront",
+		"MoveToBack",
+		"MoveBefore",
+		"MoveAfter",
+		"Remove",
+		"Init",
 	}
 }

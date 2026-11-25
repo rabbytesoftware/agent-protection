@@ -203,7 +203,15 @@ func isSchemeSeparator(
 }
 
 func urlSchemes() (schemes []string) {
-	return []string{"http", "https", "ws", "wss", "ftp", "file", "mailto"}
+	return []string{
+		"http",
+		"https",
+		"ws",
+		"wss",
+		"ftp",
+		"file",
+		"mailto",
+	}
 }
 
 func isReferenceDirective(
@@ -332,5 +340,14 @@ func matches(
 }
 
 func extensions() (extensions []string) {
-	return []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"}
+	return []string{
+		".ts",
+		".tsx",
+		".js",
+		".jsx",
+		".mjs",
+		".cjs",
+		".mts",
+		".cts",
+	}
 }

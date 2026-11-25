@@ -39,9 +39,16 @@ func TestTestpairingDeclarations(
 			want:  []string{"R42 x/a_test.go"},
 		},
 		{
-			name:  "paired test with only a benchmark, fuzz target or example passes",
-			files: map[string]string{"x/a.go": behavior, "x/a_test.go": "package x\n\nfunc BenchmarkA() {}\n", "x/b.go": behavior, "x/b_test.go": "package x\n\nfunc FuzzB() {}\n", "x/c.go": behavior, "x/c_test.go": "package x\n\nfunc Example() {}\n"},
-			want:  nil,
+			name: "paired test with only a benchmark, fuzz target or example passes",
+			files: map[string]string{
+				"x/a.go":      behavior,
+				"x/a_test.go": "package x\n\nfunc BenchmarkA() {}\n",
+				"x/b.go":      behavior,
+				"x/b_test.go": "package x\n\nfunc FuzzB() {}\n",
+				"x/c.go":      behavior,
+				"x/c_test.go": "package x\n\nfunc Example() {}\n",
+			},
+			want: nil,
 		},
 	}
 	for _, tc := range cases {

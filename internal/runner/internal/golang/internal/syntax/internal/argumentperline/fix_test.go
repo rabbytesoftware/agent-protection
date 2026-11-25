@@ -67,6 +67,26 @@ func TestEdits(
 			want: "package p\n\nfunc f() {\n\tg(\n\t\t1, /* one, really */\n\t\t2, /* two */\n\t)\n}\n",
 		},
 		{
+			name: "packed struct fields get a line each and a closing brace line",
+			code: "package p\n\nfunc f() (queue Queue) {\n\treturn Queue{Handlers: handlers, Jobs: jobs,\n\t\tStore: store}\n}\n",
+			want: "package p\n\nfunc f() (queue Queue) {\n\treturn Queue{\n\t\tHandlers: handlers,\n\t\tJobs:     jobs,\n\t\tStore:    store,\n\t}\n}\n",
+		},
+		{
+			name: "nested literals and calls inside a literal are all broken",
+			code: "package p\n\nvar a = []T{{X: g(1, 2), Y: 2}, {X: 3}}\n",
+			want: "package p\n\nvar a = []T{\n\t{\n\t\tX: g(\n\t\t\t1,\n\t\t\t2,\n\t\t),\n\t\tY: 2,\n\t},\n\t{X: 3},\n}\n",
+		},
+		{
+			name: "short plain literal stays inline",
+			code: "package p\n\nvar a = []string{\"a\", \"b\"}\n",
+			want: "package p\n\nvar a = []string{\"a\", \"b\"}\n",
+		},
+		{
+			name: "long plain literal is broken",
+			code: "package p\n\nvar a = []string{\"a\", \"b\", \"c\", \"d\"}\n",
+			want: "package p\n\nvar a = []string{\n\t\"a\",\n\t\"b\",\n\t\"c\",\n\t\"d\",\n}\n",
+		},
+		{
 			name: "existing trailing comma is kept",
 			code: "package p\n\nfunc f() {\n\tg(\n\t\t1,\n\t\t2,)\n}\n",
 			want: "package p\n\nfunc f() {\n\tg(\n\t\t1,\n\t\t2,\n\t)\n}\n",

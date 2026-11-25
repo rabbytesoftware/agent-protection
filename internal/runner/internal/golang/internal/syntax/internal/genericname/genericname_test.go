@@ -82,7 +82,13 @@ func TestGenericname(
 		{
 			name: "exported names are checked like unexported ones",
 			code: "package p\n\ntype t struct{}\n\nfunc (t) work() {}\n\nfunc (t) Handle() {}\n\nfunc RunHandler() {}\n\nfunc DoWork() {}\n\nfunc HandleData1() {}\n\ntype Helper struct{}\n",
-			want: []string{"R56 p.go:5", "R56 p.go:9", "R56 p.go:11", "R56 p.go:13", "R56 p.go:15"},
+			want: []string{
+				"R56 p.go:5",
+				"R56 p.go:9",
+				"R56 p.go:11",
+				"R56 p.go:13",
+				"R56 p.go:15",
+			},
 		},
 		{
 			name: "methods the standard library interfaces force pass",
@@ -132,7 +138,12 @@ func parsed(
 		)
 	}
 
-	return source.File{Path: "p.go", Rel: "p.go", FileSet: fileSet, Syntax: syntax}
+	return source.File{
+		Path:    "p.go",
+		Rel:     "p.go",
+		FileSet: fileSet,
+		Syntax:  syntax,
+	}
 }
 
 func assertFindings(

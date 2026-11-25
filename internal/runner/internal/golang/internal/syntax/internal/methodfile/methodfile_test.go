@@ -30,7 +30,12 @@ func TestMethodfile(
 		{
 			name:  "methods split into numbered part files are reported",
 			files: map[string]string{"cube/cube.go": cubeType, "cube/part1.go": squareCode, "cube/part2.go": squareCode},
-			want:  []string{"cube/part1.go", "cube/part1.go:3", "cube/part2.go", "cube/part2.go:3"},
+			want: []string{
+				"cube/part1.go",
+				"cube/part1.go:3",
+				"cube/part2.go",
+				"cube/part2.go:3",
+			},
 		},
 		{
 			name:  "methods beside their type pass",
@@ -83,9 +88,16 @@ func TestMethodfile(
 			want:  []string{"cube/cube2.go"},
 		},
 		{
-			name:  "digits that belong to the name pass",
-			files: map[string]string{"hash/sha256.go": plainCode, "hash/sha512.go": plainCode, "codec/base64.go": plainCode, "api/v1.go": plainCode, "net/ipv4.go": plainCode, "sys/zsys_386.go": plainCode},
-			want:  nil,
+			name: "digits that belong to the name pass",
+			files: map[string]string{
+				"hash/sha256.go":  plainCode,
+				"hash/sha512.go":  plainCode,
+				"codec/base64.go": plainCode,
+				"api/v1.go":       plainCode,
+				"net/ipv4.go":     plainCode,
+				"sys/zsys_386.go": plainCode,
+			},
+			want: nil,
 		},
 	}
 	for _, tc := range cases {
@@ -122,7 +134,10 @@ func TestMethodfileSnippets(
 
 	isMismatch := !slices.Equal(
 		got,
-		[]string{"R66 " + want[0], "R66 " + want[1]},
+		[]string{
+			"R66 " + want[0],
+			"R66 " + want[1],
+		},
 	)
 	if isMismatch {
 		t.Errorf(
@@ -172,7 +187,12 @@ func parsed(
 		)
 	}
 
-	return source.File{Path: path, Rel: path, FileSet: fileSet, Syntax: syntax}
+	return source.File{
+		Path:    path,
+		Rel:     path,
+		FileSet: fileSet,
+		Syntax:  syntax,
+	}
 }
 
 func assertLocations(

@@ -40,7 +40,12 @@ func run(
 	arguments []string,
 ) (output []byte, err error) {
 	commandArguments := append(
-		[]string{"x", "eslint", ".", "--format=json"},
+		[]string{
+			"x",
+			"eslint",
+			".",
+			"--format=json",
+		},
 		arguments...,
 	)
 	binary, err := bunBinary()

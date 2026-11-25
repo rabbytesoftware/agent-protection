@@ -93,7 +93,12 @@ func directoryVerdict(
 }
 
 func skippedDirectories() (names []string) {
-	return []string{"vendor", "node_modules", ".git", "testdata"}
+	return []string{
+		"vendor",
+		"node_modules",
+		".git",
+		"testdata",
+	}
 }
 
 func isIgnored(

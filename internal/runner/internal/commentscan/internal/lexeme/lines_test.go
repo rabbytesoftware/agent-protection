@@ -63,18 +63,30 @@ func TestLinePositions(
 		got  int
 		want int
 	}{
-		{name: "line of an offset on the third line", got: lexeme.LineOf(
-			text,
-			12,
-		), want: 3},
-		{name: "line start of an offset on the second line", got: lexeme.LineStart(
-			text,
-			6,
-		), want: 3},
-		{name: "line start on the first line is zero", got: lexeme.LineStart(
-			text,
-			1,
-		), want: 0},
+		{
+			name: "line of an offset on the third line",
+			got: lexeme.LineOf(
+				text,
+				12,
+			),
+			want: 3,
+		},
+		{
+			name: "line start of an offset on the second line",
+			got: lexeme.LineStart(
+				text,
+				6,
+			),
+			want: 3,
+		},
+		{
+			name: "line start on the first line is zero",
+			got: lexeme.LineStart(
+				text,
+				1,
+			),
+			want: 0,
+		},
 	}
 	for _, tc := range cases {
 		assertOffset(

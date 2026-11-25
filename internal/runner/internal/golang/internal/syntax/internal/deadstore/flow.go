@@ -140,7 +140,12 @@ func (f *flow) assign(
 		f.killed[previous] = true
 	}
 
-	f.stores[target.Pos()] = store{variable: variable, target: target, call: callName(value), loop: f.enclosingLoop(variable)}
+	f.stores[target.Pos()] = store{
+		variable: variable,
+		target:   target,
+		call:     callName(value),
+		loop:     f.enclosingLoop(variable),
+	}
 	f.current[variable] = []token.Pos{target.Pos()}
 }
 

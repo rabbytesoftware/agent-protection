@@ -25,11 +25,11 @@ R03:
 R04:
     id: R04
     level: L1
-    text: "Named returns instead of var in the body; never naked return"
+    text: "Every function and func literal with results names them, in test files too: (queue Queue, err error), never (Queue, error); named results replace a var in the body, and a return is never naked"
     enforcement: analyzer
-    rationale: "A var declared only to be returned duplicates what a named result already declares, and a naked return hides what is actually returned at the exit that matters most."
-    fix_strategy: "Declare the value as a named result and drop the var, and always write the explicit return values even though the names are declared in the signature."
-    not_a_fix: "Swapping var x T for x := T{} so the value is still declared in the body only to be returned; declaring the named result and then shadowing it with := inside a block; copying a local into the named result at the end instead of using the result directly."
+    rationale: "A named result documents what a function hands back at the one place every caller reads, so the signature needs no comment; a var declared only to be returned duplicates what a named result already declares, and a naked return hides what is actually returned at the exit that matters most. Interface methods and func-typed fields and parameters are declarations, not implementations, so they keep plain types."
+    fix_strategy: "Name every result after what it holds (queue Queue, err error, policy func(attempt int) time.Duration), declare a returned value as a named result and drop the var, and always write the explicit return values even though the names are declared in the signature."
+    not_a_fix: "Naming results r, v, x, res or _ so the list is named but says nothing; naming one result and leaving the rest to a blank identifier; turning the function into a func-typed package var or field so its results are not checked; swapping var x T for x := T{} so the value is still declared in the body only to be returned; declaring the named result and then shadowing it with := inside a block; copying a local into the named result at the end instead of using the result directly."
 R07:
     id: R07
     level: L0
@@ -265,11 +265,11 @@ R51:
 R52:
     id: R52
     level: L0
-    text: "A call with two or more arguments puts every argument on its own line"
+    text: "A call with two or more arguments puts every argument on its own line, and a composite literal with two or more elements puts every element on its own line; only a one-line literal of up to 3 plain identifiers or basic literals ([]string{\"a\", \"b\"}, Point{X: 1, Y: 2}) and a one-line table-driven test row in a _test.go file may stay inline"
     enforcement: analyzer
-    rationale: "One argument per line makes every input of a call visible at a glance and keeps diffs to one line per changed argument, the same way R01 does for signatures."
-    fix_strategy: "Break after the opening paren, put each argument on its own line with a trailing comma, and put the closing paren on its own line; calls with zero or one argument stay inline."
-    not_a_fix: "Collapsing the arguments into a temporary struct literal, slice or variadic spread so the call has one argument; wrapping the call in a helper with fewer parameters that only forwards to it."
+    rationale: "One argument or element per line makes every input of a call and every field of a value visible at a glance and keeps diffs to one line per changed entry, the same way R01 does for signatures. A literal packed onto fewer lines hides how much a function assembles and lets it slip under the function length budget without getting any simpler."
+    fix_strategy: "Run ap fix. It breaks after the opening paren or brace, puts each argument or element on its own line with a trailing comma, and puts the closing paren or brace on its own line; calls with zero or one argument and literals with zero or one element stay inline. If the function then exceeds the length budget, split what it builds into named steps or a dedicated constructor in the package that owns the type."
+    not_a_fix: "Packing struct fields or slice elements onto fewer lines to fit the function length budget; collapsing the arguments into a temporary struct literal, slice or variadic spread so the call has one argument; wrapping the call in a helper with fewer parameters that only forwards to it; moving a literal into a _test.go table row or a package var to escape the check."
 R53:
     id: R53
     level: L0

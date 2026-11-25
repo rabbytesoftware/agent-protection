@@ -19,7 +19,12 @@ func errorMethodViolations(
 		return nil
 	}
 
-	return []violation{{node: function, kind: errorMethodKind, name: receiver + "." + function.Name.Name, exported: true}}
+	return []violation{{
+		node:     function,
+		kind:     errorMethodKind,
+		name:     receiver + "." + function.Name.Name,
+		exported: true,
+	}}
 }
 
 func isPlainRendering(
@@ -115,7 +120,18 @@ func isNotOperand(
 }
 
 func conversionTypes() (names []string) {
-	return []string{"string", "error", "bool", "int", "int64", "uint", "uint64", "float64", "rune", "byte"}
+	return []string{
+		"string",
+		"error",
+		"bool",
+		"int",
+		"int64",
+		"uint",
+		"uint64",
+		"float64",
+		"rune",
+		"byte",
+	}
 }
 
 func renderingMethods() (names []string) {

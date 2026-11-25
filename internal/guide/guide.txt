@@ -37,4 +37,4 @@ Read this before fixing findings. AP is not a list of patterns to dodge. It enfo
 3. HOW TO WORK
    - Design the tree first: which modules, which responsibilities, which interfaces each consumer declares, what each container.go wires. Then move code.
    - Never split a package to get under a count, never rename to dodge a name list, never move code into a public sibling, an example or a test-support package to escape the API-only rule.
-   - ap fix repairs pure layout (one parameter or argument per line, paragraph blank lines). Run it first, then fix the rest by design.
+   - ap fix repairs pure layout (one parameter, argument or literal element per line, paragraph blank lines). Run it first, then fix the rest by design.

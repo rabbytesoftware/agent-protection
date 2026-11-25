@@ -120,7 +120,17 @@ func TestJslexMatches(
 	assertMatches(
 		t,
 		jslex.Jslex(),
-		[]string{"a.ts", "b.tsx", "c.js", "d.jsx", "e.mjs", "f.cjs", "g.mts", "h.cts", "types/a.d.ts"},
+		[]string{
+			"a.ts",
+			"b.tsx",
+			"c.js",
+			"d.jsx",
+			"e.mjs",
+			"f.cjs",
+			"g.mts",
+			"h.cts",
+			"types/a.d.ts",
+		},
 		[]string{"a.py", "a.json", "ts"},
 	)
 }

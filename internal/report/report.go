@@ -14,10 +14,13 @@ func Report(
 		slices.Values(findings),
 		compareFindings,
 	)
-	return Output{RuleDocs: ruleDocs(
-		registry,
-		sorted,
-	), Findings: sorted}
+	return Output{
+		RuleDocs: ruleDocs(
+			registry,
+			sorted,
+		),
+		Findings: sorted,
+	}
 }
 
 func compareFindings(

@@ -67,5 +67,9 @@ func finding(
 	node ast.Node,
 	snippet string,
 ) (built report.Finding) {
-	return report.Finding{Rule: rule, Location: file.Location(node), Snippet: snippet}
+	return report.Finding{
+		Rule:     rule,
+		Location: file.Location(node),
+		Snippet:  snippet,
+	}
 }

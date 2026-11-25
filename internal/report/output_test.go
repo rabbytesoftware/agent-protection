@@ -150,8 +150,13 @@ func TestOutputMarkdown(
 			wantAbsent: []string{"<details>"},
 		},
 		{
-			findings:   []report.Finding{{Rule: "R32", Location: "a.go:1", Snippet: "flag"}},
-			want:       []string{"1 violation across 1 rule", "| R32 | 1 |", "#### R32: No boolean flag", "\n**Not a fix:** Replacing the bool"},
+			findings: []report.Finding{{Rule: "R32", Location: "a.go:1", Snippet: "flag"}},
+			want: []string{
+				"1 violation across 1 rule",
+				"| R32 | 1 |",
+				"#### R32: No boolean flag",
+				"\n**Not a fix:** Replacing the bool",
+			},
 			wantAbsent: []string{"Showing"},
 		},
 		{
@@ -160,7 +165,15 @@ func TestOutputMarkdown(
 				{Rule: "R32", Location: "b.go:2", Snippet: "second"},
 				{Rule: "golangci:errcheck", Location: "c.go:3", Snippet: "unchecked"},
 			},
-			want:       []string{"3 violations across 2 rules", "<details>", "</details>", "| R32 | 2 |", "| golangci:errcheck | 1 |", "#### golangci:errcheck\n", "- `b.go:2` `second`"},
+			want: []string{
+				"3 violations across 2 rules",
+				"<details>",
+				"</details>",
+				"| R32 | 2 |",
+				"| golangci:errcheck | 1 |",
+				"#### golangci:errcheck\n",
+				"- `b.go:2` `second`",
+			},
 			wantAbsent: []string{"Showing"},
 		},
 		{

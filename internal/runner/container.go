@@ -15,9 +15,19 @@ func Runner(
 	return component.Check(
 		root,
 		[]component.Checker{
-			{Marker: component.GoMarker, Check: golang.Golang, Owned: []string{component.GoSource}},
-			{Marker: component.RustMarker, Check: rust.Rust},
-			{Marker: component.TypescriptMarker, Check: typescript.Typescript},
+			{
+				Marker: component.GoMarker,
+				Check:  golang.Golang,
+				Owned:  []string{component.GoSource},
+			},
+			{
+				Marker: component.RustMarker,
+				Check:  rust.Rust,
+			},
+			{
+				Marker: component.TypescriptMarker,
+				Check:  typescript.Typescript,
+			},
 		},
 		commentscan.Comments,
 	)

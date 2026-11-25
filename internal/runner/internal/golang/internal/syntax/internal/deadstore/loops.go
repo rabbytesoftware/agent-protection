@@ -129,7 +129,10 @@ func bindRange(
 	tracker *flow,
 	statement *ast.RangeStmt,
 ) {
-	for _, target := range []ast.Expr{statement.Key, statement.Value} {
+	for _, target := range []ast.Expr{
+		statement.Key,
+		statement.Value,
+	} {
 		bindRangeTarget(
 			tracker,
 			target,

@@ -104,5 +104,10 @@ func hasTestPrefix(
 }
 
 func testPrefixes() (prefixes []string) {
-	return []string{"Test", "Benchmark", "Fuzz", "Example"}
+	return []string{
+		"Test",
+		"Benchmark",
+		"Fuzz",
+		"Example",
+	}
 }

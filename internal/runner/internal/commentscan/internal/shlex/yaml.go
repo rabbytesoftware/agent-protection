@@ -187,5 +187,13 @@ func blanked(
 }
 
 func shellKeys() (keys []string) {
-	return []string{"run", "script", "before_script", "after_script", "command", "commands", "entrypoint"}
+	return []string{
+		"run",
+		"script",
+		"before_script",
+		"after_script",
+		"command",
+		"commands",
+		"entrypoint",
+	}
 }

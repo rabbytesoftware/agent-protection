@@ -19,14 +19,21 @@ func TestReport(
 		wantDocs      []string
 	}{
 		{
-			name:          "sorts by rule then location",
-			findings:      []report.Finding{{Rule: "R33", Location: "b.go:1"}, {Rule: "R32", Location: "z.go:1"}, {Rule: "R32", Location: "a.go:1"}},
+			name: "sorts by rule then location",
+			findings: []report.Finding{
+				{Rule: "R33", Location: "b.go:1"},
+				{Rule: "R32", Location: "z.go:1"},
+				{Rule: "R32", Location: "a.go:1"},
+			},
 			wantLocations: []string{"a.go:1", "z.go:1", "b.go:1"},
 			wantDocs:      []string{"R32", "R33"},
 		},
 		{
-			name:          "documents each distinct rule once",
-			findings:      []report.Finding{{Rule: "R32", Location: "a.go:1"}, {Rule: "R32", Location: "b.go:2"}},
+			name: "documents each distinct rule once",
+			findings: []report.Finding{
+				{Rule: "R32", Location: "a.go:1"},
+				{Rule: "R32", Location: "b.go:2"},
+			},
 			wantLocations: []string{"a.go:1", "b.go:2"},
 			wantDocs:      []string{"R32"},
 		},

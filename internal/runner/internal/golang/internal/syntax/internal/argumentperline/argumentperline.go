@@ -12,7 +12,7 @@ import (
 const (
 	rule             = "R52"
 	minimumArguments = 2
-	snippet          = "call with several arguments: put every argument on its own line, after an opening paren that ends the line and before a closing paren on a line of its own"
+	callSnippet      = "call with several arguments: put every argument on its own line, after an opening paren that ends the line and before a closing paren on a line of its own"
 )
 
 func Argumentperline(
@@ -41,16 +41,21 @@ func fileFindings(
 		)
 	}
 
-	return findings
+	return append(
+		findings,
+		literalFindings(file)...,
+	)
 }
 
 func callFindings(
 	file source.File,
 	call *ast.CallExpr,
 ) (findings []report.Finding) {
-	isCompliant := len(call.Args) < minimumArguments || hasArgumentPerLine(
+	isCompliant := len(call.Args) < minimumArguments || isOnePerLine(
 		file,
-		call,
+		call.Lparen,
+		argumentExtents(call),
+		call.Rparen,
 	)
 	if isCompliant {
 		return nil
@@ -59,28 +64,33 @@ func callFindings(
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(call),
-		Snippet:  snippet,
+		Snippet:  callSnippet,
 	}}
 }
 
-func hasArgumentPerLine(
+func isOnePerLine(
 	file source.File,
-	call *ast.CallExpr,
+	opening token.Pos,
+	items []source.Extent,
+	closing token.Pos,
 ) (compliant bool) {
 	spans := []span{pointSpan(
 		file,
-		call.Lparen,
+		opening,
 	)}
-	for _, extent := range argumentExtents(call) {
+	for _, extent := range items {
 		spans = append(
 			spans,
-			span{first: lineOf(
-				file,
-				extent.Start,
-			), last: lineOf(
-				file,
-				extent.End,
-			)},
+			span{
+				first: lineOf(
+					file,
+					extent.Start,
+				),
+				last: lineOf(
+					file,
+					extent.End,
+				),
+			},
 		)
 	}
 
@@ -88,7 +98,7 @@ func hasArgumentPerLine(
 		spans,
 		pointSpan(
 			file,
-			call.Rparen,
+			closing,
 		),
 	)
 	return !slices.ContainsFunc(
@@ -103,7 +113,10 @@ func gaps(
 	for index := 1; index < len(spans); index++ {
 		between = append(
 			between,
-			span{first: spans[index-1].last, last: spans[index].first},
+			span{
+				first: spans[index-1].last,
+				last:  spans[index].first,
+			},
 		)
 	}
 

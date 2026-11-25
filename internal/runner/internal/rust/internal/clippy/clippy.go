@@ -101,7 +101,12 @@ func newWarning(
 			)
 	}
 
-	return Warning{Path: match[pathGroup], Line: line, Rule: rule, Text: match[textGroup]},
+	return Warning{
+			Path: match[pathGroup],
+			Line: line,
+			Rule: rule,
+			Text: match[textGroup],
+		},
 		nil
 }
 

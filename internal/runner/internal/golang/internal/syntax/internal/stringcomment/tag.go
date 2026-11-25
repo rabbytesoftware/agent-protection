@@ -1,11 +1,13 @@
 package stringcomment
 
 import (
+	_ "embed"
 	"fmt"
 	"go/ast"
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
@@ -104,16 +106,9 @@ func unknownKey(
 	return []string{key}
 }
 
+//go:embed machine_keys.txt
+var machineKeyList string
+
 func machineKeys() (keys []string) {
-	return []string{
-		"json", "yaml", "xml", "toml", "db", "sql", "bson", "msgpack", "mapstructure",
-		"validate", "binding", "form", "query", "uri", "header", "env", "envDefault",
-		"envPrefix", "default", "flag", "arg", "short", "long", "help", "protobuf",
-		"protobuf_key", "protobuf_val", "protobuf_oneof", "protogen", "gorm", "csv",
-		"cbor", "asn1", "hcl", "koanf", "cty", "url", "schema", "jsonschema", "example",
-		"enums", "swaggertype", "swaggerignore", "codec", "time_format", "time_utc",
-		"time_location", "collection_format", "minimum", "maximum", "minLength",
-		"maxLength", "multipleOf", "format", "readonly", "pattern", "required",
-		"sshtype", "ssh", "gcfg", "ini", "param", "path", "cookie",
-	}
+	return strings.Fields(machineKeyList)
 }

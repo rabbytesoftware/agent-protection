@@ -49,7 +49,10 @@ func extents(
 	for _, argument := range call.Args {
 		items = append(
 			items,
-			source.Extent{Start: argument.Pos(), End: argument.End()},
+			source.Extent{
+				Start: argument.Pos(),
+				End:   argument.End(),
+			},
 		)
 	}
 
