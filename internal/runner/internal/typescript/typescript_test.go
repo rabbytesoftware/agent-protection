@@ -28,6 +28,15 @@ func TestTypescript(
 		"export default [];\n",
 		0o600,
 	)
+	writeFile(
+		t,
+		filepath.Join(
+			root,
+			"a.ts",
+		),
+		"// note\nexport {};\n",
+		0o600,
+	)
 	fakeBun(
 		t,
 		fmt.Sprintf(
@@ -47,7 +56,7 @@ func TestTypescript(
 	}
 
 	got := summaries(findings)
-	want := []string{"TS-ESLINT:no-console src/a.ts:2", "TS-ESLINT:custom/rule src/a.ts:5", "TS-NO-DEBUG-OUTPUT src/a.ts:2"}
+	want := []string{"TS-ESLINT:no-console src/a.ts:2", "TS-ESLINT:custom/rule src/a.ts:5", "TS-NO-DEBUG-OUTPUT src/a.ts:2", "R07 a.ts:1"}
 	if !slices.Equal(
 		got,
 		want,
@@ -70,6 +79,38 @@ func TestTypescriptEslintFailure(
 	_, err := typescript.Typescript(t.TempDir())
 	if err == nil {
 		t.Error("Typescript() error = nil, want an error when eslint prints no report")
+	}
+}
+
+func TestTypescriptUnreadableSource(
+	t *testing.T,
+) {
+	root := t.TempDir()
+	writeFile(
+		t,
+		filepath.Join(
+			root,
+			"eslint.config.js",
+		),
+		"export default [];\n",
+		0o600,
+	)
+	writeFile(
+		t,
+		filepath.Join(
+			root,
+			"a.ts",
+		),
+		"export {};\n",
+		0o000,
+	)
+	fakeBun(
+		t,
+		"printf '%s' '[]'",
+	)
+	_, err := typescript.Typescript(root)
+	if err == nil {
+		t.Error("Typescript() error = nil, want an error for a source file the comment scan cannot read")
 	}
 }
 

@@ -1,7 +1,10 @@
 package typescript
 
 import (
+	"slices"
+
 	"github.com/rabbytesoftware/agent-protection/internal/report"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/comments"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/typescript/internal/manifest"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/typescript/internal/passthrough"
 )
@@ -21,9 +24,23 @@ func Typescript(
 			err
 	}
 
-	return append(
+	commented, err := comments.Comments(
+		root,
+		scriptExtensions(),
+	)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	return slices.Concat(
 			own,
-			manifested...,
+			manifested,
+			commented,
 		),
 		nil
+}
+
+func scriptExtensions() (extensions []string) {
+	return []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"}
 }

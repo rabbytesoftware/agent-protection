@@ -24,6 +24,14 @@ func TestRust(
 		),
 		library,
 	)
+	writeFile(
+		t,
+		filepath.Join(
+			root,
+			"src/main.rs",
+		),
+		"// note\nfn main() {}\n",
+	)
 	fakeCargo(
 		t,
 		"printf '%s\\n' 'src/lib.rs:2:5: warning: used `unwrap()` on an `Option` value' 'src/lib.rs:8:9: warning: used `unwrap()` on an `Option` value'",
@@ -39,10 +47,10 @@ func TestRust(
 	got := locations(findings)
 	if !slices.Equal(
 		got,
-		[]string{"src/lib.rs:2"},
+		[]string{"src/lib.rs:2", "src/main.rs:1"},
 	) {
 		t.Errorf(
-			"Rust() locations = %v, want only the production unwrap at src/lib.rs:2",
+			"Rust() locations = %v, want the production unwrap at src/lib.rs:2 and the comment at src/main.rs:1",
 			got,
 		)
 	}
@@ -71,6 +79,41 @@ func TestRustClippyFailure(
 	_, err := rust.Rust(t.TempDir())
 	if err == nil {
 		t.Error("Rust() error = nil, want the clippy failure")
+	}
+}
+
+func TestRustUnreadableSource(
+	t *testing.T,
+) {
+	root := t.TempDir()
+	path := filepath.Join(
+		root,
+		"src/lib.rs",
+	)
+	writeFile(
+		t,
+		path,
+		library,
+	)
+	err := os.Chmod(
+		path,
+		0o000,
+	)
+	if err != nil {
+		t.Fatalf(
+			"chmod %s: %v",
+			path,
+			err,
+		)
+	}
+
+	fakeCargo(
+		t,
+		"true",
+	)
+	_, err = rust.Rust(root)
+	if err == nil {
+		t.Error("Rust() error = nil, want an error for a source file the comment scan cannot read")
 	}
 }
 
