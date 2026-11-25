@@ -6,6 +6,7 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/shape/internal/concretetype"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/shape/internal/deadvalue"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/shape/internal/filelinelimit"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/shape/internal/interfacesize"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/shape/internal/methodfile"
@@ -30,5 +31,12 @@ func Shape(
 		concretetype.Concretetype(files),
 		stateless.Stateless(source.HandWritten(files)),
 		roleinterface.Roleinterface(everyFile),
+		deadvalue.Deadvalue(
+			source.HandWritten(files),
+			slices.Concat(
+				files,
+				everyFile,
+			),
+		),
 	)
 }

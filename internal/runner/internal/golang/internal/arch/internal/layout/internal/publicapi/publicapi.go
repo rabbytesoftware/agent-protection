@@ -29,6 +29,7 @@ func Publicapi(
 	}
 
 	structs := packageStructs(files)
+	functions := packageFunctions(files)
 	vocabularies := vocabularyImports(
 		modulePath,
 		files,
@@ -43,6 +44,7 @@ func Publicapi(
 					sourceDirectories,
 					supportDirectories,
 					structs,
+					functions,
 					vocabularies,
 				),
 			)...,

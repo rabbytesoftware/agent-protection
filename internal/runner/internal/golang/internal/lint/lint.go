@@ -20,6 +20,7 @@ const (
 	configName        = ".ap-lint-config.generated.yml"
 	configFileMode    = 0o644
 	typecheck         = "typecheck"
+	unusedLinter      = "unused"
 	allMatches        = -1
 	issuesExitCode    = 1
 	locationSeparator = ":"
@@ -227,7 +228,8 @@ func issueFindings(
 	issue []string,
 ) (findings []report.Finding) {
 	rule, known := linterRules()[issue[linterGroup]]
-	if !known {
+	if !known ||
+		isCheckedValue(issue) {
 		return nil
 	}
 
@@ -236,6 +238,19 @@ func issueFindings(
 		Location: issue[pathGroup] + locationSeparator + issue[lineGroup],
 		Snippet:  "[" + issue[linterGroup] + "] " + issue[textGroup],
 	}}
+}
+
+func isCheckedValue(
+	issue []string,
+) (checked bool) {
+	isValue := strings.HasPrefix(
+		issue[textGroup],
+		"const ",
+	) || strings.HasPrefix(
+		issue[textGroup],
+		"var ",
+	)
+	return issue[linterGroup] == unusedLinter && isValue
 }
 
 func isNotTypecheck(
@@ -263,5 +278,6 @@ func linterRules() (rules map[string]string) {
 		"interfacebloat":   "R28",
 		"ineffassign":      "R26",
 		"staticcheck":      "R26",
+		"unused":           "R69",
 	}
 }

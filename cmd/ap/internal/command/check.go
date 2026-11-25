@@ -7,13 +7,6 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 )
 
-type Tools struct {
-	Run     func(root string) (findings []report.Finding, err error)
-	Rewrite func(root string) (changed []string, err error)
-	Docs    func() (docs map[string]report.RuleDoc, err error)
-	Manual  func() (guide string)
-}
-
 const (
 	reportPath       = "ap-report.json"
 	reportFileMode   = 0o644
@@ -21,10 +14,28 @@ const (
 	findingsExitCode = 1
 )
 
-func (t Tools) Check(
+type check struct {
+	run    func(root string) (findings []report.Finding, err error)
+	docs   func() (docs map[string]report.RuleDoc, err error)
+	manual func() (guide string)
+}
+
+func Check(
+	run func(root string) (findings []report.Finding, err error),
+	docs func() (docs map[string]report.RuleDoc, err error),
+	manual func() (guide string),
+) (command *check) {
+	return &check{
+		run:    run,
+		docs:   docs,
+		manual: manual,
+	}
+}
+
+func (c *check) Run(
 	root string,
 ) (code int) {
-	output, err := t.checked(root)
+	output, err := c.checked(root)
 	if err != nil {
 		fmt.Fprintf(
 			os.Stderr,
@@ -47,22 +58,22 @@ func (t Tools) Check(
 	fmt.Print(output.Text())
 	code = exitCode(output)
 	if code != cleanExitCode {
-		fmt.Print("\n" + t.Manual())
+		fmt.Print("\n" + c.manual())
 	}
 
 	return code
 }
 
-func (t Tools) checked(
+func (c *check) checked(
 	root string,
 ) (output report.Output, err error) {
-	findings, err := t.Run(root)
+	findings, err := c.run(root)
 	if err != nil {
 		return report.Output{},
 			err
 	}
 
-	registry, err := t.Docs()
+	registry, err := c.docs()
 	if err != nil {
 		return report.Output{},
 			fmt.Errorf(
@@ -100,60 +111,5 @@ func exitCode(
 		return findingsExitCode
 	}
 
-	return cleanExitCode
-}
-
-func (t Tools) Fix(
-	root string,
-) (code int) {
-	changed, err := t.Rewrite(root)
-	for _, path := range changed {
-		fmt.Println(path)
-	}
-
-	fmt.Printf(
-		"files changed: %d\n",
-		len(changed),
-	)
-	if err != nil {
-		fmt.Fprintf(
-			os.Stderr,
-			"fix failed: %v\n",
-			err,
-		)
-		return findingsExitCode
-	}
-
-	return cleanExitCode
-}
-
-func (t Tools) Guide() (code int) {
-	fmt.Print(t.Manual())
-	return cleanExitCode
-}
-
-func (t Tools) Markdown(
-	path string,
-) (code int) {
-	document, err := os.ReadFile(path)
-	if err != nil {
-		fmt.Fprintf(
-			os.Stderr,
-			"read report: %v\n",
-			err,
-		)
-		return findingsExitCode
-	}
-
-	output, err := report.Decode(document)
-	if err != nil {
-		fmt.Fprintln(
-			os.Stderr,
-			err,
-		)
-		return findingsExitCode
-	}
-
-	fmt.Print(output.Markdown())
 	return cleanExitCode
 }

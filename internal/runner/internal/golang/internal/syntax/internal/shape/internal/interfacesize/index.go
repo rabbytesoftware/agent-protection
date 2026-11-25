@@ -18,6 +18,7 @@ func catalogue(
 		interfaces: map[string]declaration{},
 		structures: map[string]structure{},
 		methods:    map[string][]string{},
+		functions:  map[string]bool{},
 	}
 	for _, file := range files {
 		record(
@@ -77,6 +78,8 @@ func recordType(
 			owner: owner,
 			body:  body,
 		}
+	case *ast.FuncType:
+		indexed.functions[key] = true
 	}
 }
 

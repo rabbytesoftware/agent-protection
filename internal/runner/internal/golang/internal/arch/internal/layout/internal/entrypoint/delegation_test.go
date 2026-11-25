@@ -33,6 +33,9 @@ func TestEntrypointEntryFunctionsOnlyDelegate(
 			{name: "increment is reported", body: "v := size\nv++\nreturn nil, nil", want: []string{"R14 container.go:24"}},
 			{name: "address of a composite literal passes", body: "return &Q{V: size}, nil", want: nil},
 			{name: "var declaration passes", body: "var q *Q\nreturn q, nil", want: nil},
+			{name: "setting a field of a local by hand is reported", body: "q := &Q{}\nq.V = size\nreturn q, nil", want: []string{"R14 container.go:24"}},
+			{name: "setting a method value into a field is reported once per statement", body: "q, err := build()\nq.V, q.W = q.Run, q.Stop\nreturn q, err", want: []string{"R14 container.go:24"}},
+			{name: "assigning a package field is left alone", body: "impl.Default = size\nreturn nil, nil", want: nil},
 		},
 	)
 }
@@ -72,6 +75,24 @@ func TestEntrypointDelegationSnippets(
 		),
 		"container.go:23",
 		"container.go func New calls os.Getenv: entry functions only delegate; call only this module's internal packages, its own declarations, errors.New, errors.Join, fmt.Errorf, slices.Concat or other modules' constructors, and take configuration as parameters",
+	)
+	assertSnippet(
+		t,
+		checked(
+			t,
+			map[string]string{"container.go": entry("q := &Q{}\nq.V = size\nreturn q, nil")},
+		),
+		"container.go:24",
+		"container.go func New sets field q.V by hand: entry functions only delegate; a container passes dependencies to constructors and returns what they build; construct the object in an internal package and return it as this module's interface instead of filling its fields here",
+	)
+	assertSnippet(
+		t,
+		checked(
+			t,
+			map[string]string{"container.go": entry("lib.Init()\nreturn nil, nil")},
+		),
+		"container.go:23",
+		"container.go func New calls lib.Init without wiring its result: entry functions only delegate; call another module's constructor only to assign its result and pass it on or return it; flags, environment and configuration files are read by the caller and arrive as entry parameters",
 	)
 }
 

@@ -18,6 +18,7 @@ linters:
     - interfacebloat
     - ineffassign
     - staticcheck
+    - unused
   exclusions:
     generated: disable
   settings:

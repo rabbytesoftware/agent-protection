@@ -22,6 +22,11 @@ func TestEntrypointCalls(
 			{name: "builtin call is reported", body: "impl.Use(len(\"a\"))\nreturn nil, nil", want: []string{"R14 container.go:23"}},
 			{name: "conversion to a composite type is reported", body: "impl.Use([]byte(\"a\"))\nreturn nil, nil", want: []string{"R14 container.go:23"}},
 			{name: "shadowed qualifier is a method call", body: "os := impl.Open()\nos.Getenv()\nreturn nil, nil", want: nil},
+			{name: "other module result assigned and passed on passes", body: "client, err := lib.New()\nreturn impl.New(client), err", want: nil},
+			{name: "other module result returned passes", body: "return lib.New(), nil", want: nil},
+			{name: "other module call whose result is discarded is reported", body: "lib.Init()\nreturn nil, nil", want: []string{"R14 container.go:23"}},
+			{name: "other module result bound to blank is reported", body: "_ = lib.New()\nreturn nil, nil", want: []string{"R14 container.go:23"}},
+			{name: "other module result used in an expression is reported", body: "impl.Use(*lib.Flag())\nreturn nil, nil", want: []string{"R14 container.go:23"}},
 		},
 	)
 }
@@ -38,5 +43,62 @@ func TestEntrypointCallsInModulesWithoutDomains(
 			map[string]string{"container.go": "package ledger\n\nimport \"ledger/internal/book\"\n\nfunc New() int {\n\treturn book.New()\n}\n"},
 		),
 		nil,
+	)
+}
+
+func TestEntrypointConfigurationReads(
+	t *testing.T,
+) {
+	cases := []struct {
+		name     string
+		imported string
+		call     string
+	}{
+		{name: "pflag lookup", imported: "github.com/spf13/pflag", call: "pflag.String(\"mode\", \"\", \"\")"},
+		{name: "viper lookup", imported: "github.com/spf13/viper", call: "viper.GetString(\"mode\")"},
+		{name: "versioned env parser", imported: "github.com/caarlos0/env/v11", call: "env.Parse(nil)"},
+		{name: "envconfig", imported: "github.com/kelseyhightower/envconfig", call: "envconfig.Process(\"app\", nil)"},
+		{name: "unix environment", imported: "golang.org/x/sys/unix", call: "unix.Getenv(\"MODE\")"},
+		{name: "go-prefixed envconfig", imported: "github.com/sethvargo/go-envconfig", call: "envconfig.MustProcess(nil, nil)"},
+		{name: "lo helpers", imported: "github.com/samber/lo", call: "lo.Ternary(true, 1, 2)"},
+	}
+	for _, tc := range cases {
+		assertFindings(
+			t,
+			tc.name+" assigned and passed on is still reported",
+			checked(
+				t,
+				map[string]string{"container.go": "package jobq\n\nimport (\n\t\"example.com/m/internal/impl\"\n\t\"" + tc.imported + "\"\n)\n\nfunc New() (q int) {\n\tvalue := " + tc.call + "\n\treturn impl.New(value)\n}\n"},
+			),
+			[]string{"R14 container.go:9"},
+		)
+	}
+}
+
+func TestEntrypointOtherUnixCallsAreWiring(
+	t *testing.T,
+) {
+	assertFindings(
+		t,
+		"a unix constructor whose result is passed on passes",
+		checked(
+			t,
+			map[string]string{"container.go": "package jobq\n\nimport (\n\t\"example.com/m/internal/impl\"\n\t\"golang.org/x/sys/unix\"\n)\n\nfunc New() (q int) {\n\tvalue := unix.Getpagesize()\n\treturn impl.New(value)\n}\n"},
+		),
+		nil,
+	)
+}
+
+func TestEntrypointGopkgImportsResolve(
+	t *testing.T,
+) {
+	assertFindings(
+		t,
+		"a gopkg.in call whose result is discarded is reported",
+		checked(
+			t,
+			map[string]string{"container.go": "package jobq\n\nimport \"gopkg.in/yaml.v3\"\n\nfunc New() (q int) {\n\tyaml.Unmarshal(nil, nil)\n\treturn 1\n}\n"},
+		),
+		[]string{"R14 container.go:6"},
 	)
 }

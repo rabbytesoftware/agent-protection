@@ -40,12 +40,10 @@ func assertDispatch(
 	t.Helper()
 	code := Dispatch(
 		arguments,
-		Commands{
-			Check:    check,
-			Fix:      fix,
-			Markdown: markdown,
-			Guide:    guide,
-		},
+		fixedCommand(checkCode),
+		fixedCommand(fixCode),
+		fixedCommand(markdownCode),
+		fixedCommand(guideCode),
 	)
 	if code != wantCode {
 		t.Errorf(
@@ -108,24 +106,10 @@ func assertCommandArguments(
 	}
 }
 
-func check(
-	root string,
-) (code int) {
-	return checkCode
-}
+type fixedCommand int
 
-func fix(
-	root string,
+func (c fixedCommand) Run(
+	target string,
 ) (code int) {
-	return fixCode
-}
-
-func markdown(
-	path string,
-) (code int) {
-	return markdownCode
-}
-
-func guide() (code int) {
-	return guideCode
+	return int(c)
 }

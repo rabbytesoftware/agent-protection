@@ -12,6 +12,8 @@ import (
 const (
 	structureFormat = "struct %s exposes %d methods through embedded %s%s (max %d): a struct that embeds interfaces is one large interface; return each small interface from its own constructor and let every consumer depend on the one it calls"
 	ownFormat       = " plus %d own methods"
+	functionFormat  = "struct %s exposes %d methods through %d exported func fields%s%s (max %d): a struct of exported func fields is an interface assembled by hand; declare an interface with the methods each consumer calls, implement it with methods on an unexported type and return it from its constructor"
+	embeddedFormat  = " and embedded %s"
 )
 
 func structureFindings(
@@ -44,15 +46,126 @@ func structureFindings(
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(declared.owner.spec),
-		Snippet: fmt.Sprintf(
-			structureFormat,
-			declared.owner.spec.Name.Name,
+		Snippet: surfaceSnippet(
+			declared,
 			len(exposed),
-			embedNames(members),
-			ownNote(len(indexed.methods[key])),
-			maxMethods,
+			members,
+			len(indexed.methods[key]),
+			len(functionFields(
+				declared,
+				indexed,
+			)),
 		),
 	}}
+}
+
+func surfaceSnippet(
+	declared structure,
+	exposed int,
+	members []*ast.Field,
+	own int,
+	functions int,
+) (snippet string) {
+	if functions == 0 {
+		return fmt.Sprintf(
+			structureFormat,
+			declared.owner.spec.Name.Name,
+			exposed,
+			embedNames(members),
+			ownNote(own),
+			maxMethods,
+		)
+	}
+
+	return fmt.Sprintf(
+		functionFormat,
+		declared.owner.spec.Name.Name,
+		exposed,
+		functions,
+		embeddedNote(members),
+		ownNote(own),
+		maxMethods,
+	)
+}
+
+func embeddedNote(
+	members []*ast.Field,
+) (note string) {
+	if len(members) == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf(
+		embeddedFormat,
+		embedNames(members),
+	)
+}
+
+func functionFields(
+	declared structure,
+	indexed catalog,
+) (names []string) {
+	for _, field := range declared.body.Fields.List {
+		names = append(
+			names,
+			exportedFunctions(
+				declared.owner,
+				field,
+				indexed,
+			)...,
+		)
+	}
+
+	return names
+}
+
+func exportedFunctions(
+	owner declaration,
+	field *ast.Field,
+	indexed catalog,
+) (names []string) {
+	if !isFunctionType(
+		owner,
+		field.Type,
+		indexed,
+	) {
+		return nil
+	}
+
+	for _, name := range field.Names {
+		names = appendExported(
+			names,
+			name,
+		)
+	}
+
+	return names
+}
+
+func appendExported(
+	names []string,
+	name *ast.Ident,
+) (extended []string) {
+	if !name.IsExported() {
+		return names
+	}
+
+	return append(
+		names,
+		name.Name,
+	)
+}
+
+func isFunctionType(
+	owner declaration,
+	expression ast.Expr,
+	indexed catalog,
+) (isFunction bool) {
+	_, isLiteral := ast.Unparen(expression).(*ast.FuncType)
+	return isLiteral || indexed.functions[memberKey(
+		owner,
+		unindexed(ast.Unparen(expression)),
+	)]
 }
 
 func ownNote(
@@ -129,8 +242,15 @@ func structureSurface(
 		visiting,
 		[]string{key},
 	)
-	names = slices.Clone(indexed.methods[key])
 	declared := indexed.structures[key]
+	names = slices.Concat(
+		indexed.methods[key],
+		functionFields(
+			declared,
+			indexed,
+		),
+	)
+	isBacked = len(names) > len(indexed.methods[key])
 	for _, field := range declared.body.Fields.List {
 		promoted, isInterface := memberSurface(
 			declared.owner,

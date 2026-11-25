@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
@@ -16,6 +17,9 @@ const (
 	logicFormat = "%s func %s %s: entry functions only delegate; %s"
 	logicRemedy = "move the logic into an internal package"
 	callRemedy  = "call only this module's internal packages, its own declarations, errors.New, errors.Join, fmt.Errorf, slices.Concat or other modules' constructors, and take configuration as parameters"
+	wireRemedy  = "call another module's constructor only to assign its result and pass it on or return it; flags, environment and configuration files are read by the caller and arrive as entry parameters"
+	fieldRemedy = "a container passes dependencies to constructors and returns what they build; construct the object in an internal package and return it as this module's interface instead of filling its fields here"
+	fieldVerb   = "sets field "
 )
 
 type delegation struct {
@@ -23,6 +27,7 @@ type delegation struct {
 	guards      []ast.Expr
 	locals      []string
 	typeIndexes []ast.Node
+	wiring      []ast.Expr
 }
 
 func delegationFindings(
@@ -44,6 +49,7 @@ func delegationFindings(
 			found,
 			function.Body,
 		),
+		wiring: wiringCalls(function.Body),
 	}
 	for _, node := range outermost(
 		context,
@@ -70,6 +76,10 @@ func logicFinding(
 	function *ast.FuncDecl,
 	node ast.Node,
 ) (finding report.Finding) {
+	verb := logicVerb(
+		context,
+		node,
+	)
 	return report.Finding{
 		Rule:     apiRule,
 		Location: context.unit.file.Location(node),
@@ -77,20 +87,39 @@ func logicFinding(
 			logicFormat,
 			filepath.Base(context.unit.file.Rel),
 			function.Name.Name,
-			logicVerb(
-				context,
+			verb,
+			remedyOf(
 				node,
+				verb,
 			),
-			remedyOf(node),
 		),
 	}
 }
 
 func remedyOf(
 	node ast.Node,
+	verb string,
 ) (remedy string) {
+	isForeign := strings.HasPrefix(
+		verb,
+		configurationVerb,
+	) || strings.HasPrefix(
+		verb,
+		libraryVerb,
+	) || strings.HasSuffix(
+		verb,
+		unwiredVerb,
+	)
 	_, isCall := node.(*ast.CallExpr)
-	if isCall {
+	switch {
+	case isForeign:
+		return wireRemedy
+	case strings.HasPrefix(
+		verb,
+		fieldVerb,
+	):
+		return fieldRemedy
+	case isCall:
 		return callRemedy
 	}
 
@@ -270,7 +299,10 @@ func computationVerb(
 	case *ast.UnaryExpr:
 		return unaryVerb(typed)
 	case *ast.AssignStmt:
-		return assignmentVerb(typed)
+		return assignmentVerb(
+			context,
+			typed,
+		)
 	case *ast.IncDecStmt:
 		return "computes"
 	}
@@ -304,14 +336,51 @@ func unaryVerb(
 }
 
 func assignmentVerb(
+	context delegation,
 	statement *ast.AssignStmt,
 ) (verb string) {
 	isPlain := statement.Tok == token.ASSIGN || statement.Tok == token.DEFINE
-	if isPlain {
+	if !isPlain {
+		return "computes"
+	}
+
+	fields := []string{}
+	for _, target := range statement.Lhs {
+		fields = append(
+			fields,
+			localField(
+				context,
+				target,
+			)...,
+		)
+	}
+
+	if len(fields) == 0 {
 		return noLogic
 	}
 
-	return "computes"
+	return fieldVerb + fields[0] + " by hand"
+}
+
+func localField(
+	context delegation,
+	target ast.Expr,
+) (fields []string) {
+	selector, isSelector := ast.Unparen(target).(*ast.SelectorExpr)
+	if !isSelector {
+		return nil
+	}
+
+	owner, isIdentifier := ast.Unparen(selector.X).(*ast.Ident)
+	isLocal := isIdentifier && slices.Contains(
+		context.locals,
+		owner.Name,
+	)
+	if !isLocal {
+		return nil
+	}
+
+	return []string{owner.Name + "." + selector.Sel.Name}
 }
 
 func localNames(
