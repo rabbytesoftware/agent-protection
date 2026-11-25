@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/comments"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/rust/internal/clippy"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/rust/internal/testmodule"
 )
@@ -29,6 +30,29 @@ func Rust(
 			err
 	}
 
+	commented, err := comments.Comments(
+		root,
+		rustExtensions(),
+	)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	return append(
+			productionFindings(
+				warnings,
+				testLines,
+			),
+			commented...,
+		),
+		nil
+}
+
+func productionFindings(
+	warnings []clippy.Warning,
+	testLines map[string][]int,
+) (findings []report.Finding) {
 	for _, warning := range warnings {
 		findings = append(
 			findings,
@@ -39,8 +63,11 @@ func Rust(
 		)
 	}
 
-	return findings,
-		nil
+	return findings
+}
+
+func rustExtensions() (extensions []string) {
+	return []string{".rs"}
 }
 
 func inlineTestLines(
