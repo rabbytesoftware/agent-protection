@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
@@ -12,9 +13,8 @@ import (
 )
 
 const (
-	checkerInterface = "package checks\n\n// Checker runs a check.\ntype Checker interface {\n\tCheck() error\n}\n"
-	goastPackage     = "package goast\n\nfunc A() {}\n"
-	rustastPackage   = "package rustast\n\nfunc A() {}\n"
+	modulePath       = "example.com/m"
+	moduleRootImport = "."
 )
 
 func TestCompositionroot(
@@ -26,99 +26,104 @@ func TestCompositionroot(
 		want  []string
 	}{
 		{
-			name: "component without a composition root is reported at the directory",
+			name: "module without container.go is reported at its directory",
 			files: map[string]string{
-				"internal/checks/goast/a.go":   goastPackage,
-				"internal/checks/rustast/a.go": rustastPackage,
-				"internal/checks/tsast/a.go":   "package tsast\n\nfunc A() {}\n",
+				"internal/app/app.go":                  unit("app"),
+				"internal/app/internal/engine/e.go":    unit("engine"),
+				"internal/app/internal/adapter/ad.go":  unit("adapter"),
+				"internal/app/internal/adapter/ad2.go": unit("adapter"),
 			},
-			want: []string{"R48 internal/checks"},
+			want: []string{"R48 internal/app"},
 		},
 		{
-			name: "children nested under the component's own internal count as its packages",
+			name: "one internal child is enough to make a module",
 			files: map[string]string{
-				"internal/checks/internal/goast/a.go":   goastPackage,
-				"internal/checks/internal/rustast/a.go": rustastPackage,
+				"internal/app/app.go":               unit("app"),
+				"internal/app/internal/engine/e.go": unit("engine"),
 			},
-			want: []string{"R48 internal/checks"},
+			want: []string{"R48 internal/app"},
 		},
 		{
-			name: "composition root exposing an interface passes",
+			name: "container.go wiring the internal children passes",
 			files: map[string]string{
-				"internal/checks/checks.go":    checkerInterface,
-				"internal/checks/goast/a.go":   goastPackage,
-				"internal/checks/rustast/a.go": rustastPackage,
-			},
-			want: nil,
-		},
-		{
-			name: "composition root exposing a function named after the package passes",
-			files: map[string]string{
-				"internal/checks/checks.go":             "package checks\n\n// Checks runs every check.\nfunc Checks() {}\n",
-				"internal/checks/internal/goast/a.go":   goastPackage,
-				"internal/checks/internal/rustast/a.go": rustastPackage,
+				"internal/app/container.go":           unit("app internal/app/internal/engine internal/app/internal/adapter"),
+				"internal/app/app.go":                 unit("app"),
+				"internal/app/internal/engine/e.go":   unit("engine"),
+				"internal/app/internal/adapter/ad.go": unit("adapter"),
 			},
 			want: nil,
 		},
 		{
-			name: "composition root exposing neither is reported at its package clause",
+			name: "other module files importing its internal packages are reported at the import",
 			files: map[string]string{
-				"internal/checks/checks.go":    "package checks\n\n// Run runs every check.\nfunc Run() {}\n",
-				"internal/checks/goast/a.go":   goastPackage,
-				"internal/checks/rustast/a.go": rustastPackage,
+				"internal/app/container.go":              unit("app internal/app/internal/engine"),
+				"internal/app/service.go":                unit("app fmt internal/app/internal/engine internal/app/internal/engine/sub"),
+				"internal/app/internal/engine/e.go":      unit("engine"),
+				"internal/app/internal/engine/sub/s.go":  unit("sub"),
+				"internal/app/internal/engine/sub/s2.go": unit("sub"),
 			},
-			want: []string{"R48 internal/checks/checks.go:1"},
+			want: []string{"R48 internal/app/service.go:5", "R48 internal/app/service.go:6"},
 		},
 		{
-			name: "composition root exporting a struct is reported at the type",
+			name: "module files may import packages outside their own internal tree",
 			files: map[string]string{
-				"internal/checks/checks.go":    checkerInterface + "\n// Runner is a concrete runner.\ntype Runner struct{}\n",
-				"internal/checks/goast/a.go":   goastPackage,
-				"internal/checks/rustast/a.go": rustastPackage,
-			},
-			want: []string{"R13 internal/checks/checks.go:9"},
-		},
-		{
-			name: "container.go is recognized as the composition root",
-			files: map[string]string{
-				"internal/app/container.go":          "package app\n\n// Container wires the app.\ntype Container interface {\n\tRun() error\n}\n",
-				"internal/app/internal/engine/e.go":  "package engine\n\nfunc A() {}\n",
-				"internal/app/internal/adapter/a.go": "package adapter\n\nfunc A() {}\n",
+				"internal/app/container.go":         unit("app internal/app/internal/engine"),
+				"internal/app/service.go":           unit("app internal/other internal/app/models internal/apps/internal/x"),
+				"internal/app/internal/engine/e.go": unit("engine"),
+				"internal/app/models/m.go":          unit("models"),
+				"internal/other/o.go":               unit("other"),
 			},
 			want: nil,
 		},
 		{
-			name: "loose file beside the composition root is reported",
+			name: "package main wires in main.go and is exempt",
 			files: map[string]string{
-				"internal/checks/checks.go":     checkerInterface,
-				"internal/checks/go_checker.go": "package checks\n\nfunc helper() {}\n",
-				"internal/checks/goast/a.go":    goastPackage,
-				"internal/checks/rustast/a.go":  rustastPackage,
-			},
-			want: []string{"R49 internal/checks/go_checker.go"},
-		},
-		{
-			name: "test file beside the composition root passes",
-			files: map[string]string{
-				"internal/checks/checks.go":      checkerInterface,
-				"internal/checks/checks_test.go": "package checks_test\n",
-				"internal/checks/goast/a.go":     goastPackage,
-				"internal/checks/rustast/a.go":   rustastPackage,
+				"cmd/tool/main.go":                unit("main cmd/tool/internal/flags"),
+				"cmd/tool/run.go":                 unit("main cmd/tool/internal/flags"),
+				"cmd/tool/internal/flags/f.go":    unit("flags"),
+				"cmd/tool/internal/flags/more.go": unit("flags"),
 			},
 			want: nil,
 		},
 		{
-			name: "directory with a single child package is not a component",
+			name: "directory without source is not a module",
 			files: map[string]string{
-				"internal/checks/goast/a.go": goastPackage,
+				"internal/app/internal/engine/e.go":  unit("engine"),
+				"internal/app/internal/engine/e2.go": unit("engine"),
 			},
 			want: nil,
 		},
 		{
-			name: "literal internal directory is never a component",
+			name: "plain child packages do not make a module",
 			files: map[string]string{
-				"internal/runner/r.go": "package runner\n\nfunc A() {}\n",
-				"internal/engine/e.go": "package engine\n\nfunc A() {}\n",
+				"internal/checks/checks.go":  unit("checks internal/checks/goast"),
+				"internal/checks/goast/a.go": unit("goast"),
+				"internal/checks/rust/a.go":  unit("rust"),
+			},
+			want: nil,
+		},
+		{
+			name: "module root counts as a module",
+			files: map[string]string{
+				"m.go":                 unit("m internal/engine"),
+				"internal/engine/e.go": unit("engine"),
+			},
+			want: []string{"R48 .", "R48 m.go:4"},
+		},
+		{
+			name: "file named after the package is no longer a composition root",
+			files: map[string]string{
+				"internal/app/app.go":               unit("app internal/app/internal/engine"),
+				"internal/app/internal/engine/e.go": unit("engine"),
+			},
+			want: []string{"R48 internal/app", "R48 internal/app/app.go:4"},
+		},
+		{
+			name: "exported structs and files beside container.go are left to other rules",
+			files: map[string]string{
+				"internal/app/container.go":         "package app\n\ntype Runner struct{}\n\nfunc Run() {}\n",
+				"internal/app/helper.go":            unit("app fmt"),
+				"internal/app/internal/engine/e.go": unit("engine"),
 			},
 			want: nil,
 		},
@@ -134,6 +139,109 @@ func TestCompositionroot(
 			tc.want,
 		)
 	}
+}
+
+func TestCompositionrootSnippets(
+	t *testing.T,
+) {
+	cases := []struct {
+		name  string
+		files map[string]string
+		want  []string
+	}{
+		{
+			name: "nested module is named by its path",
+			files: map[string]string{
+				"internal/app/app.go":               unit("app internal/app/internal/engine"),
+				"internal/app/internal/engine/e.go": unit("engine"),
+			},
+			want: []string{
+				"module internal/app has internal packages but no container.go: add container.go and construct them there",
+				"only container.go wires internal/app's internal packages",
+			},
+		},
+		{
+			name: "module root is named by its package",
+			files: map[string]string{
+				"shop.go":              unit("shop internal/engine"),
+				"internal/engine/e.go": unit("engine"),
+			},
+			want: []string{
+				"module shop has internal packages but no container.go: add container.go and construct them there",
+				"only container.go wires shop's internal packages",
+			},
+		},
+	}
+	for _, tc := range cases {
+		assertEqual(
+			t,
+			tc.name,
+			snippets(checked(
+				t,
+				tc.files,
+			)),
+			tc.want,
+		)
+	}
+}
+
+func snippets(
+	findings []report.Finding,
+) (texts []string) {
+	texts = []string{}
+	for _, finding := range findings {
+		texts = append(
+			texts,
+			finding.Snippet,
+		)
+	}
+
+	return texts
+}
+
+func TestCompositionrootRejectsMissingRoot(
+	t *testing.T,
+) {
+	missing := filepath.Join(
+		t.TempDir(),
+		"missing",
+	)
+	_, err := compositionroot.Compositionroot(
+		missing,
+		nil,
+	)
+	if err == nil {
+		t.Error("Compositionroot() error = nil, want one for a missing root")
+	}
+}
+
+func unit(
+	spec string,
+) (code string) {
+	fields := strings.Fields(spec)
+	code = "package " + fields[0] + "\n\nimport (\n"
+	for _, imported := range fields[1:] {
+		code += "\t\"" + importPath(imported) + "\"\n"
+	}
+
+	return code + ")\n\nfunc Run() {}\n"
+}
+
+func importPath(
+	imported string,
+) (path string) {
+	if imported == moduleRootImport {
+		return modulePath
+	}
+
+	if !strings.Contains(
+		imported,
+		"/",
+	) {
+		return imported
+	}
+
+	return modulePath + "/" + imported
 }
 
 func checked(
@@ -242,31 +350,31 @@ func assertFindings(
 		)
 	}
 
+	slices.Sort(got)
+	assertEqual(
+		t,
+		name,
+		got,
+		want,
+	)
+}
+
+func assertEqual(
+	t *testing.T,
+	name string,
+	got []string,
+	want []string,
+) {
+	t.Helper()
 	if !slices.Equal(
 		got,
 		want,
 	) {
 		t.Errorf(
-			"%s: findings = %v, want %v",
+			"%s: got %q, want %q",
 			name,
 			got,
 			want,
 		)
-	}
-}
-
-func TestCompositionrootRejectsMissingRoot(
-	t *testing.T,
-) {
-	missing := filepath.Join(
-		t.TempDir(),
-		"missing",
-	)
-	_, err := compositionroot.Compositionroot(
-		missing,
-		nil,
-	)
-	if err == nil {
-		t.Error("Compositionroot() error = nil, want one for a missing root")
 	}
 }
