@@ -173,7 +173,9 @@ func duplicateFinding(
 	name string,
 	first string,
 ) (findings []report.Finding) {
-	isDuplicate := name != mainPackage && first != directory
+	isDuplicate := name != mainPackage &&
+		first != directory &&
+		!source.IsMock(name+"/"+name+".go")
 	if !isDuplicate {
 		return nil
 	}

@@ -36,6 +36,10 @@ func Siblingimports(
 			)
 	}
 
+	files = slices.DeleteFunc(
+		slices.Clone(files),
+		isMock,
+	)
 	lifted, direct := edges(
 		modulePath,
 		files,
@@ -416,4 +420,10 @@ func importedDirectory(
 	)
 	return filepath.FromSlash(imported),
 		inModule
+}
+
+func isMock(
+	file source.File,
+) (mock bool) {
+	return source.IsMock(file.Rel)
 }

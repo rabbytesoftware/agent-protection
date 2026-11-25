@@ -234,5 +234,8 @@ func isNotMethod(
 func isExempt(
 	file source.File,
 ) (exempt bool) {
-	return source.IsTest(file.Path) || source.IsMock(file.Rel) || file.Syntax.Name.Name == mainPackage
+	return source.IsTest(file.Path) ||
+		source.IsMock(file.Rel) ||
+		source.IsExample(file.Rel) ||
+		file.Syntax.Name.Name == mainPackage
 }
