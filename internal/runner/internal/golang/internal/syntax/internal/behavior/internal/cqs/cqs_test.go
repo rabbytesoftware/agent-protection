@@ -50,6 +50,16 @@ func TestCqs(
 			want: nil,
 		},
 		{
+			name: "a bool result on a command without a try-style name is reported",
+			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) Save() (saved bool) {\n\tt.v++\n\treturn true\n}\n",
+			want: []string{"p.go:7"},
+		},
+		{
+			name: "a func result not named as a release handle is reported",
+			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) Next() (next func()) {\n\tt.v++\n\treturn t.release\n}\n",
+			want: []string{"p.go:7"},
+		},
+		{
 			name: "bool reported next to another value is still a query",
 			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) Next() (v int, ok bool) {\n\tt.v++\n\treturn t.v,\n\t\ttrue\n}\n",
 			want: []string{"p.go:7"},

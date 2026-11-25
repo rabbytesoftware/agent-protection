@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
@@ -151,9 +152,69 @@ func reportsOutcome(
 	)
 	handsBack := slices.ContainsFunc(
 		results,
-		isFuncResult,
+		isReleaseHandle,
 	)
-	return handsBack || len(results) == 1 && identifierName(results[0].Type) == boolType
+	isTry := len(results) == 1 &&
+		identifierName(results[0].Type) == boolType &&
+		isTryName(function.Name.Name)
+	return handsBack || isTry
+}
+
+func isTryName(
+	name string,
+) (try bool) {
+	lower := strings.ToLower(name)
+	for _, prefix := range tryPrefixes() {
+		try = try || strings.HasPrefix(
+			lower,
+			prefix,
+		)
+	}
+
+	return try
+}
+
+func tryPrefixes() (prefixes []string) {
+	return []string{
+		"try",
+		"allow",
+		"acquire",
+		"claim",
+		"reserve",
+		"take",
+		"consume",
+		"compareandswap",
+	}
+}
+
+func isReleaseHandle(
+	field *ast.Field,
+) (handle bool) {
+	if !isFuncResult(field) {
+		return false
+	}
+
+	for _, name := range field.Names {
+		handle = handle || slices.Contains(
+			releaseNames(),
+			name.Name,
+		)
+	}
+
+	return handle
+}
+
+func releaseNames() (names []string) {
+	return []string{
+		"cancel",
+		"release",
+		"stop",
+		"unlock",
+		"done",
+		"undo",
+		"cleanup",
+		"rollback",
+	}
 }
 
 func isErrorResult(
