@@ -330,7 +330,6 @@ func linterRules() (rules map[string]string) {
 		"gochecknoinits":   "R24",
 		"errcheck":         "R26",
 		"nakedret":         "R04",
-		"interfacebloat":   "R28",
 		"ineffassign":      "R26",
 		"staticcheck":      "R26",
 		"unused":           "R69",

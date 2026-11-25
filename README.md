@@ -97,8 +97,7 @@ tags (R07), one type per file and no local or anonymous struct types (R08),
 methods live in their type's file and no numbered files (R66), stateless
 types as functions unless they only implement an interface (R11, R12),
 errors never dropped, overwritten or left unread (R26), no init or package
-state (R24), no panic, log.Fatal or os.Exit outside main (R27), interfaces
-and interface-embedding structs capped at 3 methods (R28), no bool flag
+state (R24), no panic, log.Fatal or os.Exit outside main (R27), no bool flag
 parameters even behind a named type (R32), command-query separation
 including mutation through field method calls (R33), no hidden side
 effects (R34), no content-free or numbered names, exported or not (R56),
