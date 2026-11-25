@@ -12,11 +12,14 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/conditionperline"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/cqs"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/ctxfirstparam"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/deadstore"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/droppederror"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/filelinelimit"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/genericname"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/gofmtcheck"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/interfacesize"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/maxdepth"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/methodfile"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/namedreturn"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/noelse"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/nopanic"
@@ -63,6 +66,9 @@ func Syntax(
 		ctxfirstparam.Ctxfirstparam(files),
 		filelinelimit.Filelinelimit(files),
 		nopanic.Nopanic(files),
+		deadstore.Deadstore(files),
+		methodfile.Methodfile(files),
+		interfacesize.Interfacesize(files),
 		packagestate.Packagestate(files),
 		stateless.Stateless(files),
 		concretetype.Concretetype(files),

@@ -49,10 +49,29 @@ func TestRoleinterface(
 			want: nil,
 		},
 		{
-			name: "interface used in a test file passes",
+			name: "interface used only in a test file is reported",
 			files: map[string]string{
 				"internal/jobs/job.go":           embedder,
 				"internal/jobs/progress.go":      progress,
+				"internal/jobs/progress_test.go": "package jobs\n\nvar _ Progress = nil\n",
+			},
+			want: []string{onlyFound},
+		},
+		{
+			name: "interface embedded only by a test fake and used only in tests is reported",
+			files: map[string]string{
+				"internal/jobs/job.go":       embedder,
+				"internal/jobs/progress.go":  progress,
+				"internal/jobs/fake_test.go": "package jobs\n\ntype fake struct {\n\tProgress\n}\n\nfunc use(\n\tp Progress,\n) {\n}\n",
+			},
+			want: []string{onlyFound},
+		},
+		{
+			name: "interface used in production and in a test file passes",
+			files: map[string]string{
+				"internal/jobs/job.go":           embedder,
+				"internal/jobs/progress.go":      progress,
+				"internal/jobs/run.go":           "package jobs\n\nvar _ Progress = nil\n",
 				"internal/jobs/progress_test.go": "package jobs\n\nvar _ Progress = nil\n",
 			},
 			want: nil,

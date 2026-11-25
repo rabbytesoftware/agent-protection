@@ -69,9 +69,45 @@ func TestOnetypeperfile(
 			want: []string{"wire.go:3"},
 		},
 		{
-			name: "type local to a function body is not counted",
+			name: "type local to a function body is reported",
 			path: "walker.go",
 			code: "package p\n\ntype walker struct{}\n\nfunc f() {\n\ttype local int\n}\n",
+			want: []string{"walker.go:6"},
+		},
+		{
+			name: "local struct type is reported once at its declaration",
+			path: "helpers.go",
+			code: "package p\n\nfunc f() {\n\ttype entry struct {\n\t\tkey int\n\t}\n\t_ = entry{}\n}\n",
+			want: []string{"helpers.go:4"},
+		},
+		{
+			name: "anonymous struct in a composite literal is reported",
+			path: "helpers.go",
+			code: "package p\n\nfunc f() {\n\trows := []struct {\n\t\tlimit int\n\t}{{limit: 1}}\n\t_ = rows\n}\n",
+			want: []string{"helpers.go:4"},
+		},
+		{
+			name: "anonymous struct in a package var is reported",
+			path: "helpers.go",
+			code: "package p\n\nvar settings struct {\n\tlimit int\n}\n",
+			want: []string{"helpers.go:3"},
+		},
+		{
+			name: "anonymous struct in a local var is reported",
+			path: "helpers.go",
+			code: "package p\n\nfunc f() {\n\tvar payload struct {\n\t\tName string\n\t}\n\t_ = payload\n}\n",
+			want: []string{"helpers.go:4"},
+		},
+		{
+			name: "empty struct as a set value or signal passes",
+			path: "helpers.go",
+			code: "package p\n\nfunc f() {\n\tseen := map[string]struct{}{}\n\tdone := make(chan struct{})\n\tseen[\"a\"] = struct{}{}\n\t_ = done\n}\n",
+			want: nil,
+		},
+		{
+			name: "nested struct field inside a named type passes",
+			path: "config.go",
+			code: "package p\n\ntype config struct {\n\tdb struct {\n\t\thost string\n\t}\n}\n",
 			want: nil,
 		},
 		{

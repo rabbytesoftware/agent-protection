@@ -10,8 +10,12 @@ import (
 
 func packageEffects(
 	files []source.File,
+	fields map[string]ast.Expr,
 ) (effects map[string][]int) {
-	callables := packageCallables(files)
+	callables := packageCallables(
+		files,
+		fields,
+	)
 	direct := map[string][]int{}
 	for _, described := range callables {
 		direct[described.key] = merged(
@@ -28,6 +32,7 @@ func packageEffects(
 
 func packageCallables(
 	files []source.File,
+	fields map[string]ast.Expr,
 ) (callables []callable) {
 	declarations := []*ast.FuncDecl{}
 	for _, file := range files {
@@ -43,7 +48,10 @@ func packageCallables(
 	) {
 		callables = append(
 			callables,
-			callableOf(declaration),
+			callableOf(
+				declaration,
+				fields,
+			),
 		)
 	}
 
@@ -104,4 +112,43 @@ func hasNoBody(
 	declaration *ast.FuncDecl,
 ) (bodiless bool) {
 	return declaration.Body == nil
+}
+
+func packageFields(
+	files []source.File,
+) (fields map[string]ast.Expr) {
+	fields = map[string]ast.Expr{}
+	specs := []*ast.TypeSpec{}
+	for _, file := range files {
+		specs = append(
+			specs,
+			source.Nodes[*ast.TypeSpec](file.Syntax)...,
+		)
+	}
+
+	for _, spec := range specs {
+		copyFields(
+			fields,
+			spec,
+		)
+	}
+
+	return fields
+}
+
+func copyFields(
+	fields map[string]ast.Expr,
+	spec *ast.TypeSpec,
+) {
+	structure, isStruct := spec.Type.(*ast.StructType)
+	if !isStruct {
+		return
+	}
+
+	for name, declared := range structFields(structure) {
+		fields[methodKey(
+			spec.Name.Name,
+			name,
+		)] = declared
+	}
 }

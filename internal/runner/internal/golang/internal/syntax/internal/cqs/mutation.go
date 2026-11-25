@@ -4,9 +4,13 @@ import (
 	"go/ast"
 	"maps"
 	"slices"
+	"strings"
 )
 
-const appendName = "append"
+const (
+	appendName   = "append"
+	atomicPrefix = "atomic."
+)
 
 func directPositions(
 	described callable,
@@ -19,7 +23,10 @@ func directPositions(
 		)
 	}
 
-	for _, name := range sharedRoots(described.declaration.Body) {
+	for _, name := range slices.Concat(
+		sharedRoots(described.declaration.Body),
+		stdlibRoots(described),
+	) {
 		positions = appendPosition(
 			positions,
 			everySlot(described),
@@ -28,6 +35,60 @@ func directPositions(
 	}
 
 	return positions
+}
+
+func stdlibRoots(
+	described callable,
+) (names []string) {
+	for _, call := range stdlibCalls(described) {
+		names = append(
+			names,
+			rootName(receiverOf(call.Fun)),
+		)
+	}
+
+	return names
+}
+
+func stdlibCalls(
+	described callable,
+) (calls []*ast.CallExpr) {
+	for _, call := range described.calls {
+		calls = appendStdlibCall(
+			calls,
+			described,
+			call,
+		)
+	}
+
+	return calls
+}
+
+func appendStdlibCall(
+	calls []*ast.CallExpr,
+	described callable,
+	call *ast.CallExpr,
+) (extended []*ast.CallExpr) {
+	selector, isSelector := call.Fun.(*ast.SelectorExpr)
+	if !isSelector {
+		return calls
+	}
+
+	mutators := stdlibMutators()[qualifiedName(resolvedType(
+		described,
+		selector.X,
+	))]
+	if !slices.Contains(
+		mutators,
+		selector.Sel.Name,
+	) {
+		return calls
+	}
+
+	return append(
+		calls,
+		call,
+	)
 }
 
 func appendPosition(
@@ -201,10 +262,28 @@ func isAppendCall(
 func isNotBuiltinWrite(
 	call *ast.CallExpr,
 ) (excluded bool) {
+	name := calleeName(call)
 	return len(call.Args) == 0 || !slices.Contains(
 		builtinWrites(),
-		identifierName(call.Fun),
+		name,
+	) && !isAtomicWrite(name)
+}
+
+func isAtomicWrite(
+	name string,
+) (writes bool) {
+	operation, isAtomic := strings.CutPrefix(
+		name,
+		atomicPrefix,
 	)
+	for _, prefix := range atomicMutators() {
+		writes = writes || isAtomic && strings.HasPrefix(
+			operation,
+			prefix,
+		)
+	}
+
+	return writes
 }
 
 func mutatedRoot(
@@ -232,11 +311,41 @@ func rootName(
 		return rootName(typed.X)
 	case *ast.ParenExpr:
 		return rootName(typed.X)
+	case *ast.UnaryExpr:
+		return rootName(typed.X)
 	}
 
 	return ""
 }
 
 func builtinWrites() (names []string) {
-	return []string{"delete", "clear", "copy"}
+	return []string{
+		"delete", "clear", "copy",
+		"slices.Sort", "slices.SortFunc", "slices.SortStableFunc", "slices.Reverse",
+		"sort.Sort", "sort.Stable", "sort.Ints", "sort.Strings", "sort.Float64s", "sort.Slice", "sort.SliceStable",
+		"maps.Copy", "maps.DeleteFunc",
+	}
+}
+
+func atomicMutators() (names []string) {
+	return []string{"Add", "Store", "Swap", "CompareAndSwap", "And", "Or"}
+}
+
+func stdlibMutators() (methods map[string][]string) {
+	atomics := atomicMutators()
+	buffers := []string{"Write", "WriteString", "WriteByte", "WriteRune", "WriteTo", "ReadFrom", "Reset", "Grow", "Truncate"}
+	return map[string][]string{
+		"atomic.Bool":     atomics,
+		"atomic.Int32":    atomics,
+		"atomic.Int64":    atomics,
+		"atomic.Uint32":   atomics,
+		"atomic.Uint64":   atomics,
+		"atomic.Uintptr":  atomics,
+		"atomic.Pointer":  atomics,
+		"atomic.Value":    atomics,
+		"sync.Map":        {"Store", "LoadOrStore", "LoadAndDelete", "Delete", "Swap", "CompareAndSwap", "CompareAndDelete", "Clear"},
+		"bytes.Buffer":    buffers,
+		"strings.Builder": buffers,
+		"list.List":       {"PushBack", "PushFront", "PushBackList", "PushFrontList", "InsertBefore", "InsertAfter", "MoveToFront", "MoveToBack", "MoveBefore", "MoveAfter", "Remove", "Init"},
+	}
 }

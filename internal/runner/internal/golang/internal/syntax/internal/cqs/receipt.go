@@ -191,9 +191,12 @@ func storedNames(
 	effects map[string][]int,
 ) (names []string) {
 	written := []ast.Node{}
-	for _, call := range mutatingCalls(
-		described,
-		effects,
+	for _, call := range slices.Concat(
+		mutatingCalls(
+			described,
+			effects,
+		),
+		stdlibCalls(described),
 	) {
 		written = append(
 			written,

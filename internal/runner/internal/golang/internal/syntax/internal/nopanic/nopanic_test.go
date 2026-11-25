@@ -35,6 +35,46 @@ func TestNopanic(
 			want: nil,
 		},
 		{
+			name: "log.Fatalf in a library package is reported",
+			code: "package p\n\nimport \"log\"\n\nfunc f() {\n\tlog.Fatalf(\"boom\")\n}\n",
+			want: []string{"p.go:6"},
+		},
+		{
+			name: "log.Panicln, os.Exit and runtime.Goexit are reported",
+			code: "package p\n\nimport (\n\t\"log\"\n\t\"os\"\n\t\"runtime\"\n)\n\nfunc f() {\n\tlog.Panicln(\"boom\")\n\tos.Exit(1)\n\truntime.Goexit()\n}\n",
+			want: []string{"p.go:10", "p.go:11", "p.go:12"},
+		},
+		{
+			name: "aliased os import is reported",
+			code: "package p\n\nimport system \"os\"\n\nfunc f() {\n\tsystem.Exit(1)\n}\n",
+			want: []string{"p.go:6"},
+		},
+		{
+			name: "os.Exit in package main passes",
+			code: "package main\n\nimport \"os\"\n\nfunc main() {\n\tos.Exit(1)\n}\n",
+			want: nil,
+		},
+		{
+			name: "non-terminating log and os calls pass",
+			code: "package p\n\nimport (\n\t\"log\"\n\t\"os\"\n)\n\nfunc f() {\n\tlog.Printf(\"ok\")\n\t_ = os.Getenv(\"X\")\n}\n",
+			want: nil,
+		},
+		{
+			name: "Fatal on a package not imported as log passes",
+			code: "package p\n\nimport log \"github.com/sirupsen/logrus\"\n\nfunc f() {\n\tlog.Fatal(\"boom\")\n}\n",
+			want: nil,
+		},
+		{
+			name: "Fatal on a local variable shadowing log passes",
+			code: "package p\n\nimport \"log\"\n\nfunc f(\n\tlog recorder,\n) {\n\tlog.Fatal(\"boom\")\n}\n",
+			want: nil,
+		},
+		{
+			name: "blank and dot imports are ignored",
+			code: "package p\n\nimport (\n\t_ \"os\"\n\t. \"log\"\n)\n\nfunc f() {\n\tFatal(\"boom\")\n\tx.Exit()\n}\n",
+			want: nil,
+		},
+		{
 			name: "method named panic passes",
 			code: "package p\n\nfunc f(\n\tx alarm,\n) {\n\tx.panic()\n}\n",
 			want: nil,

@@ -107,6 +107,11 @@ func TestCqsSnippet(
 			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) bump() {\n\tt.v++\n}\n\nfunc (t *T) Get() (v int) {\n\t_ = t.value()\n\tt.bump()\n\treturn t.v\n}\n\nfunc (t *T) value() (v int) {\n\treturn t.v\n}\n",
 			want: "func Get(...) returns a value and mutates its receiver or a pointer, map, slice or channel parameter through t.bump(...): split the query from the command",
 		},
+		{
+			name: "write through a stdlib mutator names the call",
+			code: "package p\n\nimport \"sync/atomic\"\n\ntype T struct {\n\tcalls *atomic.Int64\n}\n\nfunc (t *T) Square(\n\tv int,\n) (r int) {\n\tt.calls.Add(1)\n\treturn v * v\n}\n",
+			want: "func Square(...) returns a value and mutates its receiver or a pointer, map, slice or channel parameter through t.calls.Add(...): split the query from the command",
+		},
 	}
 	for _, tc := range cases {
 		assertSnippet(

@@ -24,17 +24,14 @@ func Cqs(
 		slices.Clone(files),
 		isMock,
 	)
-	packages := map[string][]source.File{}
-	for _, file := range checked {
-		packages[packageKey(file)] = append(
-			packages[packageKey(file)],
-			file,
-		)
-	}
-
 	effects := map[string]map[string][]int{}
-	for key, members := range packages {
-		effects[key] = packageEffects(members)
+	fields := map[string]map[string]ast.Expr{}
+	for key, members := range packagesOf(checked) {
+		fields[key] = packageFields(members)
+		effects[key] = packageEffects(
+			members,
+			fields[key],
+		)
 	}
 
 	for _, file := range checked {
@@ -43,11 +40,26 @@ func Cqs(
 			fileFindings(
 				file,
 				effects[packageKey(file)],
+				fields[packageKey(file)],
 			)...,
 		)
 	}
 
 	return findings
+}
+
+func packagesOf(
+	files []source.File,
+) (packages map[string][]source.File) {
+	packages = map[string][]source.File{}
+	for _, file := range files {
+		packages[packageKey(file)] = append(
+			packages[packageKey(file)],
+			file,
+		)
+	}
+
+	return packages
 }
 
 func isMock(
@@ -68,6 +80,7 @@ func packageKey(
 func fileFindings(
 	file source.File,
 	effects map[string][]int,
+	fields map[string]ast.Expr,
 ) (findings []report.Finding) {
 	functions := slices.DeleteFunc(
 		source.Nodes[*ast.FuncDecl](file.Syntax),
@@ -79,6 +92,7 @@ func fileFindings(
 			file,
 			function,
 			effects,
+			fields,
 		)
 	}
 
@@ -90,9 +104,13 @@ func appendFinding(
 	file source.File,
 	function *ast.FuncDecl,
 	effects map[string][]int,
+	fields map[string]ast.Expr,
 ) (extended []report.Finding) {
 	snippet := mixedSnippet(
-		callableOf(function),
+		callableOf(
+			function,
+			fields,
+		),
 		effects,
 	)
 	if snippet == "" {
@@ -123,6 +141,15 @@ func mixedSnippet(
 	}
 
 	name := mixed.declaration.Name.Name
+	writes := stdlibCalls(mixed)
+	if len(writes) > 0 {
+		return fmt.Sprintf(
+			indirectFormat,
+			name,
+			calleeName(writes[0]),
+		)
+	}
+
 	if len(directPositions(mixed)) > 0 {
 		return fmt.Sprintf(
 			directFormat,

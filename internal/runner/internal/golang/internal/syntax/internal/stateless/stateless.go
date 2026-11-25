@@ -21,11 +21,13 @@ const (
 func Stateless(
 	files []source.File,
 ) (findings []report.Finding) {
-	packages := map[string][]source.File{}
-	for _, file := range slices.DeleteFunc(
+	checked := slices.DeleteFunc(
 		slices.Clone(files),
 		isMock,
-	) {
+	)
+	known := interfaceMethods(checked)
+	packages := map[string][]source.File{}
+	for _, file := range checked {
 		directory := filepath.Dir(file.Path)
 		packages[directory] = append(
 			packages[directory],
@@ -36,7 +38,10 @@ func Stateless(
 	for _, directory := range slices.Sorted(maps.Keys(packages)) {
 		findings = append(
 			findings,
-			packageFindings(packages[directory])...,
+			packageFindings(
+				packages[directory],
+				known,
+			)...,
 		)
 	}
 
@@ -45,9 +50,20 @@ func Stateless(
 
 func packageFindings(
 	files []source.File,
+	known []string,
 ) (findings []report.Finding) {
-	empty := emptyStructNames(files)
-	receivers := receiverNames(files)
+	exempt := interfaceOnly(
+		files,
+		known,
+	)
+	empty := without(
+		emptyStructNames(files),
+		exempt,
+	)
+	receivers := without(
+		receiverNames(files),
+		exempt,
+	)
 	for _, file := range files {
 		findings = append(
 			findings,
@@ -66,6 +82,39 @@ func packageFindings(
 	}
 
 	return findings
+}
+
+func without(
+	names []string,
+	excluded []string,
+) (kept []string) {
+	for _, name := range names {
+		kept = appendKept(
+			kept,
+			name,
+			excluded,
+		)
+	}
+
+	return kept
+}
+
+func appendKept(
+	kept []string,
+	name string,
+	excluded []string,
+) (extended []string) {
+	if slices.Contains(
+		excluded,
+		name,
+	) {
+		return kept
+	}
+
+	return append(
+		kept,
+		name,
+	)
 }
 
 func typeFindings(
