@@ -27,9 +27,20 @@ ap check .
 
 Each violated rule is reported once with what it requires, why (WHY), how
 to fix it (FIX), and which changes silence it without fixing it (NOT A
-FIX), such as deleting comments instead of renaming symbols, or splitting
-an interface into pieces no consumer asks for. Agents follow the report
-text, so the report also says what does not count as a fix.
+FIX), such as moving implementation into a public sibling package, or
+splitting an interface into pieces no consumer asks for. Agents follow the
+report text, so the report also says what does not count as a fix.
+
+A failing check ends with the architecture guide, which is also printed by:
+
+```sh
+ap guide
+```
+
+It describes the one shape AP enforces: no comments in any language, and
+in Go the module model (a package with internal/ children exposes only its
+API plus a container.go that wires those children; implementation always
+lives under internal/; siblings form one layer).
 
 The three pure-layout Go rules can be repaired automatically instead of by
 hand: one parameter per line (R01), one argument per line (R52) and
@@ -41,8 +52,8 @@ ap fix .
 
 `ap fix` rewrites, in place, the same source and test files `ap check`
 reads, and only the ones those three rules flag. It moves line breaks and
-nothing else: the syntax tree keeps its shape, comments stay, the result is
-gofmt-clean, and a second run changes nothing. It prints every rewritten
+nothing else besides running gofmt: the syntax tree keeps its shape, the
+result is gofmt-clean, and a second run changes nothing. It prints every rewritten
 file and how many there were, and exits non-zero on a parse or write
 error. It supports Go only; a Cargo.toml or package.json component is
 refused. Every other rule still needs a human, so run `ap check .` after it.
@@ -69,21 +80,28 @@ steps:
 
 ## Status
 
-Go: 33 analyzer and architecture rules plus the golangci-lint proxies,
-covering the full Rabbyte Go manifest wherever a rule is mechanically
-checkable: one parameter per line (R01), at most two indentation levels
-(R02), guard clauses with no else (R03), named results and no naked
-returns (R04), the comment policy, including doc comments that only
-restate the name (R07), one type per file (R08),
-stateless types as functions (R11, R12), interfaces over exported structs
-(R13), package layering and internal/ boundaries (R16, R19, R47-R51),
-naming (R21-R23), no content-free or numbered helper names (R56), errors
-checked and then dropped, which errcheck cannot see (R26), no panic (R27),
-1:1 test files (R42, R43), file and
-directory size caps (R44, R46), and paragraph layout: a blank line after every closed block, checks attached to what they check (R55). Agent Protection passes its own gate.
-Rust: unwrap/expect/panic-risk detection through clippy, excluding inline
-`#[cfg(test)]` modules.
-TypeScript: complexity, magic-number, no-else, no-debug-output,
+Go: analyzer and architecture rules plus the golangci-lint proxies,
+covering the Rabbyte Go manifest wherever a rule is mechanically checkable.
+Code: one parameter per line (R01), at most two indentation levels (R02),
+guard clauses with no else (R03), named results and no naked returns (R04),
+no comments of any kind (R07), one type per file (R08), stateless types as
+functions (R11, R12), errors never dropped, wrapped with %w and never
+logged and ignored (R26), no init or package state (R24), no panic (R27),
+command-query separation (R33), no hidden side effects (R34), no
+content-free or numbered names (R56), gofmt (R62).
+Architecture: public packages and module directories expose only their API
+and wire through container.go (R14, R48), no reaching into another
+module's subpackages (R15), siblings form one layer and only the parent
+wires them (R16, R47), exported implementations stay unexported (R13),
+vocabulary packages hold declarations only (R57), interfaces are used and
+not only embedded (R60), no look-alike or duplicated package names (R58,
+R59), production never imports examples (R61), internal/ boundaries (R19,
+R50, R51), naming (R21-R23), 1:1 test files (R42, R43), and file and
+directory size caps, the root included (R44, R46).
+Agent Protection passes its own gate.
+Rust: no comments (R07) and unwrap/expect/panic-risk detection through
+clippy, excluding inline `#[cfg(test)]` modules.
+TypeScript and JavaScript: no comments (R07), complexity, magic-number, no-else, no-debug-output,
 no-param-reassign, modern-syntax and one-class-per-file proxies via ESLint
 core rules.
 
