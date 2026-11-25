@@ -200,3 +200,85 @@ func writeFile(
 		t.Fatal(err)
 	}
 }
+
+func TestFix(
+	t *testing.T,
+) {
+	failing := fixtureModule(
+		t,
+		"failing",
+		"package failing\n\nfunc F(a int, b int) {}\n",
+	)
+	cases := []struct {
+		root     string
+		wantCode int
+	}{
+		{root: failing, wantCode: cleanExitCode},
+		{root: t.TempDir(), wantCode: findingsExitCode},
+	}
+	for _, tc := range cases {
+		assertCode(
+			t,
+			"Fix("+tc.root+")",
+			realTools().Fix(tc.root),
+			tc.wantCode,
+		)
+	}
+}
+
+func TestGuide(
+	t *testing.T,
+) {
+	assertCode(
+		t,
+		"Guide()",
+		realTools().Guide(),
+		cleanExitCode,
+	)
+}
+
+func TestMarkdown(
+	t *testing.T,
+) {
+	directory := t.TempDir()
+	valid := filepath.Join(
+		directory,
+		"valid.json",
+	)
+	invalid := filepath.Join(
+		directory,
+		"invalid.json",
+	)
+	writeFile(
+		t,
+		valid,
+		`{"rule_docs":{},"findings":[]}`,
+	)
+	writeFile(
+		t,
+		invalid,
+		"not json",
+	)
+	cases := []struct {
+		path     string
+		wantCode int
+	}{
+		{path: valid, wantCode: cleanExitCode},
+		{path: invalid, wantCode: findingsExitCode},
+		{
+			path: filepath.Join(
+				directory,
+				"missing.json",
+			),
+			wantCode: findingsExitCode,
+		},
+	}
+	for _, tc := range cases {
+		assertCode(
+			t,
+			"Markdown("+tc.path+")",
+			realTools().Markdown(tc.path),
+			tc.wantCode,
+		)
+	}
+}
