@@ -111,6 +111,24 @@ func TestOnetypeperfile(
 			want: nil,
 		},
 		{
+			name: "re-export aliases and Err sentinels share one file",
+			path: "vocabulary.go",
+			code: "package p\n\nimport \"example.com/m/internal/vocab\"\n\ntype (\n\tJob = vocab.Job\n\tStatus = vocab.Status\n\tPage = vocab.Page[int]\n\tPair = (vocab.Pair[int, string])\n)\n\ntype Event = vocab.Event\n\nvar (\n\tErrClosed = vocab.ErrClosed\n\tErrFull = vocab.ErrFull\n)\n",
+			want: nil,
+		},
+		{
+			name: "re-export aliases do not hide a real type that needs its own file",
+			path: "vocabulary.go",
+			code: "package p\n\nimport \"example.com/m/internal/vocab\"\n\ntype Job = vocab.Job\n\ntype Queue interface{}\n",
+			want: []string{"vocabulary.go:7"},
+		},
+		{
+			name: "aliases to local or literal types still count",
+			path: "local.go",
+			code: "package p\n\ntype Local struct{}\n\ntype Other = Local\n\ntype Shape = struct{}\n",
+			want: []string{"local.go:5"},
+		},
+		{
 			name: "file without types passes",
 			path: "helpers.go",
 			code: "package p\n\nfunc f() {}\n",

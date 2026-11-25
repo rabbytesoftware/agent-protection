@@ -26,8 +26,6 @@ const (
 	entSchemaDirectory = "schema"
 )
 
-const CompositionRootThreshold = 2
-
 func ModulePath(
 	root string,
 ) (modulePath string, err error) {

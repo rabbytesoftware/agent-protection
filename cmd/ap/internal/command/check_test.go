@@ -37,7 +37,7 @@ func TestCheck(
 		assertCode(
 			t,
 			"Check("+tc.root+")",
-			realTools().Check(tc.root),
+			realCheck().Run(tc.root),
 			tc.wantCode,
 		)
 	}
@@ -67,7 +67,7 @@ func TestCheckReportsUnwritableReport(
 	assertCode(
 		t,
 		"Check() with an unwritable report",
-		realTools().Check(clean),
+		realCheck().Run(clean),
 		findingsExitCode,
 	)
 }
@@ -76,12 +76,14 @@ func TestCheckReportsRegistryFailure(
 	t *testing.T,
 ) {
 	t.Chdir(t.TempDir())
-	tools := realTools()
-	tools.Docs = failingDocs
 	assertCode(
 		t,
 		"Check() with a broken registry",
-		tools.Check(fixtureModule(
+		Check(
+			runner.Runner,
+			failingDocs,
+			guide.Guide,
+		).Run(fixtureModule(
 			t,
 			"clean",
 			"package clean\n\nconst Version = \"1\"\n",
@@ -125,15 +127,6 @@ func TestExitCode(
 			cleanExitCode,
 			findingsExitCode,
 		)
-	}
-}
-
-func realTools() (tools Tools) {
-	return Tools{
-		Run:     runner.Runner,
-		Rewrite: runner.Fix,
-		Docs:    rulebook.Docs,
-		Manual:  guide.Guide,
 	}
 }
 
@@ -201,84 +194,10 @@ func writeFile(
 	}
 }
 
-func TestFix(
-	t *testing.T,
-) {
-	failing := fixtureModule(
-		t,
-		"failing",
-		"package failing\n\nfunc F(a int, b int) {}\n",
+func realCheck() (command *check) {
+	return Check(
+		runner.Runner,
+		rulebook.Docs,
+		guide.Guide,
 	)
-	cases := []struct {
-		root     string
-		wantCode int
-	}{
-		{root: failing, wantCode: cleanExitCode},
-		{root: t.TempDir(), wantCode: findingsExitCode},
-	}
-	for _, tc := range cases {
-		assertCode(
-			t,
-			"Fix("+tc.root+")",
-			realTools().Fix(tc.root),
-			tc.wantCode,
-		)
-	}
-}
-
-func TestGuide(
-	t *testing.T,
-) {
-	assertCode(
-		t,
-		"Guide()",
-		realTools().Guide(),
-		cleanExitCode,
-	)
-}
-
-func TestMarkdown(
-	t *testing.T,
-) {
-	directory := t.TempDir()
-	valid := filepath.Join(
-		directory,
-		"valid.json",
-	)
-	invalid := filepath.Join(
-		directory,
-		"invalid.json",
-	)
-	writeFile(
-		t,
-		valid,
-		`{"rule_docs":{},"findings":[]}`,
-	)
-	writeFile(
-		t,
-		invalid,
-		"not json",
-	)
-	cases := []struct {
-		path     string
-		wantCode int
-	}{
-		{path: valid, wantCode: cleanExitCode},
-		{path: invalid, wantCode: findingsExitCode},
-		{
-			path: filepath.Join(
-				directory,
-				"missing.json",
-			),
-			wantCode: findingsExitCode,
-		},
-	}
-	for _, tc := range cases {
-		assertCode(
-			t,
-			"Markdown("+tc.path+")",
-			realTools().Markdown(tc.path),
-			tc.wantCode,
-		)
-	}
 }

@@ -10,7 +10,60 @@ const (
 	lifecycle = "package role\n\ntype Lifecycle interface {\n\tStart()\n\tStop()\n}\n"
 	producer  = "package role\n\ntype Producer interface {\n\tEnqueue()\n\tCancel()\n}\n"
 	advice    = "(max 3): a struct that embeds interfaces is one large interface; return each small interface from its own constructor and let every consumer depend on the one it calls"
+	handmade  = "(max 3): a struct of exported func fields is an interface assembled by hand; declare an interface with the methods each consumer calls, implement it with methods on an unexported type and return it from its constructor"
 )
+
+func TestInterfacesizeFunctionFields(
+	t *testing.T,
+) {
+	cases := []struct {
+		name  string
+		files map[string]string
+		want  []string
+	}{
+		{
+			name:  "struct of four exported func fields is reported",
+			files: map[string]string{"internal/pricing/toolkit.go": "package pricing\n\ntype Toolkit struct {\n\tTax func(amount int) (taxed int)\n\tFee, Round func(amount int) (fee int)\n\tRefund func(amount int) (refunded int)\n\tname string\n}\n"},
+			want:  []string{"R28 internal/pricing/toolkit.go:3 struct Toolkit exposes 4 methods through 4 exported func fields " + handmade},
+		},
+		{
+			name:  "func fields add to own methods",
+			files: map[string]string{"internal/pricing/tools.go": "package pricing\n\ntype Tools struct {\n\tRun func() (code int)\n\tDocs func() (text string)\n}\n\nfunc (t Tools) Check() {}\n\nfunc (t Tools) Fix() {}\n"},
+			want:  []string{"R28 internal/pricing/tools.go:3 struct Tools exposes 4 methods through 2 exported func fields plus 2 own methods " + handmade},
+		},
+		{
+			name:  "func fields add to embedded interfaces",
+			files: map[string]string{"internal/role/lifecycle.go": lifecycle, "internal/role/hooks.go": "package role\n\ntype Hooks struct {\n\tLifecycle\n\tOnPanic func()\n\tOnTimeout func()\n}\n"},
+			want:  []string{"R28 internal/role/hooks.go:3 struct Hooks exposes 4 methods through 2 exported func fields and embedded Lifecycle " + handmade},
+		},
+		{
+			name:  "named func types declared in the module count",
+			files: map[string]string{"internal/role/op.go": "package role\n\ntype Op func(value int) (result int)\n", "internal/role/kit.go": "package role\n\ntype Kit struct {\n\tA, B Op\n\tC (Op)\n\tD Op\n}\n"},
+			want:  []string{"R28 internal/role/kit.go:3 struct Kit exposes 4 methods through 4 exported func fields " + handmade},
+		},
+		{
+			name:  "three exported func fields pass",
+			files: map[string]string{"internal/clock/clock.go": "package clock\n\ntype Clock struct {\n\tNow func() (moment int)\n\tAfter func() (moment int)\n\tSleep func()\n}\n"},
+			want:  nil,
+		},
+		{
+			name:  "unexported func fields are implementation detail",
+			files: map[string]string{"internal/clock/clock.go": "package clock\n\ntype clock struct {\n\tnow, after, sleep, tick func()\n}\n"},
+			want:  nil,
+		},
+	}
+	for _, tc := range cases {
+		assertFindings(
+			t,
+			tc.name,
+			interfacesize.Interfacesize(parsedFiles(
+				t,
+				tc.files,
+			)),
+			tc.want,
+		)
+	}
+}
 
 func TestInterfacesizeSurface(
 	t *testing.T,

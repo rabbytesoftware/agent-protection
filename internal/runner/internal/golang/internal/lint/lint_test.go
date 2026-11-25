@@ -24,13 +24,14 @@ func TestLint(
 	}{
 		{
 			name: "issues from known linters map to their rules and unknown linters are dropped",
-			script: `printf '%s\n' 'pkg/a.go:3:2: Error return value is not checked (errcheck)' 'pkg/b.go:9:1: cyclomatic complexity 9 of func f is high (gocyclo)' 'pkg/c.go:4:1: f - result 0 is always nil (unparam)' 'pkg/d.go:6:2: ineffectual assignment to err (ineffassign)' 'pkg/e.go:7:2: SA4006: this value of err is never used (staticcheck)'
+			script: `printf '%s\n' 'pkg/a.go:3:2: Error return value is not checked (errcheck)' 'pkg/b.go:9:1: cyclomatic complexity 9 of func f is high (gocyclo)' 'pkg/c.go:4:1: f - result 0 is always nil (unparam)' 'pkg/d.go:6:2: ineffectual assignment to err (ineffassign)' 'pkg/e.go:7:2: SA4006: this value of err is never used (staticcheck)' 'pkg/f.go:8:7: func helper is unused (unused)' 'pkg/g.go:3:7: const todo is unused (unused)' 'pkg/g.go:4:5: var cache is unused (unused)'
 exit 1`,
 			want: []string{
 				"R26 pkg/a.go:3",
 				"PROXY-COMPLEXITY pkg/b.go:9",
 				"R26 pkg/d.go:6",
 				"R26 pkg/e.go:7",
+				"R69 pkg/f.go:8",
 			},
 		},
 		{

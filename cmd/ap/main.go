@@ -11,19 +11,15 @@ import (
 )
 
 func main() {
-	tools := command.Tools{
-		Run:     runner.Runner,
-		Rewrite: runner.Fix,
-		Docs:    rulebook.Docs,
-		Manual:  guide.Guide,
-	}
 	os.Exit(dispatch.Dispatch(
 		os.Args,
-		dispatch.Commands{
-			Check:    tools.Check,
-			Fix:      tools.Fix,
-			Markdown: tools.Markdown,
-			Guide:    tools.Guide,
-		},
+		command.Check(
+			runner.Runner,
+			rulebook.Docs,
+			guide.Guide,
+		),
+		command.Fix(runner.Fix),
+		command.Markdown(os.ReadFile),
+		command.Manual(guide.Guide),
 	))
 }

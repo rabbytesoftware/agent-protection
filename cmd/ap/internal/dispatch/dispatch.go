@@ -20,11 +20,14 @@ const (
 
 func Dispatch(
 	arguments []string,
-	commands Commands,
+	check Command,
+	fix Command,
+	markdown Command,
+	guide Command,
 ) (code int) {
 	isGuide := len(arguments) == guideArguments && arguments[1] == guideCommand
 	if isGuide {
-		return commands.Guide()
+		return guide.Run("")
 	}
 
 	command, target, err := commandArguments(arguments)
@@ -38,12 +41,12 @@ func Dispatch(
 
 	switch command {
 	case markdownCommand:
-		return commands.Markdown(target)
+		return markdown.Run(target)
 	case fixCommand:
-		return commands.Fix(target)
+		return fix.Run(target)
 	}
 
-	return commands.Check(target)
+	return check.Run(target)
 }
 
 func commandArguments(

@@ -14,7 +14,7 @@ func TestShape(
 	file, err := source.Parse(
 		".",
 		"p.go",
-		[]byte("package p\n\ntype A struct{ n int }\n\ntype B struct{ n int }\n"),
+		[]byte("package p\n\ntype A struct{ n int }\n\ntype B struct{ n int }\n\nconst unused = 1\n"),
 	)
 	if err != nil {
 		t.Fatalf(
@@ -35,7 +35,7 @@ func TestShape(
 		)
 	}
 
-	for _, want := range []string{"R08"} {
+	for _, want := range []string{"R08", "R69"} {
 		assertContains(
 			t,
 			rules,

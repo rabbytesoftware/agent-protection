@@ -39,6 +39,11 @@ func TestTestpairing(
 			want:  nil,
 		},
 		{
+			name:  "re-export file of aliases and Err sentinels needs no test",
+			files: map[string]string{"x/vocabulary.go": "package x\n\nimport \"example.com/m/x/internal/vocab\"\n\ntype (\n\tJob = vocab.Job\n\tStatus = vocab.Status\n)\n\nvar ErrClosed = vocab.ErrClosed\n"},
+			want:  nil,
+		},
+		{
 			name:  "mock source needs no test, in a mocks directory or by name",
 			files: map[string]string{"x/mocks/bus.go": behavior, "x/fake_clock.go": behavior},
 			want:  nil,

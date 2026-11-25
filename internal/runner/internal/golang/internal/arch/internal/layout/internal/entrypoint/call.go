@@ -3,18 +3,25 @@ package entrypoint
 import (
 	"go/ast"
 	"path"
+	"regexp"
 	"slices"
 	"strings"
 )
 
 const (
-	importQuotes  = "\"`"
-	exitCall      = "os.Exit"
-	printCall     = "fmt.Fprintln"
-	stderrName    = "Stderr"
-	osQualifier   = "os"
-	pathSeparator = "/"
-	domainDot     = "."
+	importQuotes      = "\"`"
+	exitCall          = "os.Exit"
+	printCall         = "fmt.Fprintln"
+	stderrName        = "Stderr"
+	osQualifier       = "os"
+	pathSeparator     = "/"
+	domainDot         = "."
+	blankName         = "_"
+	configurationVerb = "reads configuration through "
+	libraryVerb       = "computes through "
+	unwiredVerb       = " without wiring its result"
+	goPrefix          = "go-"
+	goSuffix          = "-go"
 )
 
 func callVerb(
@@ -84,20 +91,167 @@ func selectorCallVerb(
 		return noLogic
 	}
 
-	qualified := path.Base(imported) + "." + callee.Sel.Name
-	isPermitted := !isStandard(
+	qualified := packageNameOf(imported) + "." + callee.Sel.Name
+	if !isStandard(
 		context.unit.modulePath,
 		imported,
-	) || isAllowedCall(
+	) {
+		return foreignCallVerb(
+			context,
+			call,
+			imported,
+			callee.Sel.Name,
+		)
+	}
+
+	if isAllowedCall(
 		context.unit.role,
 		imported+"."+callee.Sel.Name,
 		call,
-	)
-	if isPermitted {
+	) {
 		return noLogic
 	}
 
 	return "calls " + qualified
+}
+
+func foreignCallVerb(
+	context delegation,
+	call *ast.CallExpr,
+	imported string,
+	name string,
+) (verb string) {
+	if isOwnModule(
+		context.unit.modulePath,
+		imported,
+	) {
+		return noLogic
+	}
+
+	target := imported + "." + name
+	qualified := packageNameOf(imported) + "." + name
+	if slices.ContainsFunc(
+		configurationPackages(),
+		isTargetOf(target),
+	) {
+		return configurationVerb + qualified
+	}
+
+	if slices.ContainsFunc(
+		logicPackages(),
+		isTargetOf(target),
+	) {
+		return libraryVerb + qualified
+	}
+
+	if slices.Contains(
+		context.wiring,
+		ast.Expr(call),
+	) {
+		return noLogic
+	}
+
+	return "calls " + qualified + unwiredVerb
+}
+
+func isTargetOf(
+	target string,
+) (matches func(string) bool) {
+	return func(
+		denied string,
+	) (isDenied bool) {
+		return target == denied || strings.HasPrefix(
+			target,
+			denied+pathSeparator,
+		) || strings.HasPrefix(
+			target,
+			denied+domainDot,
+		)
+	}
+}
+
+func wiringCalls(
+	body *ast.BlockStmt,
+) (calls []ast.Expr) {
+	for node := range ast.Preorder(body) {
+		calls = append(
+			calls,
+			passedCalls(node)...,
+		)
+	}
+
+	return calls
+}
+
+func passedCalls(
+	node ast.Node,
+) (calls []ast.Expr) {
+	switch typed := node.(type) {
+	case *ast.AssignStmt:
+		return assignedCalls(typed)
+	case *ast.ValueSpec:
+		return onlyCalls(typed.Values)
+	case *ast.ReturnStmt:
+		return onlyCalls(typed.Results)
+	case *ast.CallExpr:
+		return onlyCalls(typed.Args)
+	}
+
+	return nil
+}
+
+func assignedCalls(
+	statement *ast.AssignStmt,
+) (calls []ast.Expr) {
+	if !slices.ContainsFunc(
+		statement.Lhs,
+		isNamedTarget,
+	) {
+		return nil
+	}
+
+	return onlyCalls(statement.Rhs)
+}
+
+func isNamedTarget(
+	target ast.Expr,
+) (named bool) {
+	identifier, isIdentifier := target.(*ast.Ident)
+	return !isIdentifier || identifier.Name != blankName
+}
+
+func onlyCalls(
+	expressions []ast.Expr,
+) (calls []ast.Expr) {
+	for _, expression := range expressions {
+		calls = append(
+			calls,
+			callOf(expression)...,
+		)
+	}
+
+	return calls
+}
+
+func callOf(
+	expression ast.Expr,
+) (calls []ast.Expr) {
+	call, isCall := ast.Unparen(expression).(*ast.CallExpr)
+	if !isCall {
+		return nil
+	}
+
+	return []ast.Expr{call}
+}
+
+func isOwnModule(
+	modulePath string,
+	imported string,
+) (own bool) {
+	return imported == modulePath || strings.HasPrefix(
+		imported,
+		modulePath+pathSeparator,
+	)
 }
 
 func qualifierPath(
@@ -166,15 +320,14 @@ func isStandard(
 	modulePath string,
 	imported string,
 ) (standard bool) {
-	isOwnModule := imported == modulePath || strings.HasPrefix(
-		imported,
-		modulePath+pathSeparator,
-	)
 	first, _, _ := strings.Cut(
 		imported,
 		pathSeparator,
 	)
-	return !isOwnModule && !strings.Contains(
+	return !isOwnModule(
+		modulePath,
+		imported,
+	) && !strings.Contains(
 		first,
 		domainDot,
 	)
@@ -205,7 +358,7 @@ func importNamed(
 		spec.Path.Value,
 		importQuotes,
 	)
-	name := path.Base(imported)
+	name := packageNameOf(imported)
 	if spec.Name != nil {
 		name = spec.Name.Name
 	}
@@ -224,4 +377,63 @@ func allowedCalls() (qualified []string) {
 		"fmt.Errorf",
 		"slices.Concat",
 	}
+}
+
+func configurationPackages() (paths []string) {
+	return []string{
+		"github.com/spf13/pflag",
+		"github.com/spf13/viper",
+		"github.com/caarlos0/env",
+		"github.com/kelseyhightower/envconfig",
+		"github.com/sethvargo/go-envconfig",
+		"github.com/joho/godotenv",
+		"github.com/ilyakaznacheev/cleanenv",
+		"github.com/knadh/koanf",
+		"github.com/urfave/cli",
+		"github.com/alecthomas/kong",
+		"github.com/jessevdk/go-flags",
+		"golang.org/x/sys/unix.Getenv",
+		"golang.org/x/sys/unix.Environ",
+		"golang.org/x/sys/windows.Getenv",
+	}
+}
+
+func logicPackages() (paths []string) {
+	return []string{
+		"github.com/samber/lo",
+		"github.com/samber/mo",
+		"github.com/thoas/go-funk",
+		"golang.org/x/exp/slices",
+		"golang.org/x/exp/maps",
+	}
+}
+
+func packageNameOf(
+	imported string,
+) (name string) {
+	name = path.Base(imported)
+	if majorVersion().MatchString(name) {
+		name = path.Base(path.Dir(imported))
+	}
+
+	name = majorSuffix().ReplaceAllString(
+		name,
+		"",
+	)
+	name = strings.TrimPrefix(
+		name,
+		goPrefix,
+	)
+	return strings.TrimSuffix(
+		name,
+		goSuffix,
+	)
+}
+
+func majorVersion() (pattern *regexp.Regexp) {
+	return regexp.MustCompile(`^v[0-9]+$`)
+}
+
+func majorSuffix() (pattern *regexp.Regexp) {
+	return regexp.MustCompile(`\.v[0-9]+$`)
 }

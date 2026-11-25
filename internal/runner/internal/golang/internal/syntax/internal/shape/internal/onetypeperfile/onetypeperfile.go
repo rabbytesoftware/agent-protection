@@ -139,7 +139,10 @@ func isDeclared(
 func topLevelFindings(
 	file source.File,
 ) (findings []report.Finding) {
-	specs := topLevelTypes(file.Syntax)
+	specs := slices.DeleteFunc(
+		topLevelTypes(file.Syntax),
+		isReexport,
+	)
 	if len(specs) == 0 {
 		return nil
 	}
@@ -185,6 +188,21 @@ func misnamedFindings(
 			expected,
 		),
 	}}
+}
+
+func isReexport(
+	spec *ast.TypeSpec,
+) (reexport bool) {
+	target := ast.Unparen(spec.Type)
+	switch typed := target.(type) {
+	case *ast.IndexExpr:
+		target = typed.X
+	case *ast.IndexListExpr:
+		target = typed.X
+	}
+
+	_, isQualified := target.(*ast.SelectorExpr)
+	return spec.Assign.IsValid() && isQualified
 }
 
 func topLevelTypes(

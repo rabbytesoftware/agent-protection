@@ -104,3 +104,47 @@ func TestPublicapiAPISnippets(
 		"var cache in public package jobq: the API holds only exported types, constants and Err sentinels; move it under internal/",
 	)
 }
+
+func TestPublicapiFunctionStructs(
+	t *testing.T,
+) {
+	assertFixtures(
+		t,
+		[]fixture{
+			{
+				name:  "struct of four exported func fields in a public package is reported",
+				files: map[string]string{"toolkit.go": "package arith\n\ntype Toolkit struct {\n\tSquare, Cube func(value int) (result int)\n\tDouble func(value int) (result int)\n\tHalve func(value int) (result int)\n}\n"},
+				want:  []string{"R14 toolkit.go:3"},
+			},
+			{
+				name:  "fields of a named func type of the package count",
+				files: map[string]string{"op.go": "package arith\n\ntype Op func(value int) (result int)\n", "toolkit.go": "package arith\n\ntype Toolkit struct {\n\tSquare, Cube Op\n\tDouble Op\n\tHalve (Op)\n}\n"},
+				want:  []string{"R14 toolkit.go:3"},
+			},
+			{
+				name:  "options struct with a few callbacks passes",
+				files: map[string]string{"clock.go": "package arith\n\nimport \"time\"\n\ntype Clock struct {\n\tNow func() (now time.Time)\n\tAfter func(delay time.Duration) (fired <-chan time.Time)\n\tLimit int\n}\n"},
+				want:  nil,
+			},
+			{
+				name:  "unexported func fields and other types pass",
+				files: map[string]string{"toolkit.go": "package arith\n\ntype Toolkit struct {\n\tsquare, cube, double, halve func()\n}\n\ntype Op func()\n"},
+				want:  nil,
+			},
+			{
+				name:  "structs under internal are left to R28",
+				files: map[string]string{"internal/kit/toolkit.go": "package kit\n\ntype Toolkit struct {\n\tA, B, C, D func()\n}\n"},
+				want:  nil,
+			},
+		},
+	)
+	assertSnippet(
+		t,
+		checked(
+			t,
+			map[string]string{"toolkit.go": "package arith\n\ntype Toolkit struct {\n\tSquare, Cube, Double, Halve func()\n}\n"},
+		),
+		"toolkit.go:3",
+		"type Toolkit in public package arith has 4 exported func fields (Square, Cube, Double, Halve): a struct of funcs is behavior, not API; declare an interface with these operations here, implement it with methods under internal/ and return it from container.go",
+	)
+}
