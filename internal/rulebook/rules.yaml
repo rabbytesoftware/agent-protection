@@ -342,6 +342,14 @@ R61:
     rationale: "Example trees are exempt from the API-only shape because nothing depends on them. Importing one from library code turns that exemption into a hiding place for implementation."
     fix_strategy: "Move what the library needs out of the example tree into the module's internal/."
     not_a_fix: "Renaming the example directory; copying the example package into the library unchanged."
+R62:
+    id: R62
+    level: L0
+    text: "Every Go file is gofmt-formatted"
+    enforcement: analyzer
+    rationale: "One canonical layout means diffs show only real changes and no agent spends a review arguing about whitespace. AP's own rewrites always gofmt, so an unformatted file was edited by hand outside the tools."
+    fix_strategy: "Run ap fix . (or gofmt -w) and commit the result."
+    not_a_fix: "Excluding the file from the check, or adding a build tag so the file is skipped."
 PROXY-COMPLEXITY:
     id: PROXY-COMPLEXITY
     level: L0
