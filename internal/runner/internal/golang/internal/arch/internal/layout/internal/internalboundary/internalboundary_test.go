@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/internalboundary"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/layout/internal/internalboundary"
 )
 
 const rulesPackage = "package rules\n\nfunc Rules() {}\n"

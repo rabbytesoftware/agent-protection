@@ -3,8 +3,8 @@ package commentpolicy_test
 import (
 	"testing"
 
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/commentpolicy"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/commentpolicy"
 )
 
 func TestCommentpolicyDirectives(

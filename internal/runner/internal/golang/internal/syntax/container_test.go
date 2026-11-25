@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax"
 )
 
 func TestAstrules(

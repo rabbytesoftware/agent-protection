@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/testpairing"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/layout/internal/testpairing"
 )
 
 const (

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/packageset"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/layout/internal/packageset"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 

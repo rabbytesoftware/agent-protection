@@ -31,11 +31,11 @@ func TestArch(
 				"internal/c/c_test.go":    "package c_test\n\nfunc TestC() {}\n",
 			},
 			want: []string{
+				"R42 internal/a/service.go",
+				"R43 internal/a/misc_test.go",
 				"R16 internal/a/service.go:3",
 				"R19 internal/b",
 				"R19 internal/c",
-				"R42 internal/a/service.go",
-				"R43 internal/a/misc_test.go",
 			},
 		},
 		{

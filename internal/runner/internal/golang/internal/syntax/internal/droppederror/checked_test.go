@@ -3,8 +3,8 @@ package droppederror_test
 import (
 	"testing"
 
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/droppederror"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/droppederror"
 )
 
 func TestDroppederrorCheckedErrors(

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/testpairing"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/layout/internal/testpairing"
 )
 
 const noTests = "package x_test\n\nimport \"testing\"\n\nfunc helper(t *testing.T) {}\n\nfunc Testify() {}\n"

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/maxdepth"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/maxdepth"
 )
 
 func TestMaxdepthMeasuresLocalClosuresWhereTheyAreUsed(

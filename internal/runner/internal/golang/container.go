@@ -6,10 +6,10 @@ import (
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch"
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/lint"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/rewrite"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax"
 )
 
 func Golang(
