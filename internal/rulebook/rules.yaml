@@ -41,27 +41,27 @@ R07:
 R08:
     id: R08
     level: L1
-    text: "One type per file, named after the type; only container.go may hold its one type under another name"
+    text: "One type per file, named after the type; only container.go may hold its one type under another name. No types declared inside function bodies and no anonymous struct types outside _test.go files"
     enforcement: analyzer
-    rationale: "A file with several types has no name-matched home, so neither agents nor humans can find or size one type's code. container.go is the one exception because it is the module's single, conventionally named wiring point."
-    fix_strategy: "Split into one file per type, named after that type in snake_case. A type that only exists to wire a module's internal packages lives in container.go."
-    not_a_fix: "Hiding the second type as a type alias, an anonymous struct in a var, or a type declared inside a function; naming the file after one type while another type's helpers stay in it; renaming the file container.go to host an unrelated type."
+    rationale: "A file with several types has no name-matched home, so neither agents nor humans can find or size one type's code. A type hidden in a function body or as an anonymous struct is a second type with no home at all. container.go is the one exception because it is the module's single, conventionally named wiring point. Test files may use anonymous structs for table-driven cases."
+    fix_strategy: "Split into one file per type, named after that type in snake_case. Lift local types and anonymous structs (JSON wire shapes, lookup tables) into named package-level types in their own files. A type that only exists to wire a module's internal packages lives in container.go."
+    not_a_fix: "Hiding the second type as a type alias, an anonymous struct in a var or composite literal, or a type declared inside a function; naming the file after one type while another type's helpers stay in it; renaming the file container.go to host an unrelated type; moving the code into a _test.go file to use anonymous structs."
 R11:
     id: R11
     level: L1
-    text: "A stateless type is a package-level function named after the package, not a struct (mocks excluded)"
+    text: "A stateless type is a package-level function named after the package, not a struct (mocks excluded). An unexported empty struct is allowed only when every method implements an interface declared in the module (or a standard one such as io.Writer, sort.Interface, http.Handler, error, fmt.Stringer) and it is exposed only as that interface"
     enforcement: analyzer
-    rationale: "An empty struct with methods carries no state, so the type adds a constructor, a receiver and an indirection that a plain function does not need."
-    fix_strategy: "Delete the struct and expose the behavior as a package-level function named after the package (vault.Vault, deptree.Deptree)."
-    not_a_fix: "Adding a dummy or unused field (a mutex nobody locks, _ struct{}, a name nobody reads) so the struct is no longer empty; renaming the file or type to look like a mock; replacing the struct with a non-struct named type such as type x int that carries the same methods."
+    rationale: "An empty struct with methods carries no state, so the type adds a constructor, a receiver and an indirection that a plain function does not need. The one exception is an interface implementation such as a system clock: the interface is the seam, and the empty struct is the idiomatic Go way to satisfy it."
+    fix_strategy: "Delete the struct and expose the behavior as a package-level function named after the package (vault.Vault, deptree.Deptree). If the struct implements an interface its consumers depend on, keep it unexported and return it only as that interface."
+    not_a_fix: "Adding a dummy or unused field (a mutex nobody locks, _ struct{}, a name nobody reads) so the struct is no longer empty; renaming the file or type to look like a mock; replacing the struct with a non-struct named type such as type x int that carries the same methods; replacing the interface with a struct of function fields; declaring an interface nobody consumes only so the empty struct matches it."
 R12:
     id: R12
     level: L1
-    text: "NewXxx constructors only when there is real state to initialize"
+    text: "NewXxx constructors only when there is real state to initialize, or when they return an interface implemented by an unexported empty struct"
     enforcement: analyzer
-    rationale: "A constructor that returns an empty struct implies initialization that does not exist and invites callers to depend on a type that should not be there."
-    fix_strategy: "Remove the constructor and the empty struct, and call the package-level function directly."
-    not_a_fix: "Adding a meaningless field or a config value nobody reads so the constructor has something to set; renaming NewXxx to MakeXxx, CreateXxx or Default so the name check misses it; returning the empty struct from a package var instead."
+    rationale: "A constructor that returns an empty struct implies initialization that does not exist and invites callers to depend on a type that should not be there. Returning the interface hides the empty implementation, so callers depend only on the behavior."
+    fix_strategy: "Remove the constructor and the empty struct, and call the package-level function directly; or, for an interface implementation, return the interface instead of the struct."
+    not_a_fix: "Adding a meaningless field or a config value nobody reads so the constructor has something to set; renaming NewXxx to MakeXxx, CreateXxx or Default so the name check misses it; returning the empty struct from a package var instead; returning *T or T where the interface should be returned."
 R13:
     id: R13
     level: L0
@@ -145,43 +145,43 @@ R25:
 R26:
     id: R26
     level: L1
-    text: Never ignore an error; wrap with %w and compare with errors.Is/As
+    text: "Never ignore an error; wrap with %w and compare with errors.Is/As. An error variable that is assigned and then overwritten, or never read before the function returns, is ignored too"
     enforcement: analyzer
-    rationale: "A silently discarded error is a silently discarded failure -- the single most common way real bugs get masked in Go. Checking an error and then returning, continuing or substituting a fallback without using it hides the failure just as _ = does."
-    fix_strategy: "Return the error wrapped with context via %w, or hand it to a reporter; replacing it with a zero value or a bare sentinel still drops it."
-    not_a_fix: "Wrappers like saveBestEffort or swallowPanic that check the error and drop it; checking err and then returning silently or returning nil; assigning to _ or to a variable nobody reads; functions like ids.New() that return \"\" or a zero value on failure instead of an error; logging the error and carrying on as if the call succeeded."
+    rationale: "A silently discarded error is a silently discarded failure -- the single most common way real bugs get masked in Go. Checking an error and then returning, continuing or substituting a fallback without using it hides the failure just as _ = does, and so does a dead store: an err overwritten by the next call or the next loop iteration, or a value, err := f() whose err nobody reads."
+    fix_strategy: "Return the error wrapped with context via %w, or hand it to a reporter; replacing it with a zero value or a bare sentinel still drops it. Check every assigned error with if err != nil right after the call; in a loop, check it inside the loop or accumulate with errors.Join(err, ...)."
+    not_a_fix: "Wrappers like saveBestEffort or swallowPanic that check the error and drop it; checking err and then returning silently or returning nil; assigning to _ or to a variable nobody reads; reusing one err variable so each call overwrites the last; keeping only the last error of a loop; functions like ids.New() that return \"\" or a zero value on failure instead of an error; logging the error and carrying on as if the call succeeded."
 R27:
     id: R27
     level: L1
-    text: "No panic outside package main"
+    text: "No panic, log.Fatal*, log.Panic*, os.Exit or runtime.Goexit outside package main"
     enforcement: analyzer
-    rationale: "A library that panics takes the decision to crash away from its caller; errors are values the caller can handle, log or wrap."
-    fix_strategy: "Return an error wrapped with context via %w instead of panicking, and let main decide whether startup failure is fatal."
-    not_a_fix: "Replacing panic with log.Fatal, os.Exit or runtime.Goexit inside a library; calling a must-style helper in another package that panics on your behalf; returning a zero value and swallowing the failure instead of returning an error."
+    rationale: "A library that panics or exits takes the decision to crash away from its caller; errors are values the caller can handle, log or wrap."
+    fix_strategy: "Return an error wrapped with context via %w instead of panicking or exiting, and let main decide whether startup failure is fatal."
+    not_a_fix: "Replacing panic with log.Fatal, os.Exit or runtime.Goexit inside a library; aliasing the log or os import; calling a must-style helper in another package that panics on your behalf; calling Fatal on a logger value; returning a zero value and swallowing the failure instead of returning an error."
 R28:
     id: R28
     level: L1
-    text: Keep interfaces small (1-3 methods), defined in the consuming package
-    enforcement: lint
-    rationale: A large interface forces every implementor and every fake to satisfy methods most callers never use, and couples far more callers to far more surface than necessary.
-    fix_strategy: Split the interface along how it's actually consumed; define each smaller interface where it's used.
+    text: "Keep interfaces small (1-3 methods counted after flattening embedded interfaces of the module), defined in the consuming package"
+    enforcement: analyzer
+    rationale: "A large interface forces every implementor and every fake to satisfy methods most callers never use, and couples far more callers to far more surface than necessary. Embedding small interfaces into a large one keeps the whole surface."
+    fix_strategy: "Split the interface along how it's actually consumed; define each smaller interface where it's used and have each consumer depend on the small one it calls."
     not_a_fix: "Splitting the interface into arbitrary pieces of 3 or fewer methods (DispatcherParkRecovery) that are not concepts any consumer actually asks for; embedding the pieces back into one big interface that every caller still takes; leaving the definition in the producer package under a new name."
 R32:
     id: R32
     level: L0
-    text: No boolean flag parameters that silently branch a function's behavior
+    text: "No boolean flag parameters that silently branch a function's behavior, including variadic ...bool and same-package named types whose underlying type is bool"
     enforcement: analyzer
-    rationale: A boolean parameter means the function secretly has two behaviors selected by the caller; this is a fork in behavior disguised as data, and the call site can't tell what true/false means without opening the function.
-    fix_strategy: Split into two explicitly named functions, or replace the bool with a typed enum describing the real choice.
-    not_a_fix: "Replacing the bool with a bool alias, a single-field options struct, a 0/1 int or a mode string that still means true or false; hiding the flag in a variadic ...bool or a functional option; reading the flag from a package var instead of a parameter."
+    rationale: "A boolean parameter means the function secretly has two behaviors selected by the caller; this is a fork in behavior disguised as data, and the call site can't tell what true/false means without opening the function. type Express bool is the same flag with a new name."
+    fix_strategy: "Split into two explicitly named functions, or replace the bool with a typed enum (a named int or string type with named constants) describing the real choice."
+    not_a_fix: "Replacing the bool with a bool alias or a named type whose underlying type is bool (type Express bool), a single-field options struct, a 0/1 int or a mode string that still means true or false; hiding the flag in a variadic ...bool or a functional option; reading the flag from a package var instead of a parameter; declaring the bool type in another package."
 R33:
     id: R33
     level: L0
-    text: 'Command-Query Separation: a function either mutates state or returns a value, never both. Mutation includes writing through a pointer receiver or parameter, or handing it to a same-package helper that does (a chainable method returning its own receiver, or a function returning only a value it created and stored, such as the id of what it registered, is a command)'
+    text: "Command-Query Separation: a function either mutates state or returns a value, never both. Mutation includes writing through a pointer receiver or parameter, calling a mutating stdlib method on a receiver or parameter field (atomic Add/Store/Swap/CompareAndSwap/And/Or, sync.Map Store/Delete/LoadOrStore/Swap, strings.Builder and bytes.Buffer Write*/Reset/Grow, container/list mutators), sorting, clearing or copying into it (slices.Sort, sort.*, maps.Copy, clear, copy), or handing it to a same-package helper that does, including a method of a field's own type (a chainable method returning its own receiver, or a function returning only a value it created and stored, such as the id of what it registered, is a command)"
     enforcement: analyzer
-    rationale: Mixing "tell me something" and "change something" in one call makes call sites unpredictable and hard to reason about.
-    fix_strategy: Split into a Compute/Get query function (no mutation) and a separate Set/Apply/Update command function (no return value beyond error).
-    not_a_fix: "Moving the mutation into a helper so the function no longer looks like it mutates while it still mutates and returns; handing the result back through an out-parameter pointer or callback; returning the receiver from a method only so it passes as chainable; generating a throwaway value and passing it into the write only so the function may return it."
+    rationale: "Mixing \"tell me something\" and \"change something\" in one call makes call sites unpredictable and hard to reason about."
+    fix_strategy: "Split into a Compute/Get query function (no mutation) and a separate Set/Apply/Update command function (no return value beyond error)."
+    not_a_fix: "Moving the mutation into a helper so the function no longer looks like it mutates while it still mutates and returns; hiding the write behind an atomic, sync.Map, strings.Builder or bytes.Buffer field method call, or a method on a field's own type; handing the result back through an out-parameter pointer or callback; returning the receiver from a method only so it passes as chainable; generating a throwaway value and passing it into the write only so the function may return it."
 R34:
     id: R34
     level: L0
@@ -329,11 +329,11 @@ R59:
 R60:
     id: R60
     level: L1
-    text: "An internal interface is used, not only embedded: no interface that is only ever embedded in other interfaces, and no interface that only re-embeds one other"
+    text: "An internal interface is used by production code, not only embedded: no interface that is only ever embedded in other interfaces or referenced only from _test.go files, and no interface that only re-embeds one other"
     enforcement: analyzer
-    rationale: "Splitting an interface into role interfaces nothing depends on games the small-interface rule: the method set is unchanged, only scattered across names readers must chase."
+    rationale: "Splitting an interface into role interfaces nothing depends on games the small-interface rule: the method set is unchanged, only scattered across names readers must chase. A use that exists only in a test proves nothing in production narrows to the role."
     fix_strategy: "Inline the embedded interface's methods into the interface that uses it, or depend on the small interface where it really narrows what a consumer needs. Use a re-embedded interface directly."
-    not_a_fix: "Adding a dummy parameter or variable of the role interface type only to count as a use."
+    not_a_fix: "Adding a dummy parameter or variable of the role interface type only to count as a use; referencing the role interface from a test, or embedding it in a test fake, so it counts as used."
 R61:
     id: R61
     level: L1
@@ -350,6 +350,14 @@ R62:
     rationale: "One canonical layout means diffs show only real changes and no agent spends a review arguing about whitespace. AP's own rewrites always gofmt, so an unformatted file was edited by hand outside the tools."
     fix_strategy: "Run ap fix . (or gofmt -w) and commit the result."
     not_a_fix: "Excluding the file from the check, or adding a build tag so the file is skipped."
+R66:
+    id: R66
+    level: L1
+    text: "Methods live in the file named after their receiver type (or container.go), and no file has a numbered name (part1.go, handler_2.go)"
+    enforcement: analyzer
+    rationale: "Splitting one type's methods over files with unrelated or numbered names scatters the type, hides its true size from the one-type-per-file and line limits, and leaves readers no way to find a method from its type."
+    fix_strategy: "Move every method into the file named after its receiver in snake_case (OrderItem -> order_item.go). If that file grows past the line limit, the type does too much: split the type, not the file. Platform suffixes (_linux, _amd64) are allowed."
+    not_a_fix: "Renaming part1.go and part2.go to words that still describe parts (cube_extra.go, cube_more.go); naming a file after a new receiver type that only exists to hold the moved methods; moving methods into container.go when they are not wiring; turning methods into package functions that take the type as their first parameter only to escape the rule."
 PROXY-COMPLEXITY:
     id: PROXY-COMPLEXITY
     level: L0
