@@ -3,6 +3,7 @@ package realinfra_test
 import (
 	"go/parser"
 	"go/token"
+	"maps"
 	"slices"
 	"testing"
 
@@ -11,85 +12,154 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/behavior/internal/realinfra"
 )
 
-func TestNoinfraintests(
+type fixture struct {
+	name  string
+	files map[string]string
+	want  []string
+}
+
+func TestRealinfra(
 	t *testing.T,
 ) {
-	cases := []struct {
-		name string
-		code string
-		want []string
-	}{
-		{
-			name: "outbound http call is reported at the call",
-			code: "package p\n\nimport (\n\t\"net/http\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\thttp.Get(\"https://example.com\")\n}\n",
-			want: []string{"p_test.go:11"},
+	assertCases(
+		t,
+		[]fixture{
+			{
+				name: "a package-level http call to a remote host is reported",
+				files: map[string]string{
+					"p/p_test.go": "package p\n\nimport (\n\t\"net/http\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\thttp.Get(\"https://example.com\")\n}\n",
+				},
+				want: []string{
+					"p/p_test.go:11",
+				},
+			},
+			{
+				name: "a loopback string literal is still live infrastructure",
+				files: map[string]string{
+					"p/p_test.go": "package p\n\nimport (\n\t\"net/http\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\thttp.Get(\"http://localhost:8080/health\")\n\thttp.Post(\"http://\" + \"127.0.0.1\" + \":8080\", \"text/plain\", nil)\n}\n",
+				},
+				want: []string{
+					"p/p_test.go:11",
+					"p/p_test.go:12",
+				},
+			},
+			{
+				name: "an http call aimed at a test server created in the test passes",
+				files: map[string]string{
+					"p/p_test.go": "package p\n\nimport (\n\t\"net/http\"\n\t\"net/http/httptest\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\tsrv := httptest.NewServer(nil)\n\thttp.Get(srv.URL + \"/health\")\n\tsrv.Client().Get(srv.URL)\n}\n",
+				},
+			},
+			{
+				name: "a database open and a dial are reported",
+				files: map[string]string{
+					"p/p_test.go": "package p\n\nimport (\n\t\"crypto/tls\"\n\t\"database/sql\"\n\t\"net\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\tsql.Open(\"postgres\", \"host=db.internal\")\n\tsql.OpenDB(nil)\n\tnet.DialTimeout(\"tcp\", \"db.example.com:5432\", 0)\n\ttls.Dial(\"tcp\", \"localhost:443\", nil)\n}\n",
+				},
+				want: []string{
+					"p/p_test.go:13",
+					"p/p_test.go:14",
+					"p/p_test.go:15",
+					"p/p_test.go:16",
+				},
+			},
+			{
+				name: "a selector on an undeclared server is not trusted",
+				files: map[string]string{
+					"p/p_test.go": "package p\n\nimport (\n\t\"net/http\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\thttp.Get(server.URL)\n}\n",
+				},
+				want: []string{
+					"p/p_test.go:11",
+				},
+			},
+			{
+				name: "pure net and http helpers, plain calls and bodiless functions pass",
+				files: map[string]string{
+					"p/p_test.go": "package p\n\nimport (\n\t\"net\"\n\t\"net/http\"\n\t\"testing\"\n)\n\nfunc external()\n\nfunc TestF(\n\tt *testing.T,\n) {\n\tnet.ParseIP(\"10.0.0.1\")\n\tnet.JoinHostPort(\"a\", \"1\")\n\thttp.NewRequest(\"GET\", \"/\", nil)\n\thelper(1)\n\tfunc() {}()\n}\n",
+				},
+			},
 		},
-		{
-			name: "real database open is reported",
-			code: "package p\n\nimport (\n\t\"database/sql\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\tsql.Open(\"postgres\", \"host=db.internal\")\n}\n",
-			want: []string{"p_test.go:11"},
-		},
-		{
-			name: "dial to an address taken from a loopback listener passes",
-			code: "package p\n\nimport (\n\t\"net\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\tlistener, err := net.Listen(\"tcp\", \"127.0.0.1:0\")\n\tif err != nil {\n\t\tt.Fatal(err)\n\t}\n\taddress := listener.Addr().String()\n\tnet.Dial(\"tcp\", address)\n}\n",
-			want: nil,
-		},
-		{
-			name: "loopback url built by concatenation passes",
-			code: "package p\n\nimport (\n\t\"net/http\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\thttp.Get(\"http://\" + \"127.0.0.1\" + \":8080\")\n}\n",
-			want: nil,
-		},
-		{
-			name: "test server url selector passes",
-			code: "package p\n\nimport (\n\t\"net/http\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\thttp.Get(server.URL)\n}\n",
-			want: nil,
-		},
-		{
-			name: "plain calls, field assignments and bodiless functions pass",
-			code: "package p\n\nimport \"testing\"\n\nfunc external()\n\nfunc TestF(\n\tt *testing.T,\n) {\n\tcount := 1\n\tconfig.address = \"127.0.0.1:1\"\n\thelper(count)\n}\n",
-			want: nil,
-		},
-		{
-			name: "building an in-memory request passes",
-			code: "package p\n\nimport (\n\t\"net/http\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\thttp.NewRequest(\"GET\", \"/\", nil)\n}\n",
-			want: nil,
-		},
-	}
-	for _, tc := range cases {
-		assertLocations(
-			t,
-			tc.name,
-			realinfra.Realinfra([]source.File{parsed(
-				t,
-				tc.code,
-			)}),
-			tc.want,
+	)
+}
+
+func TestRealinfraSnippet(
+	t *testing.T,
+) {
+	findings := realinfra.Realinfra([]source.File{parsed(
+		t,
+		"p/p_test.go",
+		"package p\n\nimport \"net/http\"\n\nfunc f() {\n\thttp.Get(\"https://example.com\")\n}\n",
+	)})
+	want := "unit test makes a live call to http.Get against a target it does not own: inject an in-memory fake through the interface the code depends on, or aim the call at an httptest.Server (srv.URL, srv.Client()) or a listener the test opens on 127.0.0.1:0 and reads back with Addr(); a localhost or host string literal is still live infrastructure"
+	isMismatch := len(findings) != 1 || findings[0].Snippet != want || findings[0].Rule != "R41"
+	if isMismatch {
+		t.Errorf(
+			"findings = %v, want one R41 finding with snippet %q",
+			findings,
+			want,
 		)
 	}
 }
 
+func assertCases(
+	t *testing.T,
+	cases []fixture,
+) {
+	t.Helper()
+	for _, tc := range cases {
+		assertLocations(
+			t,
+			tc,
+			checked(
+				t,
+				tc.files,
+			),
+		)
+	}
+}
+
+func checked(
+	t *testing.T,
+	contents map[string]string,
+) (findings []report.Finding) {
+	t.Helper()
+	tests := []source.File{}
+	for _, rel := range slices.Sorted(maps.Keys(contents)) {
+		tests = append(
+			tests,
+			parsed(
+				t,
+				rel,
+				contents[rel],
+			),
+		)
+	}
+
+	return realinfra.Realinfra(tests)
+}
+
 func parsed(
 	t *testing.T,
+	rel string,
 	code string,
 ) (file source.File) {
 	t.Helper()
 	fileSet := token.NewFileSet()
 	syntax, err := parser.ParseFile(
 		fileSet,
-		"p_test.go",
+		rel,
 		code,
 		parser.ParseComments,
 	)
 	if err != nil {
 		t.Fatalf(
-			"parse fixture: %v",
+			"parse %s: %v",
+			rel,
 			err,
 		)
 	}
 
 	return source.File{
-		Path:    "p_test.go",
-		Rel:     "p_test.go",
+		Path:    rel,
+		Rel:     rel,
 		FileSet: fileSet,
 		Syntax:  syntax,
 	}
@@ -97,9 +167,8 @@ func parsed(
 
 func assertLocations(
 	t *testing.T,
-	name string,
+	tc fixture,
 	findings []report.Finding,
-	want []string,
 ) {
 	t.Helper()
 	got := []string{}
@@ -112,14 +181,14 @@ func assertLocations(
 
 	isMismatch := !slices.Equal(
 		got,
-		want,
-	) && len(got)+len(want) > 0
+		tc.want,
+	) && len(got)+len(tc.want) > 0
 	if isMismatch {
 		t.Errorf(
 			"%s: locations = %v, want %v",
-			name,
+			tc.name,
 			got,
-			want,
+			tc.want,
 		)
 	}
 }

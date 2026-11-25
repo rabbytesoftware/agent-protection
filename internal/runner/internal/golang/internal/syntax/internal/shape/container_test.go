@@ -2,6 +2,7 @@ package shape_test
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
@@ -42,6 +43,43 @@ func TestShape(
 			want,
 		)
 	}
+}
+
+func TestShapeCapsTestFileLength(
+	t *testing.T,
+) {
+	long, err := source.Parse(
+		".",
+		"p_test.go",
+		[]byte("package p\n"+strings.Repeat(
+			"\n",
+			600,
+		)),
+	)
+	if err != nil {
+		t.Fatalf(
+			"parse fixture: %v",
+			err,
+		)
+	}
+
+	findings := shape.Shape(
+		nil,
+		[]source.File{long},
+	)
+	rules := []string{}
+	for _, finding := range findings {
+		rules = append(
+			rules,
+			finding.Rule,
+		)
+	}
+
+	assertContains(
+		t,
+		rules,
+		"R44",
+	)
 }
 
 func assertContains(
