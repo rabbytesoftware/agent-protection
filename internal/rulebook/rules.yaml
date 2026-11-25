@@ -19,7 +19,7 @@ R03:
     level: L1
     text: Guard clauses first, no else, success return last
     enforcement: analyzer
-    rationale: An else branch means the happy path and the exceptional path are nested at the same level instead of the exceptional path exiting early -- harder to scan, one more indentation level to track.
+    rationale: An else branch means the happy path and the exceptional path are nested at the same level instead of the exceptional path exiting early; harder to scan, one more indentation level to track.
     fix_strategy: Invert the condition and return/continue early; keep the function body flat.
     not_a_fix: "Replacing else with a second if that tests the negated condition; turning the if/else into a switch or a map of funcs that keeps the same two nested branches; nesting the success path inside the if and returning the failure last."
 R04:
@@ -36,7 +36,7 @@ R07:
     text: "No comments, in any language and any file: Go, go.mod, shell, SQL, JS/TS, Rust, Python, Ruby, Makefile, Dockerfile, YAML and TOML; no inline comments, no doc comments, no TODOs, no license headers, no suppression comments, and no prose smuggled into strings bound to _, unknown struct tag keys or directive arguments"
     enforcement: analyzer
     rationale: "A comment is where code gets justified instead of fixed. Every comment you are about to write means the code is not clean yet: a vague name, a function doing too much, tangled logic. The code you leave must be enough for the next agent or human to understand what is happening. A good function is one that needs no comment at all. Moving the same sentence into a script, a migration, a workflow, a string or a struct tag does not change what it is."
-    fix_strategy: "Delete the comment, then make the code carry the meaning: rename the function, variable or type after what it does or holds; extract the step the comment described into a function whose name says it; replace a magic value with a named constant; split a function that needs explaining. Why a change was made goes in the commit message or PR description. Only machine-read directives stay, in their exact form: Go //go:build and // +build (before the package clause, paired), //go:embed, //go:generate (file top level, a real tool, not echo/true/false/:/printf), //go:linkname, //go:noinline and the other bare compiler directives with no arguments, //line, //export, //extern, a cgo preamble of preprocessor lines and C code only, and // Output: in Example tests; // indirect in go.mod; a shebang; # shellcheck key=value settings; # yaml-language-server: $schema=; Dockerfile parser directives (# syntax=, # escape=, # check=) at the top; -- +goose and -- +migrate markers and sqlc -- name: annotations in SQL; Python coding and Ruby magic comments in the file header; #:schema on the first line of TOML; TypeScript /// <reference> and /*#__PURE__*/. Struct tags use only keys a library reads (json, yaml, db, validate, gorm, protobuf, ...)."
+    fix_strategy: "Delete the comment, then make the code carry the meaning: rename the function, variable or type after what it does or holds; extract the step the comment described into a function whose name says it; replace a magic value with a named constant; split a function that needs explaining. Why a change was made goes in the commit message or PR description. Only machine-read directives stay, in their exact form: Go //go:build and // +build (before the package clause, paired), //go:embed, //go:generate (file top level, a real tool, not echo/true/false/:/printf), //go:linkname, //go:noinline and the other bare compiler directives with no arguments, //line, //export, //extern, a cgo preamble of preprocessor lines and C code only, and // Output: in Example tests; // indirect in go.mod; a shebang; # shellcheck key=value settings; # yaml-language-server: $schema=; Dockerfile parser directives (# syntax=, # escape=, # check=) at the top;; +goose and; +migrate markers and sqlc; name: annotations in SQL; Python coding and Ruby magic comments in the file header; #:schema on the first line of TOML; TypeScript /// <reference> and /*#__PURE__*/. Struct tags use only keys a library reads (json, yaml, db, validate, gorm, protobuf, ...)."
     not_a_fix: "Deleting the comment and leaving the code as unclear as before; moving the explanation into a string literal (const _ = \"...\", _ = \"...\"), a struct tag key no library reads (why:\"...\"), a directive argument (//go:noinline TODO ..., //go:generate echo ...), a C comment or #if 0 block in the cgo preamble, a log message, a sentence-shaped identifier (thisIsNeededBecause), a notes file beside the code, or a fake directive (//go:note); moving it from Go into a script, migration, Makefile, Dockerfile or workflow; suppression comments (// @ts-expect-error, eslint-disable, # noqa, # type: ignore, //nolint); disabling the rule."
 R08:
     id: R08
@@ -97,9 +97,9 @@ R16:
 R19:
     id: R19
     level: L1
-    text: Nest internal/ at the lowest module that needs it -- a package imported by exactly one other internal package must live nested under that importer's own internal/ subtree, not exposed at a shallower level
+    text: Nest internal/ at the lowest module that needs it; a package imported by exactly one other internal package must live nested under that importer's own internal/ subtree, not exposed at a shallower level
     enforcement: arch
-    rationale: A package sitting above its sole consumer's internal/ boundary is importable by anything else in the module even though nothing else uses it -- the encapsulation only exists by accident, not by Go's own visibility enforcement, and the first stray import from elsewhere quietly turns an implementation detail into a load-bearing dependency.
+    rationale: A package sitting above its sole consumer's internal/ boundary is importable by anything else in the module even though nothing else uses it; the encapsulation only exists by accident, not by Go's own visibility enforcement, and the first stray import from elsewhere quietly turns an implementation detail into a load-bearing dependency.
     fix_strategy: Move the package under its sole importer's own internal/ subtree (e.g. importer/internal/<package>), so Go's internal/ visibility rule actually restricts it to that one consumer.
     not_a_fix: "Adding a token import from a second package only so the package counts as shared; moving it to a directory the rule does not walk; copying the package under its importer while the old exposed copy stays in place."
 R21:
@@ -123,7 +123,7 @@ R23:
     level: L1
     text: No naming stutter; the one allowed exception is a type or entry function named exactly after its package (vault.Vault, noelse.Noelse)
     enforcement: analyzer
-    rationale: pkg.PkgThing repeats information the caller already has from the package qualifier -- it's noise at every call site.
+    rationale: pkg.PkgThing repeats information the caller already has from the package qualifier; it's noise at every call site.
     fix_strategy: Drop the repeated package name from the type name.
     not_a_fix: "Abbreviating or misspelling the repeated word (vault.VltConfig, vault.VConfig) instead of dropping it; moving the type to another package only to change the qualifier; renaming the package to something meaningless so it no longer matches the type."
 R24:
@@ -147,7 +147,7 @@ R26:
     level: L1
     text: "Never ignore an error; wrap with %w and compare with errors.Is/As. An error variable that is assigned and then overwritten, or never read before the function returns, is ignored too"
     enforcement: analyzer
-    rationale: "A silently discarded error is a silently discarded failure -- the single most common way real bugs get masked in Go. Checking an error and then returning, continuing or substituting a fallback without using it hides the failure just as _ = does, and so does a dead store: an err overwritten by the next call or the next loop iteration, or a value, err := f() whose err nobody reads."
+    rationale: "A silently discarded error is a silently discarded failure; the single most common way real bugs get masked in Go. Checking an error and then returning, continuing or substituting a fallback without using it hides the failure just as _ = does, and so does a dead store: an err overwritten by the next call or the next loop iteration, or a value, err := f() whose err nobody reads."
     fix_strategy: "Return the error wrapped with context via %w, or hand it to a reporter; replacing it with a zero value or a bare sentinel still drops it. Check every assigned error with if err != nil right after the call; in a loop, check it inside the loop or accumulate with errors.Join(err, ...)."
     not_a_fix: "Wrappers like saveBestEffort or swallowPanic that check the error and drop it; checking err and then returning silently or returning nil; assigning to _ or to a variable nobody reads; reusing one err variable so each call overwrites the last; keeping only the last error of a loop; functions like ids.New() that return \"\" or a zero value on failure instead of an error; logging the error and carrying on as if the call succeeded; marking the file as generated: generated files are still checked for dropped errors."
 R27:
@@ -249,17 +249,17 @@ R48:
 R50:
     id: R50
     level: L0
-    text: A directory literally named internal may contain loose .go files only if they are declaration-only -- any file with real behavior must live in its own named subdirectory
+    text: A directory literally named internal may contain loose .go files only if they are declaration-only; any file with real behavior must live in its own named subdirectory
     enforcement: arch
-    rationale: internal/ is the visibility-boundary marker, not a package identity -- if real implementation hides directly inside it, there is no name describing what that code does, and nothing stops a second, third, unrelated concern from being dropped in beside it as loose peers. Every behaviorful piece of code needs an actual name (a subdirectory), even when it is currently the only thing there.
+    rationale: internal/ is the visibility-boundary marker, not a package identity; if real implementation hides directly inside it, there is no name describing what that code does, and nothing stops a second, third, unrelated concern from being dropped in beside it as loose peers. Every behaviorful piece of code needs an actual name (a subdirectory), even when it is currently the only thing there.
     fix_strategy: Move the file into its own subdirectory named after what it does (e.g. internal/golangci.go becomes internal/golangci/golangci.go), even if it is the only file there today.
     not_a_fix: "Moving the behavior elsewhere while leaving a declaration-only shell that still names nothing; naming the subdirectory generically (impl, core, logic) instead of after what it does; renaming the internal directory so the rule stops applying."
 R51:
     id: R51
     level: L0
-    text: A directory literally named internal with exactly one child package (no siblings) has nothing to hide that child from -- merge its contents into the grandparent package, eliminating the internal/ layer entirely
+    text: A directory literally named internal with exactly one child package (no siblings) has nothing to hide that child from; merge its contents into the grandparent package, eliminating the internal/ layer entirely
     enforcement: arch
-    rationale: internal/ exists to restrict visibility among siblings. A sole child has no sibling to be restricted from, and its real consumer (the package one level up, already the only thing that could ever reach it) sits right next to it -- the boundary is pure indirection with nothing on the other side.
+    rationale: internal/ exists to restrict visibility among siblings. A sole child has no sibling to be restricted from, and its real consumer (the package one level up, already the only thing that could ever reach it) sits right next to it; the boundary is pure indirection with nothing on the other side.
     fix_strategy: Move the child's files up to the grandparent's directory as same-package companion files (or merge into its container file directly), then remove the now-empty internal/ directory.
     not_a_fix: "Adding an empty or placeholder sibling package so internal/ has two children; renaming internal/ to another name so the rule stops applying while the indirection stays."
 R52:
@@ -451,7 +451,7 @@ TS-PROXY-COMPLEXITY:
     level: L1
     text: Function exceeds complexity/length/nesting/param-count budget (TypeScript)
     enforcement: lint
-    rationale: A function under these budgets is structurally incapable of doing many unrelated things -- same proxy principle as the Go manifest, applied via ESLint core rules.
+    rationale: A function under these budgets is structurally incapable of doing many unrelated things; same proxy principle as the Go manifest, applied via ESLint core rules.
     fix_strategy: Extract named helper functions per branch/step; replace nested conditionals with early returns.
     not_a_fix: "Hoisting branches into nested arrow functions or helpers with meaningless names so each passes while the logic is as tangled as before; packing many parameters into one untyped options object; replacing conditionals with a lookup table of callbacks that keeps every path; disabling the rule inline or in config."
 TS-PROXY-MAGIC-NUMBER:

@@ -2,7 +2,7 @@
 
 Deterministic, machine-enforced coding-standards gate for AI coding agents.
 One universal manifest per language (Go, with Rust/TypeScript growing),
-applied identically to every repo that uses that language -- no per-repo
+applied identically to every repo that uses that language; no per-repo
 or per-project-archetype variants.
 
 ## Why
@@ -11,7 +11,7 @@ AI agents reliably drift from coding standards given only as prose
 (READMEs, CLAUDE.md). Agent Protection converts the mechanically-checkable
 parts of a coding manifest into hard CI/pre-commit gates instead, and
 explicitly excludes from its manifest anything that cannot be checked with
-certainty -- no judgment-call rules, no LLM review step, no suppression
+certainty; no judgment-call rules, no LLM review step, no suppression
 mechanism an agent could use to bypass a rule.
 
 ## Usage
