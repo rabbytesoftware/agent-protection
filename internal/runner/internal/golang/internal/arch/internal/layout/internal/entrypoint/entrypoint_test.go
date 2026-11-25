@@ -101,7 +101,10 @@ func TestEntrypointRejectsUnreadableRoot(
 		t.Fatal(err)
 	}
 
-	t.Cleanup(unlock(locked))
+	t.Cleanup(unlock(
+		t,
+		locked,
+	))
 	_, err = entrypoint.Entrypoint(
 		root,
 		nil,
@@ -112,12 +115,31 @@ func TestEntrypointRejectsUnreadableRoot(
 }
 
 func unlock(
+	t *testing.T,
 	path string,
 ) (cleanup func()) {
 	return func() {
-		_ = os.Chmod(
+		restore(
+			t,
 			path,
-			0o755,
+		)
+	}
+}
+
+func restore(
+	t *testing.T,
+	path string,
+) {
+	t.Helper()
+	err := os.Chmod(
+		path,
+		0o755,
+	)
+	if err != nil {
+		t.Errorf(
+			"restore %s: %v",
+			path,
+			err,
 		)
 	}
 }

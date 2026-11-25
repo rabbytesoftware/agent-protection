@@ -2,7 +2,6 @@ package droppederror
 
 import (
 	"go/ast"
-	"path/filepath"
 	"slices"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
@@ -15,12 +14,17 @@ func Droppederror(
 	files []source.File,
 ) (findings []report.Finding) {
 	callees := erroringCallees(files)
+	directories := relativeDirectories(files)
 	for _, file := range files {
 		findings = append(
 			findings,
 			fileFindings(
 				file,
-				callees[filepath.Dir(file.Path)],
+				knownCallees(
+					file,
+					callees,
+					directories,
+				),
 			)...,
 		)
 	}

@@ -19,7 +19,13 @@ func Syntax(
 		source.HandWritten(tests),
 	)
 	return slices.Concat(
-		style.Style(everyFile),
+		style.Style(
+			everyFile,
+			slices.Concat(
+				files,
+				tests,
+			),
+		),
 		shape.Shape(
 			files,
 			everyFile,

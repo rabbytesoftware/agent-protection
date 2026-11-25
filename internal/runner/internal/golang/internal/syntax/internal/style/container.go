@@ -21,6 +21,7 @@ import (
 
 func Style(
 	files []source.File,
+	everyFile []source.File,
 ) (findings []report.Finding) {
 	return slices.Concat(
 		paramperline.Paramperline(files),
@@ -30,7 +31,7 @@ func Style(
 		paragraph.Paragraph(files),
 		maxdepth.Maxdepth(files),
 		commentpolicy.Commentpolicy(files),
-		stringcomment.Stringcomment(files),
+		stringcomment.Stringcomment(everyFile),
 		noelse.Noelse(files),
 		namedreturn.Namedreturn(files),
 		genericname.Genericname(files),

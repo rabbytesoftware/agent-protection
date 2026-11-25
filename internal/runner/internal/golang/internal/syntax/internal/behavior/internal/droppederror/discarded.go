@@ -103,7 +103,10 @@ func isBlankedCall(
 	}
 
 	last := assignment.Lhs[len(assignment.Lhs)-1]
-	return identifierName(last) == blankName && callees[calleeName(assignment.Rhs[0])] == len(assignment.Lhs)
+	return identifierName(last) == blankName && resultsOf(
+		assignment.Rhs[0],
+		callees,
+	) == len(assignment.Lhs)
 }
 
 func isDroppable(

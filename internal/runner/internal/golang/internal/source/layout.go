@@ -15,15 +15,11 @@ import (
 )
 
 const (
-	internalDirectory  = "internal"
-	moduleDirective    = "module "
-	containerFile      = "container.go"
-	mainFile           = "main.go"
-	mainPackage        = "main"
-	generateDirective  = "//go:generate "
-	goModFile          = "go.mod"
-	entDirectory       = "ent"
-	entSchemaDirectory = "schema"
+	internalDirectory = "internal"
+	moduleDirective   = "module "
+	containerFile     = "container.go"
+	mainFile          = "main.go"
+	mainPackage       = "main"
 )
 
 const CompositionRootThreshold = 2
@@ -251,7 +247,7 @@ func hasIntegrationTag(
 func isNotGoBuild(
 	comment *ast.Comment,
 ) (excluded bool) {
-	return !constraint.IsGoBuild(comment.Text)
+	return !isGoBuild(comment)
 }
 
 func isIntegrationOnly(
@@ -347,146 +343,40 @@ func isIntegrationTag(
 	return tag == integrationTag
 }
 
-func hasProvenance(
+func BuildConstraint(
 	path string,
-) (proven bool) {
-	directory := filepath.Dir(path)
-	return hasGenerateDirective(
-		path,
-		directory,
-	) || hasGenerateDirective(
-		path,
-		moduleRoot(directory),
-	) || hasGeneratorConfig(directory)
-}
-
-func hasGenerateDirective(
-	generated string,
-	directory string,
-) (found bool) {
-	paths, err := filepath.Glob(filepath.Join(
-		directory,
-		"*"+goExtension,
-	))
-	for _, path := range slices.DeleteFunc(
-		paths,
-		IsTest,
-	) {
-		found = found || path != generated && declaresGenerate(path)
+) (expression constraint.Expr, err error) {
+	comments, err := headerComments(path)
+	if err != nil {
+		return nil,
+			err
 	}
 
-	return err == nil && found
-}
-
-func declaresGenerate(
-	path string,
-) (declares bool) {
-	content, err := os.ReadFile(path)
-	return err == nil && slices.ContainsFunc(
-		strings.Split(
-			string(content),
-			"\n",
-		),
-		isGenerateLine,
+	index := slices.IndexFunc(
+		comments,
+		isGoBuild,
 	)
-}
-
-func isGenerateLine(
-	line string,
-) (matches bool) {
-	command, isDirective := strings.CutPrefix(
-		line,
-		generateDirective,
-	)
-	fields := strings.Fields(command)
-	return isDirective && len(fields) > 0 && !slices.Contains(
-		inertCommands(),
-		fields[0],
-	)
-}
-
-func moduleRoot(
-	directory string,
-) (root string) {
-	parent := filepath.Dir(directory)
-	isRoot := exists(filepath.Join(
-		directory,
-		goModFile,
-	)) || parent == directory
-	if isRoot {
-		return directory
+	if index < 0 {
+		return nil,
+			nil
 	}
 
-	return moduleRoot(parent)
-}
-
-func hasGeneratorConfig(
-	directory string,
-) (found bool) {
-	for _, name := range generatorConfigs() {
-		found = found || isNonEmptyFile(filepath.Join(
-			directory,
-			name,
-		))
+	expression, err = constraint.Parse(comments[index].Text)
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"parse build constraint of %s: %w",
+				path,
+				err,
+			)
 	}
 
-	hasEntSchema, err := HasSource(filepath.Join(
-		directory,
-		entDirectory,
-		entSchemaDirectory,
-	))
-	found = found || err == nil && hasEntSchema
-	parent := filepath.Dir(directory)
-	isLast := found || exists(filepath.Join(
-		directory,
-		goModFile,
-	)) || parent == directory
-	if isLast {
-		return found
-	}
-
-	return hasGeneratorConfig(parent)
+	return expression,
+		nil
 }
 
-func exists(
-	path string,
-) (present bool) {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
-func isNonEmptyFile(
-	path string,
-) (nonEmpty bool) {
-	info, err := os.Stat(path)
-	return err == nil && info.Mode().IsRegular() && info.Size() > 0
-}
-
-func inertCommands() (names []string) {
-	return []string{
-		"echo",
-		"true",
-		"false",
-		":",
-		"printf",
-		"exit",
-		"sleep",
-		"test",
-		"[",
-	}
-}
-
-func generatorConfigs() (names []string) {
-	return []string{
-		"buf.gen.yaml",
-		"buf.gen.yml",
-		"sqlc.yaml",
-		"sqlc.yml",
-		"sqlc.json",
-		"gqlgen.yml",
-		"gqlgen.yaml",
-		".mockery.yaml",
-		".mockery.yml",
-		"oapi-codegen.yaml",
-	}
+func isGoBuild(
+	comment *ast.Comment,
+) (isConstraint bool) {
+	return constraint.IsGoBuild(comment.Text)
 }

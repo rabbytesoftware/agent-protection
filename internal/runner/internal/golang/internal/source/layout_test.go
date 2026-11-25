@@ -1,6 +1,7 @@
 package source_test
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -253,4 +254,61 @@ func assertBoolResult(
 		got,
 		want,
 	)
+}
+
+func TestBuildConstraint(
+	t *testing.T,
+) {
+	cases := []struct {
+		name    string
+		content string
+		want    string
+		wantErr bool
+	}{
+		{name: "a constrained file yields its expression", content: "//go:build prod && !windows\n\npackage p\n", want: "prod && !windows"},
+		{name: "an unconstrained file yields nothing", content: "package p\n", want: "<nil>"},
+		{name: "a malformed constraint is an error", content: "//go:build prod &&\n\npackage p\n", want: "<nil>", wantErr: true},
+		{name: "an unparsable file is an error", content: "package\n", want: "<nil>", wantErr: true},
+	}
+	for _, tc := range cases {
+		path := filepath.Join(
+			t.TempDir(),
+			"p.go",
+		)
+		writeFile(
+			t,
+			path,
+			tc.content,
+		)
+		expression, err := source.BuildConstraint(path)
+		assertConstraint(
+			t,
+			tc.name,
+			fmt.Sprint(expression),
+			err,
+			tc.want,
+			tc.wantErr,
+		)
+	}
+}
+
+func assertConstraint(
+	t *testing.T,
+	name string,
+	got string,
+	err error,
+	want string,
+	wantErr bool,
+) {
+	t.Helper()
+	isMismatch := got != want ||
+		(err != nil) != wantErr
+	if isMismatch {
+		t.Errorf(
+			"%s: BuildConstraint() = %q, %v",
+			name,
+			got,
+			err,
+		)
+	}
 }

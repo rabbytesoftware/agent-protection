@@ -8,7 +8,6 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 )
@@ -170,19 +169,21 @@ func IsGenerated(
 	path string,
 ) (isGenerated bool, err error) {
 	comments, err := headerComments(path)
-	return isGeneratedHeader(comments) && hasProvenance(path),
+	return isProvenGenerated(
+			path,
+			comments,
+		),
 		err
 }
 
-func isGeneratedHeader(
+func isProvenGenerated(
+	path string,
 	comments []*ast.Comment,
-) (isGenerated bool) {
-	marker := regexp.MustCompile(generatedMarker)
-	for _, comment := range comments {
-		isGenerated = isGenerated || marker.MatchString(comment.Text)
-	}
-
-	return isGenerated
+) (proven bool) {
+	return isProven(
+		path,
+		generatorOf(comments),
+	)
 }
 
 func headerComments(
@@ -309,7 +310,10 @@ func parse(
 			err
 	}
 
-	file.IsGenerated = isGeneratedHeader(leadingComments(file.Syntax)) && hasProvenance(path)
+	file.IsGenerated = isProvenGenerated(
+		path,
+		leadingComments(file.Syntax),
+	)
 	return file,
 		nil
 }

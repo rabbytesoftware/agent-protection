@@ -10,9 +10,19 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/rewrite"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/workspace"
 )
 
 func Golang(
+	root string,
+) (findings []report.Finding, err error) {
+	return workspace.Workspace(
+		root,
+		Module,
+	)
+}
+
+func Module(
 	root string,
 ) (findings []report.Finding, err error) {
 	files, tests, err := source.Load(root)

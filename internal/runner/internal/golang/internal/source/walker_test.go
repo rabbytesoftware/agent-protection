@@ -191,3 +191,43 @@ func TestEntries(
 		)
 	}
 }
+
+func TestWalkerSkipsNestedModules(
+	t *testing.T,
+) {
+	root := t.TempDir()
+	for path, content := range map[string]string{
+		"go.mod":            "module m\n",
+		"a/a.go":            "package a\n",
+		"internal/r/go.mod": "module r\n",
+		"internal/r/r.go":   "package r\n",
+		"internal/r/s/s.go": "package s\n",
+	} {
+		writeFile(
+			t,
+			filepath.Join(
+				root,
+				path,
+			),
+			content,
+		)
+	}
+
+	paths, err := source.Paths(root)
+	want := []string{filepath.Join(
+		root,
+		"a/a.go",
+	)}
+	isMismatch := err != nil || !slices.Equal(
+		paths,
+		want,
+	)
+	if isMismatch {
+		t.Errorf(
+			"Paths() = %v, %v, want %v",
+			paths,
+			err,
+			want,
+		)
+	}
+}
