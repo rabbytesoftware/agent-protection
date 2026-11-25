@@ -1,0 +1,16 @@
+R16:
+    id: R16
+    level: L1
+    text: "Siblings form one layer: a package may import a sibling (same parent directory, in any tree) only if that sibling imports no sibling of its own. Every in-module import is judged at the lowest common ancestor directory of importer and imported: both ends are lifted to the two child directories of that ancestor, so importing internal/store/order from internal/checkout is an edge from checkout to store, and anything below store importing a sibling of store makes store a non-foundation"
+    enforcement: arch
+    rationale: "Packages that share a parent are one layer. When siblings import siblings that import siblings, the directory hides a dependency chain nobody can see from the tree, and the parent's container.go stops being where the wiring is. Importing a cousin (a package below a sibling) instead of the sibling itself hides the same chain one level deeper."
+    fix_strategy: "Declare the interface you need in the consuming package and let the parent's container.go pass the implementation in. Foundation or vocabulary siblings whose whole subtree imports no sibling may be imported directly."
+    not_a_fix: "Moving the import into a file named after the package or into the child's own container.go; renaming the imported package models or contracts; nesting one sibling under the other only to break the edge; importing a package below the sibling instead of the sibling; moving the import into a child package of the importer; duplicating the code."
+R47:
+    id: R47
+    level: L0
+    text: "A package whose subtree imports 2 or more of its siblings (packages with logic, not declaration-only vocabulary) is doing its parent's wiring; only the parent's container.go wires siblings together. Imports from the package's own children count, and a directory without Go files is not a sibling of its own: its packages are separate siblings"
+    enforcement: arch
+    rationale: "Wiring siblings together is composition, and composition belongs in exactly one findable place: the parent's container.go. A child importing several siblings, directly or through its own children, is a hidden composition root, usually behind a pass-through parent. A folder that only groups packages has no API, so reaching two packages inside it is wiring two collaborators."
+    fix_strategy: "Move the construction into the parent's container.go. Give the child a constructor that takes interfaces the child declares, and have container.go pass the siblings' implementations in, down to the grandchildren that use them."
+    not_a_fix: "Renaming the child's file container.go; splitting the child so each piece imports one sibling; moving each sibling import into a different child package; grouping the siblings under a folder without Go files; routing the imports through a vocabulary package."

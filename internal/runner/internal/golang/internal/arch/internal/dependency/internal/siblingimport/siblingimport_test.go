@@ -134,7 +134,7 @@ func TestSiblingimports(
 			want: []string{"R16 internal/alpha/alpha.go:4"},
 		},
 		{
-			name: "lifted imports do not count towards wiring",
+			name: "imports from a sibling's subtree count towards that sibling's wiring",
 			files: map[string]string{
 				"internal/alpha/alpha.go":     unit("alpha internal/beta"),
 				"internal/alpha/sub/sub.go":   unit("sub internal/gamma"),
@@ -142,7 +142,7 @@ func TestSiblingimports(
 				"internal/gamma/gamma.go":     unit("gamma"),
 				"internal/alpha/sub/other.go": unit("sub"),
 			},
-			want: nil,
+			want: []string{"R47 internal/alpha"},
 		},
 		{
 			name: "leaf importing an uncle foundation passes",
@@ -210,24 +210,11 @@ func TestSiblingimportsSnippets(
 		"imports sibling adapter (through app), which itself imports sibling engine: siblings form one layer; have the parent's container.go pass adapter in",
 		"imports siblings adapter, engine: wiring siblings together is the parent's job; move it into container.go and inject what this package needs through an interface it declares",
 	}
-	got := []string{}
-	for _, finding := range findings {
-		got = append(
-			got,
-			finding.Snippet,
-		)
-	}
-
-	if !slices.Equal(
-		got,
+	assertSnippets(
+		t,
+		findings,
 		want,
-	) {
-		t.Errorf(
-			"snippets = %q, want %q",
-			got,
-			want,
-		)
-	}
+	)
 }
 
 func TestSiblingimportsNamesTheOwningModule(
@@ -415,6 +402,32 @@ func assertFindings(
 		t.Errorf(
 			"%s: findings = %v, want %v",
 			name,
+			got,
+			want,
+		)
+	}
+}
+
+func assertSnippets(
+	t *testing.T,
+	findings []report.Finding,
+	want []string,
+) {
+	t.Helper()
+	got := []string{}
+	for _, finding := range findings {
+		got = append(
+			got,
+			finding.Snippet,
+		)
+	}
+
+	if !slices.Equal(
+		got,
+		want,
+	) {
+		t.Errorf(
+			"snippets = %q, want %q",
 			got,
 			want,
 		)
