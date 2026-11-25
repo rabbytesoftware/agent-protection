@@ -9,15 +9,19 @@ import (
 
 const pathSeparator = "/"
 
-func declarations(
+func catalogue(
 	files []source.File,
-) (index map[string]declaration) {
+) (indexed catalog) {
 	packageNames := declaredPackageNames(files)
 	module := modulePath(files)
-	index = map[string]declaration{}
+	indexed = catalog{
+		interfaces: map[string]declaration{},
+		structures: map[string]structure{},
+		methods:    map[string][]string{},
+	}
 	for _, file := range files {
 		record(
-			index,
+			indexed,
 			file,
 			fileAliases(
 				file,
@@ -27,42 +31,98 @@ func declarations(
 		)
 	}
 
-	return index
+	return indexed
 }
 
 func record(
-	index map[string]declaration,
+	indexed catalog,
 	file source.File,
 	aliases map[string]string,
 ) {
 	directory := packageDirectory(file)
-	for _, spec := range interfaceSpecs(file.Syntax) {
-		index[declarationKey(
+	for _, spec := range typeSpecs(file.Syntax) {
+		recordType(
+			indexed,
+			declaration{
+				directory: directory,
+				spec:      spec,
+				aliases:   aliases,
+			},
+		)
+	}
+
+	for _, decl := range file.Syntax.Decls {
+		recordMethod(
+			indexed,
 			directory,
-			spec.Name.Name,
-		)] = declaration{
-			directory: directory,
-			spec:      spec,
-			body:      interfaceBody(spec),
-			aliases:   aliases,
+			decl,
+		)
+	}
+}
+
+func recordType(
+	indexed catalog,
+	owner declaration,
+) {
+	key := declarationKey(
+		owner.directory,
+		owner.spec.Name.Name,
+	)
+	switch body := owner.spec.Type.(type) {
+	case *ast.InterfaceType:
+		owner.body = body
+		indexed.interfaces[key] = owner
+	case *ast.StructType:
+		indexed.structures[key] = structure{
+			owner: owner,
+			body:  body,
 		}
 	}
 }
 
-func interfaceSpecs(
+func recordMethod(
+	indexed catalog,
+	directory string,
+	decl ast.Decl,
+) {
+	function, isFunction := decl.(*ast.FuncDecl)
+	isExposed := isFunction &&
+		function.Recv != nil &&
+		len(function.Recv.List) > 0 &&
+		function.Name.IsExported()
+	if !isExposed {
+		return
+	}
+
+	receiver, isNamed := unindexed(unpointered(function.Recv.List[0].Type)).(*ast.Ident)
+	if !isNamed {
+		return
+	}
+
+	key := declarationKey(
+		directory,
+		receiver.Name,
+	)
+	indexed.methods[key] = append(
+		indexed.methods[key],
+		function.Name.Name,
+	)
+}
+
+func typeSpecs(
 	syntax *ast.File,
 ) (specs []*ast.TypeSpec) {
 	for _, decl := range syntax.Decls {
 		specs = append(
 			specs,
-			declInterfaces(decl)...,
+			declTypes(decl)...,
 		)
 	}
 
 	return specs
 }
 
-func declInterfaces(
+func declTypes(
 	decl ast.Decl,
 ) (specs []*ast.TypeSpec) {
 	general, isGeneral := decl.(*ast.GenDecl)
@@ -71,7 +131,7 @@ func declInterfaces(
 	}
 
 	for _, spec := range general.Specs {
-		specs = appendInterface(
+		specs = appendType(
 			specs,
 			spec,
 		)
@@ -80,7 +140,7 @@ func declInterfaces(
 	return specs
 }
 
-func appendInterface(
+func appendType(
 	specs []*ast.TypeSpec,
 	spec ast.Spec,
 ) (extended []*ast.TypeSpec) {
@@ -89,26 +149,10 @@ func appendInterface(
 		return specs
 	}
 
-	_, isInterface := typeSpec.Type.(*ast.InterfaceType)
-	if !isInterface {
-		return specs
-	}
-
 	return append(
 		specs,
 		typeSpec,
 	)
-}
-
-func interfaceBody(
-	spec *ast.TypeSpec,
-) (body *ast.InterfaceType) {
-	body, isInterface := spec.Type.(*ast.InterfaceType)
-	if !isInterface {
-		return nil
-	}
-
-	return body
 }
 
 func declaredPackageNames(

@@ -25,13 +25,13 @@ func Interfacesize(
 		slices.Clone(files),
 		isExcluded,
 	)
-	index := declarations(checked)
+	indexed := catalogue(checked)
 	for _, file := range checked {
 		findings = append(
 			findings,
 			fileFindings(
 				file,
-				index,
+				indexed,
 			)...,
 		)
 	}
@@ -47,23 +47,47 @@ func isExcluded(
 
 func fileFindings(
 	file source.File,
-	index map[string]declaration,
+	indexed catalog,
 ) (findings []report.Finding) {
-	for _, spec := range interfaceSpecs(file.Syntax) {
-		findings = append(
+	directory := packageDirectory(file)
+	for _, spec := range typeSpecs(file.Syntax) {
+		key := declarationKey(
+			directory,
+			spec.Name.Name,
+		)
+		findings = slices.Concat(
 			findings,
-			specFindings(
+			interfaceFindings(
 				file,
-				index[declarationKey(
-					packageDirectory(file),
-					spec.Name.Name,
-				)],
-				index,
-			)...,
+				key,
+				indexed,
+			),
+			structureFindings(
+				file,
+				key,
+				indexed,
+			),
 		)
 	}
 
 	return findings
+}
+
+func interfaceFindings(
+	file source.File,
+	key string,
+	indexed catalog,
+) (findings []report.Finding) {
+	declared, isInterface := indexed.interfaces[key]
+	if !isInterface {
+		return nil
+	}
+
+	return specFindings(
+		file,
+		declared,
+		indexed.interfaces,
+	)
 }
 
 func specFindings(

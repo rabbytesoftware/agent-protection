@@ -89,10 +89,10 @@ R15:
 R16:
     id: R16
     level: L1
-    text: "Siblings form one layer: a package may import a sibling (same parent directory, in any tree) only if that sibling imports no sibling of its own. Every in-module import is judged at the lowest common ancestor directory of importer and imported: both ends are lifted to the two child directories of that ancestor, so importing internal/store/order from internal/checkout is an edge from checkout to store, and anything below store importing a sibling of store makes store a non-foundation"
+    text: "Siblings form one layer: a package may import a sibling (same parent directory, in any tree) only if that sibling imports no sibling of its own. Every in-module import is judged at the lowest common ancestor directory of importer and imported: both ends are lifted to the two child directories of that ancestor, so importing internal/store/order from internal/checkout is an edge from checkout to store, and anything below store importing a sibling of store makes store a non-foundation. Each lifted edge is reported once, at its first import by path and line, with how many imports in how many packages make it"
     enforcement: arch
-    rationale: "Packages that share a parent are one layer. When siblings import siblings that import siblings, the directory hides a dependency chain nobody can see from the tree, and the parent's container.go stops being where the wiring is. Importing a cousin (a package below a sibling) instead of the sibling itself hides the same chain one level deeper."
-    fix_strategy: "Declare the interface you need in the consuming package and let the parent's container.go pass the implementation in. Foundation or vocabulary siblings whose whole subtree imports no sibling may be imported directly."
+    rationale: "Packages that share a parent are one layer. When siblings import siblings that import siblings, the directory hides a dependency chain nobody can see from the tree, and the parent's container.go stops being where the wiring is. Importing a cousin (a package below a sibling) instead of the sibling itself hides the same chain one level deeper. Code anywhere under an internal/ directory counts as that internal/ directory, so internal/a importing contracts is an edge from internal/ to contracts."
+    fix_strategy: "Declare the interface you need in the consuming package and let the parent's container.go pass the implementation in, or make the imported sibling a foundation by removing its own sibling imports (a vocabulary package such as contracts must not import store). Foundation or vocabulary siblings whose whole subtree imports no sibling may be imported directly. One finding can stand for many imports: fix the edge, not the import line."
     not_a_fix: "Moving the import into a file named after the package or into the child's own container.go; renaming the imported package models or contracts; nesting one sibling under the other only to break the edge; importing a package below the sibling instead of the sibling; moving the import into a child package of the importer; duplicating the code."
 R19:
     id: R19
@@ -161,11 +161,11 @@ R27:
 R28:
     id: R28
     level: L1
-    text: "Keep interfaces small (1-3 methods counted after flattening embedded interfaces of the module), defined in the consuming package"
+    text: "Keep interfaces small (1-3 methods counted after flattening embedded interfaces of the module), defined in the consuming package. A struct that embeds interfaces of the module is an interface surface too: its methods promoted from embedded interfaces (directly or through embedded structs of the module) plus its own exported methods count against the same cap. _test.go files and mock files are exempt"
     enforcement: analyzer
-    rationale: "A large interface forces every implementor and every fake to satisfy methods most callers never use, and couples far more callers to far more surface than necessary. Embedding small interfaces into a large one keeps the whole surface."
-    fix_strategy: "Split the interface along how it's actually consumed; define each smaller interface where it's used and have each consumer depend on the small one it calls."
-    not_a_fix: "Splitting the interface into arbitrary pieces of 3 or fewer methods (DispatcherParkRecovery) that are not concepts any consumer actually asks for; embedding the pieces back into one big interface that every caller still takes; leaving the definition in the producer package under a new name."
+    rationale: "A large interface forces every implementor and every fake to satisfy methods most callers never use, and couples far more callers to far more surface than necessary. Embedding small interfaces into a large one keeps the whole surface, and so does embedding them into a struct that a constructor returns: every caller of New gets the whole god object."
+    fix_strategy: "Split the interface along how it's actually consumed; define each smaller interface where it's used and have each consumer depend on the small one it calls. When a module assembles several roles, return each small interface from its own constructor instead of one struct that embeds them all."
+    not_a_fix: "Splitting the interface into arbitrary pieces of 3 or fewer methods (DispatcherParkRecovery) that are not concepts any consumer actually asks for; embedding the pieces back into one big interface that every caller still takes; embedding the small interfaces in a struct to rebuild the same surface; leaving the definition in the producer package under a new name."
 R32:
     id: R32
     level: L0

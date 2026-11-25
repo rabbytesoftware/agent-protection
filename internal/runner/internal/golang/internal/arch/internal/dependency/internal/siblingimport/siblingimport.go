@@ -13,7 +13,6 @@ import (
 
 const (
 	blankImport  = "_"
-	chainRule    = "R16"
 	moduleRoot   = "."
 	importQuotes = "\"`"
 )
@@ -52,31 +51,6 @@ func Siblingimport(
 			),
 		),
 		nil
-}
-
-func chainsOf(
-	modulePath string,
-	files []source.File,
-) (findings []report.Finding) {
-	directories := directoryNodes(files)
-	lifted := liftedGraph(moduleEdges(
-		modulePath,
-		directories,
-		files,
-	))
-	for _, file := range files {
-		findings = append(
-			findings,
-			chainFindings(
-				modulePath,
-				directories,
-				lifted,
-				file,
-			)...,
-		)
-	}
-
-	return findings
 }
 
 func moduleEdges(
@@ -157,86 +131,6 @@ func liftedGraph(
 	}
 
 	return lifted
-}
-
-func chainFindings(
-	modulePath string,
-	nodes map[string]bool,
-	lifted map[string][]string,
-	file source.File,
-) (findings []report.Finding) {
-	for _, spec := range file.Syntax.Imports {
-		findings = append(
-			findings,
-			chainFinding(
-				nodes,
-				lifted,
-				file,
-				spec,
-				siblingEdge(
-					modulePath,
-					nodes,
-					filepath.Dir(file.Rel),
-					spec,
-				),
-			)...,
-		)
-	}
-
-	return findings
-}
-
-func chainFinding(
-	nodes map[string]bool,
-	lifted map[string][]string,
-	file source.File,
-	spec *ast.ImportSpec,
-	edges []edge,
-) (findings []report.Finding) {
-	isChain := len(edges) > 0 && len(lifted[edges[0].to]) > 0
-	if !isChain {
-		return nil
-	}
-
-	found := edges[0]
-	sibling := siblingName(
-		nodes,
-		found.to,
-	)
-	return []report.Finding{{
-		Rule:     chainRule,
-		Location: file.Location(spec),
-		Snippet: fmt.Sprintf(
-			"imports sibling %s%s, which itself imports sibling %s: siblings form one layer; have the parent's container.go pass %s in",
-			sibling,
-			through(
-				nodes,
-				found,
-			),
-			siblingName(
-				nodes,
-				lifted[found.to][0],
-			),
-			sibling,
-		),
-	}}
-}
-
-func through(
-	nodes map[string]bool,
-	found edge,
-) (note string) {
-	if found.importer == found.from {
-		return ""
-	}
-
-	return fmt.Sprintf(
-		" (through %s)",
-		siblingName(
-			nodes,
-			found.from,
-		),
-	)
 }
 
 func importedDirectory(

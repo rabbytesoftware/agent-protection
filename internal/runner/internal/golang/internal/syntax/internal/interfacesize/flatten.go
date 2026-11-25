@@ -177,3 +177,14 @@ func unindexed(
 
 	return expression
 }
+
+func unpointered(
+	expression ast.Expr,
+) (inner ast.Expr) {
+	pointer, isPointer := expression.(*ast.StarExpr)
+	if !isPointer {
+		return expression
+	}
+
+	return pointer.X
+}

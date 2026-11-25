@@ -206,8 +206,7 @@ func TestSiblingimportsSnippets(
 		},
 	)
 	want := []string{
-		"imports sibling adapter, which itself imports sibling engine: siblings form one layer; have the parent's container.go pass adapter in",
-		"imports sibling adapter (through app), which itself imports sibling engine: siblings form one layer; have the parent's container.go pass adapter in",
+		"imports sibling adapter, which itself imports sibling engine: siblings form one layer; have the parent's container.go pass adapter in, or make adapter a foundation by dropping its own sibling imports; 2 imports across 2 packages under app reach adapter the same way, for example internal/app/internal/deep/d.go:4",
 		"imports siblings adapter, engine: wiring siblings together is the parent's job; move it into container.go and inject what this package needs through an interface it declares",
 	}
 	assertSnippets(
