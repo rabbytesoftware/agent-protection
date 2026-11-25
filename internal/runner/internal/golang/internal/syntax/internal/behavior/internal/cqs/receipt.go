@@ -197,6 +197,7 @@ func storedNames(
 			effects,
 		),
 		stdlibCalls(described),
+		commandCalls(described),
 	) {
 		written = append(
 			written,
@@ -246,7 +247,10 @@ func writesPointer(
 ) (writes bool) {
 	for _, target := range assignment.Lhs {
 		_, isPointer := described.pointers[mutatedRoot(target)]
-		writes = writes || isPointer
+		writes = writes || isPointer || throughPointerField(
+			described,
+			target,
+		)
 	}
 
 	shared := everySlot(described)

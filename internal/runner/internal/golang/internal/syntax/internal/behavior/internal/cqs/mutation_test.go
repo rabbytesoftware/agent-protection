@@ -56,6 +56,26 @@ func TestCqsDirectWrites(
 			want: nil,
 		},
 		{
+			name: "incrementing through a pointer field of a value receiver is reported",
+			code: "package p\n\ntype tally struct {\n\thits int\n}\n\ntype T struct {\n\ttally *tally\n}\n\nfunc (t T) Square(\n\tv int,\n) (r int) {\n\tt.tally.hits++\n\treturn v * t.tally.hits\n}\n",
+			want: []string{"p.go:11"},
+		},
+		{
+			name: "assigning through a nested pointer field of a value parameter is reported",
+			code: "package p\n\ntype inner struct {\n\tn int\n}\n\ntype outer struct {\n\tcore struct {\n\t\tref *inner\n\t}\n}\n\nfunc f(\n\to outer,\n) (n int) {\n\to.core.ref.n = 2\n\treturn 1\n}\n",
+			want: []string{"p.go:13"},
+		},
+		{
+			name: "writing a value field of a value receiver copy passes",
+			code: "package p\n\ntype tally struct {\n\thits int\n}\n\ntype T struct {\n\ttally tally\n}\n\nfunc (t T) Square() (r int) {\n\tt.tally.hits++\n\treturn t.tally.hits\n}\n",
+			want: nil,
+		},
+		{
+			name: "writing through a pointer field of a local value passes",
+			code: "package p\n\ntype tally struct {\n\thits int\n}\n\ntype T struct {\n\ttally *tally\n}\n\nfunc f() (r int) {\n\tlocal := T{tally: &tally{}}\n\tlocal.tally.hits++\n\treturn local.tally.hits\n}\n",
+			want: nil,
+		},
+		{
 			name: "incrementing a local counter passes",
 			code: "package p\n\nfunc f() (n int) {\n\tn++\n\treturn n\n}\n",
 			want: nil,

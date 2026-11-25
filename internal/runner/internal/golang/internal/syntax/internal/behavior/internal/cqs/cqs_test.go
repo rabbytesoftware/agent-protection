@@ -40,6 +40,21 @@ func TestCqs(
 			want: nil,
 		},
 		{
+			name: "command reporting only whether it took effect passes",
+			code: "package p\n\ntype Store interface {\n\tSave(\n\t\tkey string,\n\t)\n}\n\ntype T struct {\n\tstore Store\n\tv     int\n}\n\nfunc (t *T) Allow(\n\tkey string,\n) (allowed bool) {\n\tt.store.Save(key)\n\tt.v++\n\treturn true\n}\n",
+			want: nil,
+		},
+		{
+			name: "command handing back a release func passes",
+			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) Reserve() (delay int, cancel func()) {\n\tt.v++\n\treturn t.v,\n\t\tt.release\n}\n",
+			want: nil,
+		},
+		{
+			name: "bool reported next to another value is still a query",
+			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) Next() (v int, ok bool) {\n\tt.v++\n\treturn t.v,\n\t\ttrue\n}\n",
+			want: []string{"p.go:7"},
+		},
+		{
 			name: "assigning to a value receiver copy passes",
 			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t T) f() (v int) {\n\tt.v = 5\n\treturn t.v\n}\n",
 			want: nil,

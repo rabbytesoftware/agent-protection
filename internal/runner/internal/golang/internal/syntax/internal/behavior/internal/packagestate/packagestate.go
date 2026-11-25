@@ -22,6 +22,8 @@ const (
 	stringType     = "string"
 	initSnippet    = "func init: no init; wire dependencies explicitly in container.go"
 	variableFormat = "package variable %s: no mutable package-level state; pass it in through a constructor"
+	blankSnippet   = "package variable _ is initialized by a call that runs at import time like init: call it explicitly from container.go or func main; only interface assertions such as var _ I = (*T)(nil) stay"
+	nilName        = "nil"
 )
 
 func Packagestate(
@@ -154,8 +156,16 @@ func nameFindings(
 	name *ast.Ident,
 	value ast.Expr,
 ) (findings []report.Finding) {
-	isAllowed := name.Name == blankName || isSentinelName(name.Name) && isSentinelValue(value)
-	if isAllowed {
+	if name.Name == blankName {
+		return blankFindings(
+			file,
+			name,
+			value,
+		)
+	}
+
+	isSentinel := isSentinelName(name.Name) && isSentinelValue(value)
+	if isSentinel {
 		return nil
 	}
 
@@ -167,6 +177,45 @@ func nameFindings(
 			name.Name,
 		),
 	}}
+}
+
+func blankFindings(
+	file source.File,
+	name *ast.Ident,
+	value ast.Expr,
+) (findings []report.Finding) {
+	isInert := value == nil || !slices.ContainsFunc(
+		source.Nodes[*ast.CallExpr](value),
+		isRunningCall,
+	)
+	if isInert {
+		return nil
+	}
+
+	return []report.Finding{{
+		Rule:     rule,
+		Location: file.Location(name),
+		Snippet:  blankSnippet,
+	}}
+}
+
+func isRunningCall(
+	call *ast.CallExpr,
+) (running bool) {
+	conversion, isParen := call.Fun.(*ast.ParenExpr)
+	if !isParen {
+		return true
+	}
+
+	_, isPointer := conversion.X.(*ast.StarExpr)
+	return !isPointer || len(call.Args) != 1 || !isNil(call.Args[0])
+}
+
+func isNil(
+	expression ast.Expr,
+) (null bool) {
+	identifier, isIdent := expression.(*ast.Ident)
+	return isIdent && identifier.Name == nilName
 }
 
 func valueAt(
@@ -205,7 +254,7 @@ func isSentinelValue(
 ) (sentinel bool) {
 	switch typed := value.(type) {
 	case *ast.CallExpr:
-		return true
+		return len(source.Nodes[*ast.FuncLit](typed)) == 0
 	case *ast.SelectorExpr:
 		return isSentinelName(typed.Sel.Name)
 	}

@@ -13,8 +13,10 @@ import (
 const (
 	rule           = "R33"
 	errorType      = "error"
+	boolType       = "bool"
 	directFormat   = "func %s(...) returns a value and mutates its receiver or a pointer, map, slice or channel parameter: split the query from the command"
 	indirectFormat = "func %s(...) returns a value and mutates its receiver or a pointer, map, slice or channel parameter through %s(...): split the query from the command"
+	commandFormat  = "func %s(...) returns a value and also runs the command %s(...), a call without results on its receiver's fields or a parameter: split the query from the command"
 )
 
 func Cqs(
@@ -26,8 +28,12 @@ func Cqs(
 	)
 	effects := map[string]map[string][]int{}
 	fields := map[string]map[string]ast.Expr{}
+	qualified := qualifiedMethods(checked)
 	for key, members := range packagesOf(checked) {
-		fields[key] = packageFields(members)
+		fields[key] = packageFields(
+			members,
+			qualified,
+		)
 		effects[key] = packageEffects(
 			members,
 			fields[key],
@@ -130,7 +136,37 @@ func appendFinding(
 func isNotQuery(
 	function *ast.FuncDecl,
 ) (excluded bool) {
-	return function.Body == nil || !returnsValue(function) || isChainable(function)
+	return function.Body == nil ||
+		!returnsValue(function) ||
+		isChainable(function) ||
+		reportsOutcome(function)
+}
+
+func reportsOutcome(
+	function *ast.FuncDecl,
+) (outcome bool) {
+	results := slices.DeleteFunc(
+		flatParameters(function.Type.Results),
+		isErrorResult,
+	)
+	handsBack := slices.ContainsFunc(
+		results,
+		isFuncResult,
+	)
+	return handsBack || len(results) == 1 && identifierName(results[0].Type) == boolType
+}
+
+func isErrorResult(
+	field *ast.Field,
+) (isError bool) {
+	return !isNonErrorResult(field)
+}
+
+func isFuncResult(
+	field *ast.Field,
+) (isFunc bool) {
+	_, isFunc = field.Type.(*ast.FuncType)
+	return isFunc
 }
 
 func mixedSnippet(
@@ -154,6 +190,26 @@ func mixedSnippet(
 		)
 	}
 
+	commands := commandCalls(mixed)
+	if len(commands) > 0 {
+		return fmt.Sprintf(
+			commandFormat,
+			name,
+			calleeName(commands[0]),
+		)
+	}
+
+	return writeSnippet(
+		mixed,
+		effects,
+	)
+}
+
+func writeSnippet(
+	mixed callable,
+	effects map[string][]int,
+) (snippet string) {
+	name := mixed.declaration.Name.Name
 	if len(directPositions(mixed)) > 0 {
 		return fmt.Sprintf(
 			directFormat,

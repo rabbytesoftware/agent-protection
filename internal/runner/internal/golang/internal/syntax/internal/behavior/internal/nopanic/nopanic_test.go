@@ -75,6 +75,26 @@ func TestNopanic(
 			want: nil,
 		},
 		{
+			name: "syscall.Exit, unix.Exit and windows.Exit are reported",
+			code: "package p\n\nimport (\n\t\"syscall\"\n\n\t\"golang.org/x/sys/unix\"\n\t\"golang.org/x/sys/windows\"\n)\n\nfunc f() {\n\tsyscall.Exit(1)\n\tunix.Exit(1)\n\twindows.Exit(1)\n}\n",
+			want: []string{"p.go:11", "p.go:12", "p.go:13"},
+		},
+		{
+			name: "os.Exit bound to a variable is reported where it is referenced",
+			code: "package p\n\nimport \"os\"\n\nfunc f() {\n\tterminate := os.Exit\n\tterminate(1)\n}\n",
+			want: []string{"p.go:6"},
+		},
+		{
+			name: "runtime.Goexit passed as a value is reported",
+			code: "package p\n\nimport \"runtime\"\n\nfunc f(\n\trun func(func()),\n) {\n\trun(runtime.Goexit)\n}\n",
+			want: []string{"p.go:8"},
+		},
+		{
+			name: "other os and syscall functions used as values pass",
+			code: "package p\n\nimport (\n\t\"os\"\n\t\"syscall\"\n)\n\nfunc f() {\n\tlookup := os.Getenv\n\t_ = syscall.Getpid\n\t_ = lookup\n}\n",
+			want: nil,
+		},
+		{
 			name: "method named panic passes",
 			code: "package p\n\nfunc f(\n\tx alarm,\n) {\n\tx.panic()\n}\n",
 			want: nil,

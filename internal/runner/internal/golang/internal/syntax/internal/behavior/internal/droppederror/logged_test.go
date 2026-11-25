@@ -28,7 +28,15 @@ func TestDroppederrorLogged(
 		{name: "logging an error that is returned after the block passes", code: "package p\n\nfunc f() (err error) {\n\terr = run()\n\tif err != nil {\n\t\tlog.Println(err)\n\t}\n\n\treturn err\n}\n", want: nil},
 		{name: "a later use after rebinding does not carry the logged error", code: "package p\n\nfunc f() (err error) {\n\terr = run()\n\tif err != nil {\n\t\tlog.Println(err)\n\t}\n\n\terr = next()\n\treturn err\n}\n", want: []string{"R26 p.go:6"}},
 		{name: "logging a value that is not an error passes", code: "package p\n\nfunc f() {\n\tfmt.Println(count)\n\tlog.Printf(\"%d\", total)\n}\n", want: nil},
-		{name: "writing an error to a stream is left alone", code: "package p\n\nfunc f() {\n\tfmt.Fprintln(os.Stderr, err)\n}\n", want: nil},
+		{name: "writing an error to another stream is left alone", code: "package p\n\nfunc f() {\n\tfmt.Fprintln(w, err)\n}\n", want: nil},
+		{name: "printing an error to stderr and carrying on is reported", code: "package p\n\nfunc f() {\n\tif err := run(); err != nil {\n\t\tfmt.Fprintln(os.Stderr, err)\n\t}\n}\n", want: []string{"R26 p.go:5"}},
+		{name: "logging through a logger field and carrying on is reported", code: "package p\n\nfunc (w *worker) f() {\n\terr := w.store.Update(job)\n\tif err != nil {\n\t\tw.config.Logger.Error(\n\t\t\t\"update\",\n\t\t\t\"err\",\n\t\t\terr,\n\t\t)\n\t}\n}\n", want: []string{"R26 p.go:6"}},
+		{name: "logging through leveled and printf methods of any receiver is reported", code: "package p\n\nfunc f(\n\tlogger *zap.SugaredLogger,\n\tsink Sink,\n) {\n\tif err := run(); err != nil {\n\t\tlogger.Warnf(\"run: %v\", err)\n\t}\n\tif err := run(); err != nil {\n\t\tsink.Printf(\"run: %v\", err)\n\t}\n\tif err := run(); err != nil {\n\t\tsink.ErrorContext(ctx, \"run\", \"err\", err)\n\t}\n}\n", want: []string{"R26 p.go:8", "R26 p.go:11", "R26 p.go:14"}},
+		{name: "logging an error parameter the caller handed over passes", code: "package p\n\nfunc (w *worker) retry(\n\tcause error,\n) {\n\tw.logger.Info(\"retrying\", \"err\", cause)\n}\n", want: nil},
+		{name: "assertion packages such as testify pass", code: "package p\n\nfunc f() {\n\tif err := run(); err != nil {\n\t\trequire.Error(t, err)\n\t}\n}\n", want: nil},
+		{name: "logging through a logger method then returning passes", code: "package p\n\nfunc (w *worker) f() (err error) {\n\terr = w.store.Update(job)\n\tif err != nil {\n\t\tw.logger.Error(\"update\", \"err\", err)\n\t\treturn err\n\t}\n\n\treturn nil\n}\n", want: nil},
+		{name: "test failure methods on testing values pass", code: "package p\n\nfunc (h *harness) f(\n\tt *testing.T,\n) {\n\tif err := run(); err != nil {\n\t\tt.Error(err)\n\t}\n\tif err := run(); err != nil {\n\t\th.t.Errorf(\"run: %v\", err)\n\t}\n}\n", want: nil},
+		{name: "handing an error to a reporter method passes", code: "package p\n\nfunc f() {\n\tif err := run(); err != nil {\n\t\treports.DeliveryFailed(err)\n\t}\n}\n", want: nil},
 	}
 	for _, tc := range cases {
 		assertFindings(

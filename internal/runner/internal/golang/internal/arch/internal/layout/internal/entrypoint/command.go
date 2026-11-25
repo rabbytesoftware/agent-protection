@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/token"
 	"path/filepath"
+	"slices"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
@@ -15,6 +16,7 @@ const (
 	funcKind      = "func"
 	methodKind    = "method"
 	typeKind      = "type"
+	varKind       = "var"
 	commandFormat = "file %s in package main directory %s: only main.go holds code in a command; move the implementation under %s and call its entry function from func main"
 	strayFormat   = "%s %s in %s: main.go holds only func main, which only delegates to an entry function; move it under %s"
 )
@@ -46,9 +48,15 @@ func mainDeclarationFindings(
 			typed,
 		)
 	case *ast.GenDecl:
-		return typeFindings(
-			found,
-			typed,
+		return slices.Concat(
+			typeFindings(
+				found,
+				typed,
+			),
+			variableFindings(
+				found,
+				typed,
+			),
 		)
 	}
 
@@ -101,6 +109,59 @@ func typeFindings(
 	}
 
 	return findings
+}
+
+func variableFindings(
+	found unit,
+	general *ast.GenDecl,
+) (findings []report.Finding) {
+	if general.Tok != token.VAR {
+		return nil
+	}
+
+	for _, spec := range source.Nodes[*ast.ValueSpec](general) {
+		findings = append(
+			findings,
+			runningFindings(
+				found,
+				spec,
+			)...,
+		)
+	}
+
+	return findings
+}
+
+func runningFindings(
+	found unit,
+	spec *ast.ValueSpec,
+) (findings []report.Finding) {
+	running := slices.ContainsFunc(
+		spec.Values,
+		runsCode,
+	)
+	if !running {
+		return nil
+	}
+
+	for _, name := range spec.Names {
+		findings = append(
+			findings,
+			strayFindings(
+				found,
+				varKind,
+				name,
+			)...,
+		)
+	}
+
+	return findings
+}
+
+func runsCode(
+	value ast.Expr,
+) (runs bool) {
+	return len(source.Nodes[*ast.CallExpr](value))+len(source.Nodes[*ast.FuncLit](value)) > 0
 }
 
 func strayFindings(

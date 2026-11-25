@@ -21,6 +21,12 @@ const (
 	fatalPrefix       = "Fatal"
 	panicPrefix       = "Panic"
 	loggedFormat      = "%s(...) logs %s and carries on: logging an error and carrying on swallows it: return it"
+	printPrefix       = "Print"
+	logPrefix         = "Log"
+	streamPrefix      = "Fprint"
+	contextSuffix     = "Context"
+	formatSuffix      = "f"
+	stderrName        = "Stderr"
 )
 
 func loggedFindings(
@@ -105,11 +111,15 @@ func appendSwallowed(
 	call *ast.CallExpr,
 	logged *ast.Ident,
 ) (extended []report.Finding) {
-	if isCarriedOn(
+	isHandled := isParameter(
+		function,
+		logged,
+	) || isCarriedOn(
 		function,
 		block,
 		logged,
-	) {
+	)
+	if isHandled {
 		return findings
 	}
 
@@ -156,7 +166,7 @@ func loggingCall(
 	}
 
 	call, isCall := expression.X.(*ast.CallExpr)
-	isLoggingCall := isCall && isLogging(call.Fun)
+	isLoggingCall := isCall && isLogging(call)
 	if !isLoggingCall {
 		return nil
 	}
@@ -165,22 +175,104 @@ func loggingCall(
 }
 
 func isLogging(
-	function ast.Expr,
+	call *ast.CallExpr,
 ) (logging bool) {
-	switch typed := function.(type) {
+	switch typed := call.Fun.(type) {
 	case *ast.Ident:
 		return slices.Contains(
 			builtinPrints(),
 			typed.Name,
 		) && typed.Obj == nil
 	case *ast.SelectorExpr:
-		return isPackageLogging(
-			identifierName(typed.X),
-			typed.Sel.Name,
+		return isSelectorLogging(
+			call,
+			typed,
 		)
 	}
 
 	return false
+}
+
+func isSelectorLogging(
+	call *ast.CallExpr,
+	selector *ast.SelectorExpr,
+) (logging bool) {
+	receiver, isIdent := selector.X.(*ast.Ident)
+	isPackage := isIdent && receiver.Obj == nil && slices.Contains(
+		loggingPackages(),
+		receiver.Name,
+	)
+	if isPackage {
+		return isPackageLogging(
+			receiver.Name,
+			selector.Sel.Name,
+		) || isStreamPrint(
+			receiver.Name,
+			call,
+		)
+	}
+
+	isUnresolved := isIdent && receiver.Obj == nil
+	return !isUnresolved && isLoggingMethod(selector.Sel.Name) && !isTestingReceiver(selector.X)
+}
+
+func isLoggingMethod(
+	name string,
+) (logging bool) {
+	isPrefixed := strings.HasPrefix(
+		name,
+		printPrefix,
+	) || strings.HasPrefix(
+		name,
+		logPrefix,
+	)
+	return isPrefixed || slices.Contains(
+		levelMethods(),
+		strings.TrimSuffix(
+			strings.TrimSuffix(
+				name,
+				contextSuffix,
+			),
+			formatSuffix,
+		),
+	)
+}
+
+func isStreamPrint(
+	pkg string,
+	call *ast.CallExpr,
+) (printing bool) {
+	selector, isSelector := call.Fun.(*ast.SelectorExpr)
+	isFprint := pkg == formatPackage &&
+		isSelector &&
+		len(call.Args) > 1 &&
+		strings.HasPrefix(
+			selector.Sel.Name,
+			streamPrefix,
+		)
+	if !isFprint {
+		return false
+	}
+
+	stream, isStream := call.Args[0].(*ast.SelectorExpr)
+	return isStream && identifierName(stream.X) == osPackage && stream.Sel.Name == stderrName
+}
+
+func isTestingReceiver(
+	receiver ast.Expr,
+) (testing bool) {
+	name := ""
+	switch typed := ast.Unparen(receiver).(type) {
+	case *ast.Ident:
+		name = typed.Name
+	case *ast.SelectorExpr:
+		name = typed.Sel.Name
+	}
+
+	return slices.Contains(
+		testingNames(),
+		name,
+	)
 }
 
 func isPackageLogging(
@@ -335,6 +427,34 @@ func isTerminatingCall(
 	pkg := identifierName(selector.X)
 	isExit := pkg == osPackage && selector.Sel.Name == exitName
 	return isExit || pkg == logPackage && isTerminatingLog(selector.Sel.Name)
+}
+
+func loggingPackages() (names []string) {
+	return []string{
+		formatPackage,
+		logPackage,
+		structuredPackage,
+	}
+}
+
+func testingNames() (names []string) {
+	return []string{
+		"t",
+		"b",
+		"f",
+		"tb",
+	}
+}
+
+func levelMethods() (names []string) {
+	return []string{
+		"Error",
+		"Warn",
+		"Warning",
+		"Info",
+		"Debug",
+		"Trace",
+	}
 }
 
 func builtinPrints() (names []string) {

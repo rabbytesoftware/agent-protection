@@ -116,9 +116,50 @@ func hasNoBody(
 
 func packageFields(
 	files []source.File,
+	qualified map[string]ast.Expr,
 ) (fields map[string]ast.Expr) {
-	fields = map[string]ast.Expr{}
-	specs := []*ast.TypeSpec{}
+	fields = maps.Clone(qualified)
+	for _, spec := range typeSpecs(files) {
+		copyFields(
+			fields,
+			spec,
+			spec.Name.Name,
+		)
+	}
+
+	return fields
+}
+
+func qualifiedMethods(
+	files []source.File,
+) (methods map[string]ast.Expr) {
+	methods = map[string]ast.Expr{}
+	for _, file := range files {
+		addQualifiedMethods(
+			methods,
+			file,
+		)
+	}
+
+	return methods
+}
+
+func addQualifiedMethods(
+	methods map[string]ast.Expr,
+	file source.File,
+) {
+	for _, spec := range typeSpecs([]source.File{file}) {
+		copyMethods(
+			methods,
+			spec,
+			file.Syntax.Name.Name+methodSeparator+spec.Name.Name,
+		)
+	}
+}
+
+func typeSpecs(
+	files []source.File,
+) (specs []*ast.TypeSpec) {
 	for _, file := range files {
 		specs = append(
 			specs,
@@ -126,20 +167,19 @@ func packageFields(
 		)
 	}
 
-	for _, spec := range specs {
-		copyFields(
-			fields,
-			spec,
-		)
-	}
-
-	return fields
+	return specs
 }
 
 func copyFields(
 	fields map[string]ast.Expr,
 	spec *ast.TypeSpec,
+	owner string,
 ) {
+	copyMethods(
+		fields,
+		spec,
+		owner,
+	)
 	structure, isStruct := spec.Type.(*ast.StructType)
 	if !isStruct {
 		return
@@ -147,8 +187,45 @@ func copyFields(
 
 	for name, declared := range structFields(structure) {
 		fields[methodKey(
-			spec.Name.Name,
+			owner,
 			name,
 		)] = declared
+	}
+}
+
+func copyMethods(
+	fields map[string]ast.Expr,
+	spec *ast.TypeSpec,
+	owner string,
+) {
+	contract, isInterface := spec.Type.(*ast.InterfaceType)
+	if !isInterface {
+		return
+	}
+
+	for _, method := range contract.Methods.List {
+		addMethod(
+			fields,
+			method,
+			owner,
+		)
+	}
+}
+
+func addMethod(
+	fields map[string]ast.Expr,
+	method *ast.Field,
+	owner string,
+) {
+	signature, isSignature := method.Type.(*ast.FuncType)
+	if !isSignature {
+		return
+	}
+
+	for _, name := range method.Names {
+		fields[methodKey(
+			owner,
+			name.Name,
+		)] = signature
 	}
 }

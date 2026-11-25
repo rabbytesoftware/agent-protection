@@ -251,6 +251,14 @@ func fieldType(
 		return structFields(structure)[name]
 	}
 
+	qualified := qualifiedName(owner)
+	if qualified != "" {
+		return fields[methodKey(
+			qualified,
+			name,
+		)]
+	}
+
 	return fields[methodKey(
 		typeName(owner),
 		name,
