@@ -10,15 +10,35 @@ import (
 func TestGuide(
 	t *testing.T,
 ) {
+	missing := []string{}
 	for _, heading := range []string{"NO COMMENTS", "THE MODULE MODEL", "container.go", "HOW TO WORK"} {
-		if !strings.Contains(
-			guide.Guide(),
+		missing = appendMissing(
+			missing,
 			heading,
-		) {
-			t.Errorf(
-				"Guide() lacks %q",
-				heading,
-			)
-		}
+		)
 	}
+
+	if len(missing) > 0 {
+		t.Errorf(
+			"Guide() lacks %v",
+			missing,
+		)
+	}
+}
+
+func appendMissing(
+	missing []string,
+	heading string,
+) (extended []string) {
+	if strings.Contains(
+		guide.Guide(),
+		heading,
+	) {
+		return missing
+	}
+
+	return append(
+		missing,
+		heading,
+	)
 }

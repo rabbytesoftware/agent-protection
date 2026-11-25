@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
+	"github.com/rabbytesoftware/agent-protection/internal/rules"
 )
 
 func TestReport(
@@ -55,14 +56,19 @@ func assertReport(
 	wantDocs []string,
 ) {
 	t.Helper()
-	output, err := report.Report(findings)
+	registry, err := rules.Docs()
 	if err != nil {
 		t.Fatalf(
-			"%s: Report() error = %v",
+			"%s: Docs() error = %v",
 			name,
 			err,
 		)
 	}
+
+	output := report.Report(
+		findings,
+		registry,
+	)
 
 	gotLocations := locations(output.Findings)
 	if !slices.Equal(

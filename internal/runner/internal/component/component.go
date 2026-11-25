@@ -21,16 +21,12 @@ func Check(
 	root string,
 	checkers []Checker,
 ) (findings []report.Finding, err error) {
-	index := slices.IndexFunc(
-		checkers,
-		func(
-			checker Checker,
-		) (present bool) {
-			return hasMarker(
-				root,
-				checker.Marker,
-			)
-		},
+	index := slices.Index(
+		presence(
+			root,
+			checkers,
+		),
+		true,
 	)
 	if index < 0 {
 		return nil,
@@ -41,6 +37,23 @@ func Check(
 	}
 
 	return checkers[index].Check(root)
+}
+
+func presence(
+	root string,
+	checkers []Checker,
+) (present []bool) {
+	for _, checker := range checkers {
+		present = append(
+			present,
+			hasMarker(
+				root,
+				checker.Marker,
+			),
+		)
+	}
+
+	return present
 }
 
 func Fix(

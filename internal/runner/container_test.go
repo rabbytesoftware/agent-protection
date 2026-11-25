@@ -51,7 +51,7 @@ func TestRunnerChecksGoModule(
 		)
 	}
 
-	output, err := runner.Runner(root)
+	findings, err := runner.Runner(root)
 	if err != nil {
 		t.Fatalf(
 			"Runner() error = %v",
@@ -59,10 +59,10 @@ func TestRunnerChecksGoModule(
 		)
 	}
 
-	if len(output.Findings) != 0 {
+	if len(findings) != 0 {
 		t.Errorf(
 			"Runner() findings = %v, want none for a compliant module",
-			output.Findings,
+			findings,
 		)
 	}
 }
@@ -198,7 +198,7 @@ func assertDispatch(
 		"PATH",
 		tools+string(os.PathListSeparator)+os.Getenv("PATH"),
 	)
-	output, err := runner.Runner(root)
+	findings, err := runner.Runner(root)
 	if err != nil {
 		t.Fatalf(
 			"Runner() with %s error = %v",
@@ -207,11 +207,11 @@ func assertDispatch(
 		)
 	}
 
-	if len(output.Findings) != 0 {
+	if len(findings) != 0 {
 		t.Errorf(
 			"Runner() with %s findings = %v, want none",
 			marker,
-			output.Findings,
+			findings,
 		)
 	}
 }

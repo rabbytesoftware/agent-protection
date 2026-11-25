@@ -8,6 +8,7 @@ import (
 
 	"github.com/rabbytesoftware/agent-protection/internal/guide"
 	"github.com/rabbytesoftware/agent-protection/internal/report"
+	"github.com/rabbytesoftware/agent-protection/internal/rules"
 	"github.com/rabbytesoftware/agent-protection/internal/runner"
 )
 
@@ -83,7 +84,7 @@ func commandArguments(
 func check(
 	root string,
 ) (code int) {
-	output, err := runner.Runner(root)
+	output, err := checked(root)
 	if err != nil {
 		fmt.Fprintf(
 			os.Stderr,
@@ -110,6 +111,31 @@ func check(
 	}
 
 	return code
+}
+
+func checked(
+	root string,
+) (output report.Output, err error) {
+	findings, err := runner.Runner(root)
+	if err != nil {
+		return report.Output{},
+			err
+	}
+
+	registry, err := rules.Docs()
+	if err != nil {
+		return report.Output{},
+			fmt.Errorf(
+				"load rule registry: %w",
+				err,
+			)
+	}
+
+	return report.Report(
+			findings,
+			registry,
+		),
+		nil
 }
 
 func fix(

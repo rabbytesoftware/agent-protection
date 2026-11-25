@@ -2,34 +2,22 @@ package report
 
 import (
 	"cmp"
-	"fmt"
 	"maps"
 	"slices"
-
-	"github.com/rabbytesoftware/agent-protection/internal/rules"
 )
 
 func Report(
 	findings []Finding,
-) (output Output, err error) {
-	registry, err := rules.Rules()
-	if err != nil {
-		return Output{},
-			fmt.Errorf(
-				"load rule registry: %w",
-				err,
-			)
-	}
-
+	registry map[string]RuleDoc,
+) (output Output) {
 	sorted := slices.SortedFunc(
 		slices.Values(findings),
 		compareFindings,
 	)
 	return Output{RuleDocs: ruleDocs(
-			registry,
-			sorted,
-		), Findings: sorted},
-		nil
+		registry,
+		sorted,
+	), Findings: sorted}
 }
 
 func compareFindings(
@@ -49,29 +37,24 @@ func compareFindings(
 }
 
 func ruleDocs(
-	registry map[string]rules.Rule,
+	registry map[string]RuleDoc,
 	findings []Finding,
 ) (docs map[string]RuleDoc) {
-	violated := map[string]rules.Rule{}
+	docs = map[string]RuleDoc{}
 	for _, finding := range findings {
-		violated[finding.Rule] = registry[finding.Rule]
+		docs[finding.Rule] = registry[finding.Rule]
 	}
 
 	maps.DeleteFunc(
-		violated,
+		docs,
 		isUnregistered,
 	)
-	docs = map[string]RuleDoc{}
-	for id, rule := range violated {
-		docs[id] = RuleDoc{Text: rule.Text, Rationale: rule.Rationale, FixStrategy: rule.FixStrategy, NotAFix: rule.NotAFix}
-	}
-
 	return docs
 }
 
 func isUnregistered(
 	_ string,
-	rule rules.Rule,
+	doc RuleDoc,
 ) (unregistered bool) {
-	return rule.ID == ""
+	return doc.Text == ""
 }

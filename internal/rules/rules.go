@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/rabbytesoftware/agent-protection/internal/report"
 )
 
 //go:embed rules.yaml
@@ -24,5 +26,21 @@ func Rules() (registry map[string]Rule, err error) {
 	}
 
 	return registry,
+		nil
+}
+
+func Docs() (docs map[string]report.RuleDoc, err error) {
+	registry, err := Rules()
+	if err != nil {
+		return nil,
+			err
+	}
+
+	docs = map[string]report.RuleDoc{}
+	for id, rule := range registry {
+		docs[id] = report.RuleDoc{Text: rule.Text, Rationale: rule.Rationale, FixStrategy: rule.FixStrategy, NotAFix: rule.NotAFix}
+	}
+
+	return docs,
 		nil
 }
