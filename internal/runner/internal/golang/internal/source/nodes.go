@@ -8,25 +8,6 @@ import (
 	"strings"
 )
 
-const (
-	sentinelPrefix  = "Err"
-	errorsQualifier = "errors"
-	blankName       = "_"
-)
-
-func Nodes[T ast.Node](
-	root ast.Node,
-) (nodes []T) {
-	for node := range ast.Preorder(root) {
-		nodes = appendMatching(
-			nodes,
-			node,
-		)
-	}
-
-	return nodes
-}
-
 func DeclarationPackages(
 	files []File,
 ) (directories []string) {
@@ -62,6 +43,114 @@ func ErrorMethods() (names []string) {
 		"String",
 	}
 }
+
+func appendMatching[T ast.Node](
+	nodes []T,
+	node ast.Node,
+) (matching []T) {
+	typed, matches := node.(T)
+	if !matches {
+		return nodes
+	}
+
+	return append(
+		nodes,
+		typed,
+	)
+}
+
+func behavingDirectory(
+	file File,
+	directory string,
+) (behaving []string) {
+	if !slices.ContainsFunc(
+		file.Syntax.Decls,
+		isBehavior,
+	) {
+		return nil
+	}
+
+	return []string{directory}
+}
+
+func isBehavior(
+	declaration ast.Decl,
+) (behaves bool) {
+	switch typed := declaration.(type) {
+	case *ast.FuncDecl:
+		return typed.Recv == nil || !slices.Contains(
+			ErrorMethods(),
+			typed.Name.Name,
+		) || !IsPlainRendering(typed.Body)
+	case *ast.GenDecl:
+		return typed.Tok == token.VAR && slices.ContainsFunc(
+			valueNames(typed),
+			isStateName,
+		)
+	}
+
+	return false
+}
+
+func isStateName(
+	name *ast.Ident,
+) (isState bool) {
+	isSentinel := name.Name == "_" || name.IsExported() && strings.HasPrefix(
+		name.Name,
+		sentinelPrefix,
+	)
+	return !isSentinel
+}
+
+func valueNames(
+	general *ast.GenDecl,
+) (names []*ast.Ident) {
+	for _, spec := range Nodes[*ast.ValueSpec](general) {
+		names = append(
+			names,
+			spec.Names...,
+		)
+	}
+
+	return names
+}
+
+func withoutAny(
+	directories []string,
+	excluded []string,
+) (kept []string) {
+	for _, directory := range directories {
+		kept = append(
+			kept,
+			absentFrom(
+				excluded,
+				directory,
+			)...,
+		)
+	}
+
+	return kept
+}
+
+func absentFrom(
+	excluded []string,
+	directory string,
+) (kept []string) {
+	if slices.Contains(
+		excluded,
+		directory,
+	) {
+		return nil
+	}
+
+	return []string{directory}
+}
+
+const (
+	sentinelPrefix  = "Err"
+	errorsQualifier = "errors"
+	blankName       = "_"
+)
 
 func IsPlainRendering(
 	body *ast.BlockStmt,
@@ -176,108 +265,6 @@ func renderingMethods() (names []string) {
 
 func formattingFunctions() (names []string) {
 	return []string{"fmt.Sprintf", "fmt.Errorf", "fmt.Sprint"}
-}
-
-func appendMatching[T ast.Node](
-	nodes []T,
-	node ast.Node,
-) (matching []T) {
-	typed, matches := node.(T)
-	if !matches {
-		return nodes
-	}
-
-	return append(
-		nodes,
-		typed,
-	)
-}
-
-func behavingDirectory(
-	file File,
-	directory string,
-) (behaving []string) {
-	if !slices.ContainsFunc(
-		file.Syntax.Decls,
-		isBehavior,
-	) {
-		return nil
-	}
-
-	return []string{directory}
-}
-
-func isBehavior(
-	declaration ast.Decl,
-) (behaves bool) {
-	switch typed := declaration.(type) {
-	case *ast.FuncDecl:
-		return typed.Recv == nil || !slices.Contains(
-			ErrorMethods(),
-			typed.Name.Name,
-		) || !IsPlainRendering(typed.Body)
-	case *ast.GenDecl:
-		return typed.Tok == token.VAR && slices.ContainsFunc(
-			valueNames(typed),
-			isStateName,
-		)
-	}
-
-	return false
-}
-
-func isStateName(
-	name *ast.Ident,
-) (isState bool) {
-	isSentinel := name.Name == "_" || name.IsExported() && strings.HasPrefix(
-		name.Name,
-		sentinelPrefix,
-	)
-	return !isSentinel
-}
-
-func valueNames(
-	general *ast.GenDecl,
-) (names []*ast.Ident) {
-	for _, spec := range Nodes[*ast.ValueSpec](general) {
-		names = append(
-			names,
-			spec.Names...,
-		)
-	}
-
-	return names
-}
-
-func withoutAny(
-	directories []string,
-	excluded []string,
-) (kept []string) {
-	for _, directory := range directories {
-		kept = append(
-			kept,
-			absentFrom(
-				excluded,
-				directory,
-			)...,
-		)
-	}
-
-	return kept
-}
-
-func absentFrom(
-	excluded []string,
-	directory string,
-) (kept []string) {
-	if slices.Contains(
-		excluded,
-		directory,
-	) {
-		return nil
-	}
-
-	return []string{directory}
 }
 
 func usesAny(

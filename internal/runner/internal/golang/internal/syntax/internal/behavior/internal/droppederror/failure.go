@@ -75,7 +75,10 @@ func isBoundToFailure(
 		name,
 	)
 	isLastResult := index >= 0 && index == len(targets)-1 && len(values) == 1
-	return isLastResult && callees[calleeName(values[0])] == len(targets)
+	return isLastResult && resultsOf(
+		values[0],
+		callees,
+	) == len(targets)
 }
 
 func isRecoveredBinding(
@@ -178,6 +181,39 @@ func calleeName(
 	}
 
 	return ""
+}
+
+func resultsOf(
+	expression ast.Expr,
+	callees map[string]int,
+) (count int) {
+	count, known := callees[qualifiedName(expression)]
+	if known {
+		return count
+	}
+
+	return callees[calleeName(expression)]
+}
+
+func qualifiedName(
+	expression ast.Expr,
+) (name string) {
+	call, isCall := expression.(*ast.CallExpr)
+	if !isCall {
+		return ""
+	}
+
+	selector, isSelector := call.Fun.(*ast.SelectorExpr)
+	if !isSelector {
+		return ""
+	}
+
+	qualifier, isIdent := selector.X.(*ast.Ident)
+	if !isIdent {
+		return ""
+	}
+
+	return qualifier.Name + qualifierSeparator + selector.Sel.Name
 }
 
 func isRecoverCall(

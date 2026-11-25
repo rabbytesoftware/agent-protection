@@ -10,13 +10,6 @@ import (
 	"strings"
 )
 
-const (
-	importQuotes  = "\"`"
-	rootDirectory = "."
-	dotImport     = "."
-	testingImport = "testing"
-)
-
 type File struct {
 	Path        string
 	Rel         string
@@ -25,6 +18,13 @@ type File struct {
 	Content     []byte
 	IsGenerated bool
 }
+
+const (
+	importQuotes  = "\"`"
+	rootDirectory = "."
+	dotImport     = "."
+	testingImport = "testing"
+)
 
 func (f File) Location(
 	node ast.Node,
@@ -59,6 +59,19 @@ func (f File) LineOffset(
 ) (offset int) {
 	tokenFile := f.FileSet.File(f.Syntax.Pos())
 	return tokenFile.Offset(tokenFile.LineStart(line))
+}
+
+func Nodes[T ast.Node](
+	root ast.Node,
+) (nodes []T) {
+	for node := range ast.Preorder(root) {
+		nodes = appendMatching(
+			nodes,
+			node,
+		)
+	}
+
+	return nodes
 }
 
 func MockFiles(

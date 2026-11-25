@@ -15,15 +15,16 @@ import (
 )
 
 const (
-	binary            = "golangci-lint"
-	buildTagsEnvVar   = "AP_GO_BUILD_TAGS"
-	configName        = ".ap-lint-config.generated.yml"
-	configFileMode    = 0o644
-	typecheck         = "typecheck"
-	unusedLinter      = "unused"
-	allMatches        = -1
-	issuesExitCode    = 1
-	locationSeparator = ":"
+	binary                 = "golangci-lint"
+	buildTagsEnvVar        = "AP_GO_BUILD_TAGS"
+	configName             = "golangci.yml"
+	configDirectoryPattern = "ap-lint-*"
+	configFileMode         = 0o644
+	typecheck              = "typecheck"
+	allMatches             = -1
+	issuesExitCode         = 1
+	locationSeparator      = ":"
+	unusedLinter           = "unused"
 )
 
 const (
@@ -45,25 +46,67 @@ func Lint(
 			)
 	}
 
-	output, err := configuredRun(root)
+	sets, err := tagSets(
+		root,
+		envTags(os.Getenv(buildTagsEnvVar)),
+	)
 	if err != nil {
 		return nil,
 			err
 	}
 
-	findings, err = parse(output)
+	findings, err = configuredRuns(
+		root,
+		sets,
+	)
 	return slices.DeleteFunc(
-			findings,
+			distinct(findings),
 			isGeneratedStyle(root),
 		),
 		err
 }
 
-func configuredRun(
+func configuredRuns(
 	root string,
-) (output string, err error) {
-	configPath := filepath.Join(
+	sets [][]string,
+) (findings []report.Finding, err error) {
+	directory, err := os.MkdirTemp(
+		"",
+		configDirectoryPattern,
+	)
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"create lint config directory: %w",
+				err,
+			)
+	}
+
+	findings, runErr := runsWithConfig(
 		root,
+		directory,
+		sets,
+	)
+	err = errors.Join(
+		runErr,
+		removeConfig(directory),
+	)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	return findings,
+		nil
+}
+
+func runsWithConfig(
+	root string,
+	directory string,
+	sets [][]string,
+) (findings []report.Finding, err error) {
+	configPath := filepath.Join(
+		directory,
 		configName,
 	)
 	err = os.WriteFile(
@@ -72,28 +115,18 @@ func configuredRun(
 		configFileMode,
 	)
 	if err != nil {
-		return "",
+		return nil,
 			fmt.Errorf(
 				"write lint config: %w",
 				err,
 			)
 	}
 
-	output, runErr := run(
+	return runs(
 		root,
 		configPath,
+		sets,
 	)
-	err = errors.Join(
-		runErr,
-		removeConfig(configPath),
-	)
-	if err != nil {
-		return "",
-			err
-	}
-
-	return output,
-		nil
 }
 
 func isGeneratedStyle(
@@ -102,10 +135,10 @@ func isGeneratedStyle(
 	return func(
 		finding report.Finding,
 	) (exempt bool) {
-		path := finding.Location[:strings.LastIndex(
+		path, _, _ := strings.Cut(
 			finding.Location,
 			locationSeparator,
-		)]
+		)
 		generated, err := source.IsGenerated(filepath.Join(
 			root,
 			path,
@@ -124,12 +157,16 @@ func generatedRules() (rules []string) {
 func run(
 	root string,
 	configPath string,
+	tags []string,
 ) (output string, err error) {
 	command := exec.Command(
 		binary,
 		arguments(
 			configPath,
-			os.Getenv(buildTagsEnvVar),
+			strings.Join(
+				tags,
+				tagSeparator,
+			),
 		)...,
 	)
 	command.Dir = root
@@ -178,9 +215,9 @@ func arguments(
 }
 
 func removeConfig(
-	configPath string,
+	directory string,
 ) (err error) {
-	err = os.Remove(configPath)
+	err = os.RemoveAll(directory)
 	if err != nil {
 		return fmt.Errorf(
 			"remove lint config: %w",
@@ -193,7 +230,7 @@ func removeConfig(
 
 func parse(
 	output string,
-) (findings []report.Finding, err error) {
+) (findings []report.Finding, typechecked bool) {
 	issues := issuePattern().FindAllStringSubmatch(
 		output,
 		allMatches,
@@ -207,10 +244,7 @@ func parse(
 	)
 	if onlyTypecheckFailed {
 		return nil,
-			fmt.Errorf(
-				"golangci-lint could not type-check this module, so no linter ran: if it needs a build tag to compile, set %s and re-run",
-				buildTagsEnvVar,
-			)
+			false
 	}
 
 	for _, issue := range issues {
@@ -221,7 +255,7 @@ func parse(
 	}
 
 	return findings,
-		nil
+		true
 }
 
 func issueFindings(

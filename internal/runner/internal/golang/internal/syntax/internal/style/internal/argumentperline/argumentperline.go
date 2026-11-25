@@ -71,7 +71,7 @@ func callFindings(
 func isOnePerLine(
 	file source.File,
 	opening token.Pos,
-	items []source.Extent,
+	items []ast.Node,
 	closing token.Pos,
 ) (compliant bool) {
 	spans := []span{pointSpan(
@@ -84,11 +84,11 @@ func isOnePerLine(
 			span{
 				first: lineOf(
 					file,
-					extent.Start,
+					extent.Pos(),
 				),
 				last: lineOf(
 					file,
-					extent.End,
+					extent.End(),
 				),
 			},
 		)

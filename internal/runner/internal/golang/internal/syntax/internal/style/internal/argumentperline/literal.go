@@ -124,14 +124,11 @@ func isSingleLine(
 
 func elementExtents(
 	literal *ast.CompositeLit,
-) (extents []source.Extent) {
+) (extents []ast.Node) {
 	for _, element := range literal.Elts {
 		extents = append(
 			extents,
-			source.Extent{
-				Start: element.Pos(),
-				End:   element.End(),
-			},
+			element,
 		)
 	}
 

@@ -52,14 +52,11 @@ func callEdits(
 
 func argumentExtents(
 	call *ast.CallExpr,
-) (extents []source.Extent) {
+) (extents []ast.Node) {
 	for _, argument := range call.Args {
 		extents = append(
 			extents,
-			source.Extent{
-				Start: argument.Pos(),
-				End:   argument.End(),
-			},
+			argument,
 		)
 	}
 

@@ -25,6 +25,7 @@ func TestStyle(
 
 	findings := style.Style(
 		[]source.File{file},
+		[]source.File{file},
 	)
 	rules := []string{}
 	for _, finding := range findings {

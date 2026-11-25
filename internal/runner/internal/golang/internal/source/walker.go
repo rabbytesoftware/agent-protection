@@ -23,11 +23,10 @@ func (w *walker) visit(
 		return err
 	}
 
-	isSkipped := entry.IsDir() && filepath.Dir(path) == w.root && slices.Contains(
-		skippedDirectories(),
-		entry.Name(),
-	)
-	if isSkipped {
+	if w.isSkipped(
+		path,
+		entry,
+	) {
 		return filepath.SkipDir
 	}
 
@@ -47,6 +46,21 @@ func (w *walker) visit(
 	}
 
 	return nil
+}
+
+func (w *walker) isSkipped(
+	path string,
+	entry fs.DirEntry,
+) (skipped bool) {
+	isVendored := filepath.Dir(path) == w.root && slices.Contains(
+		skippedDirectories(),
+		entry.Name(),
+	)
+	isNestedModule := path != w.root && exists(filepath.Join(
+		path,
+		goModFile,
+	))
+	return entry.IsDir() && (isVendored || isNestedModule)
 }
 
 func skippedDirectories() (names []string) {

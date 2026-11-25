@@ -41,7 +41,7 @@ func nodeEdits(
 
 func parameterExtents(
 	params *ast.FieldList,
-) (extents []source.Extent) {
+) (extents []ast.Node) {
 	for _, field := range params.List {
 		extents = append(
 			extents,
@@ -54,24 +54,25 @@ func parameterExtents(
 
 func fieldExtents(
 	field *ast.Field,
-) (extents []source.Extent) {
+) (extents []ast.Node) {
 	if len(field.Names) == 0 {
-		return []source.Extent{{
-			Start: field.Pos(),
-			End:   field.End(),
-		}}
+		return []ast.Node{field}
 	}
 
 	for _, name := range field.Names {
 		extents = append(
 			extents,
-			source.Extent{
-				Start: name.Pos(),
-				End:   name.End(),
+			reach{
+				start: name.Pos(),
+				end:   name.End(),
 			},
 		)
 	}
 
-	extents[len(extents)-1].End = field.End()
+	last := len(extents) - 1
+	extents[last] = reach{
+		start: extents[last].Pos(),
+		end:   field.End(),
+	}
 	return extents
 }

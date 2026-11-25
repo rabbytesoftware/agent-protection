@@ -1,6 +1,8 @@
 package lint
 
 const config = `version: "2"
+run:
+  relative-path-mode: wd
 linters:
   default: none
   enable:

@@ -143,21 +143,21 @@ R25:
     fix_strategy: Move ctx to the first parameter position; pass it through call chains explicitly instead of storing it.
     not_a_fix: "Storing the context in a closure, a map, a channel or an embedded struct instead of passing it as the first parameter; replacing the caller's ctx with context.Background() or context.TODO() deeper in the chain; carrying ctx inside an options bag parameter."
 R26:
-    id: "R26"
-    level: "L1"
-    text: "Never ignore an error; wrap with %w and compare with errors.Is/As. An error variable that is assigned and then overwritten, or never read before the function returns, is ignored too. Rebuilding an error from its text (errors.New(err.Error()), errors.New(fmt.Sprintf(\"%v\", err)), fmt.Errorf with err or err.Error() under %s or %v) drops its chain. After an errors.Is or errors.As check the error must still reach a return, a wrap or another check on the path where it does not match. Logging an error through any logger (log, slog, fmt.Print*, fmt.Fprint* to os.Stderr, or a Print*, Log*, Error, Warn, Info, Debug or Trace method on any value) and carrying on drops it"
-    enforcement: "analyzer"
+    id: R26
+    level: L1
+    text: "Never ignore an error; wrap with %w and compare with errors.Is/As. An error variable that is assigned and then overwritten, or never read before the function returns, is ignored too. Rebuilding an error from its text (errors.New(err.Error()), errors.New(fmt.Sprintf(\"%v\", err)), fmt.Errorf with err or err.Error() under %s or %v) drops its chain. After an errors.Is or errors.As check the error must still reach a return, a wrap or another check on the path where it does not match. Logging an error through any logger (log, slog, fmt.Print*, fmt.Fprint* to os.Stderr, or a Print*, Log*, Error, Warn, Info, Debug or Trace method on any value) and carrying on drops it. This holds in every file whatever its build tags, and for calls whose error result is known without type checking: functions declared in the module and well-known standard library calls (strconv, os, io, encoding/json, fmt.Sscan and friends)"
+    enforcement: analyzer
     rationale: "A silently discarded error is a silently discarded failure; the single most common way real bugs get masked in Go. Checking an error and then returning, continuing or substituting a fallback without using it hides the failure just as _ = does, and so does a dead store: an err overwritten by the next call or the next loop iteration, or a value, err := f() whose err nobody reads."
     fix_strategy: "Return the error wrapped with context via %w, or hand it to a reporter; replacing it with a zero value or a bare sentinel still drops it. Check every assigned error with if err != nil right after the call; in a loop, check it inside the loop or accumulate with errors.Join(err, ...)."
-    not_a_fix: "Wrappers like saveBestEffort or swallowPanic that check the error and drop it; checking err and then returning silently or returning nil; assigning to _ or to a variable nobody reads; reusing one err variable so each call overwrites the last; keeping only the last error of a loop; functions like ids.New() that return \"\" or a zero value on failure instead of an error; logging the error and carrying on as if the call succeeded; marking the file as generated: generated files are still checked for dropped errors; errors.New(err.Error()) or fmt.Errorf(\"%s\", err) in place of %w; if errors.Is(err, ErrX) { return 0 } with nothing handling every other error; logging through a struct field logger (w.config.Logger.Error(\"...\", \"err\", err)) instead of the log package and carrying on."
+    not_a_fix: "Wrappers like saveBestEffort or swallowPanic that check the error and drop it; checking err and then returning silently or returning nil; assigning to _ or to a variable nobody reads; reusing one err variable so each call overwrites the last; keeping only the last error of a loop; functions like ids.New() that return \"\" or a zero value on failure instead of an error; logging the error and carrying on as if the call succeeded; marking the file as generated: generated files are still checked for dropped errors; errors.New(err.Error()) or fmt.Errorf(\"%s\", err) in place of %w; if errors.Is(err, ErrX) { return 0 } with nothing handling every other error; logging through a struct field logger (w.config.Logger.Error(\"...\", \"err\", err)) instead of the log package and carrying on; moving the call into a file behind a //go:build tag or into a nested module so golangci-lint never type-checks it."
 R27:
-    id: "R27"
-    level: "L1"
-    text: "No panic, log.Fatal*, log.Panic*, os.Exit, syscall.Exit, unix.Exit or runtime.Goexit outside package main, called directly or used as a value, and no Fatal* or Panic* method on a logger value (log.New, log.Default(), or any variable, parameter or field typed as a *Logger)"
-    enforcement: "analyzer"
-    rationale: "A library that panics or exits takes the decision to crash away from its caller; errors are values the caller can handle, log or wrap."
+    id: R27
+    level: L1
+    text: "No panic, log.Fatal*, log.Panic*, os.Exit, syscall.Exit, unix.Exit or runtime.Goexit outside package main, called directly or used as a value, and no Fatal* or Panic* method on a logger value (log.New, log.Default(), or any variable, parameter or field typed as a *Logger), generated files included"
+    enforcement: analyzer
+    rationale: "A library that panics or exits takes the decision to crash away from its caller; errors are values the caller can handle, log or wrap. Real generator output (protoc, sqlc, stringer, mockery) does not panic, so a generated header is no reason to stop looking."
     fix_strategy: "Return an error wrapped with context via %w instead of panicking or exiting, and let main decide whether startup failure is fatal."
-    not_a_fix: "Replacing panic with log.Fatal, os.Exit or runtime.Goexit inside a library; aliasing the log or os import; calling a must-style helper in another package that panics on your behalf; calling Fatal on a logger value; returning a zero value and swallowing the failure instead of returning an error; calling logger.Fatalf on a *log.Logger or log.Default().Panicln; binding terminate := os.Exit and calling terminate(1); syscall.Exit or unix.Exit in place of os.Exit."
+    not_a_fix: "Replacing panic with log.Fatal, os.Exit or runtime.Goexit inside a library; aliasing the log or os import; calling a must-style helper in another package that panics on your behalf; calling Fatal on a logger value; returning a zero value and swallowing the failure instead of returning an error; calling logger.Fatalf on a *log.Logger or log.Default().Panicln; binding terminate := os.Exit and calling terminate(1); syscall.Exit or unix.Exit in place of os.Exit; adding a // Code generated ... DO NOT EDIT. header: generated files are still checked for panics."
 R28:
     id: R28
     level: L1
@@ -382,6 +382,14 @@ R69:
     rationale: "A declaration nothing reads costs every reader the time to find out it does nothing, survives refactors that should have removed it, and is the easiest place to park a sentence or a TODO where a comment rule does not look. Deleting it loses nothing the program does."
     fix_strategy: "Delete the declaration. If it was meant to be used, use it in the code that needs it in the same change. If it carried an explanation, make the code say it through names and structure, and put the why in the commit message."
     not_a_fix: "Reading it once through _ = name, var _ = name, len(name) or a no-op branch; exporting it so the check skips it; moving it into a test file; turning it into a struct field nothing reads; disabling the linter."
+R70:
+    id: R70
+    level: L0
+    text: "Everything AP gates is actually checked: one repository root holds one Go module (a go.mod below the root, outside vendor, testdata, dot or underscore directories and git-ignored paths, is reported unless the root go.work lists it, and each listed module is then checked as its own root), and every non-test file compiles under at least one of the build tag sets AP lints with (at most 8 golangci-lint runs per module, one per tag set needed to select every file; GOOS and GOARCH constraints, ignore and tools files are left to the host)"
+    enforcement: analyzer
+    rationale: "go build ./... and golangci-lint stop at a nested go.mod and only type-check the files the active build tags select, so code behind a second module or a //go:build tag is never linted while its imports look external. A module boundary or a build tag then works as a switch that turns the gate off for whatever sits behind it."
+    fix_strategy: "Merge the nested module into the root module (its packages move under internal/ and the replace directive goes), move it to its own repository, or add a go.work at the root that uses it so AP checks it as its own module. For build tags, make every tag combination the module uses compile, and keep the number of distinct tag sets small: prefer one file per variant behind a single tag over tag matrices."
+    not_a_fix: "Hiding the nested module in a testdata, vendor, dot or underscore directory or a git-ignored path while the root still imports it through a replace directive; listing it in a go.work that lives below the root; moving the code behind more build tags until the matrix passes the cap; leaving a tagged variant that does not compile so golangci-lint gives up on it."
 PROXY-COMPLEXITY:
     id: PROXY-COMPLEXITY
     level: L0

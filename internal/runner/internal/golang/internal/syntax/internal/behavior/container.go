@@ -25,7 +25,7 @@ func Behavior(
 		cqs.Cqs(files),
 		sideeffect.Sideeffect(source.HandWritten(files)),
 		ctxfirstparam.Ctxfirstparam(source.HandWritten(files)),
-		nopanic.Nopanic(source.HandWritten(files)),
+		nopanic.Nopanic(files),
 		deadstore.Deadstore(files),
 		packagestate.Packagestate(files),
 		droppederror.Droppederror(slices.Concat(

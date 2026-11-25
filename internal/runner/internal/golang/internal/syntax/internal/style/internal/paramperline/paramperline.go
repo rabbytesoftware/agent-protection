@@ -181,11 +181,11 @@ func parameterSpans(
 			span{
 				first: lineOf(
 					file,
-					extent.Start,
+					extent.Pos(),
 				),
 				last: lineOf(
 					file,
-					extent.End,
+					extent.End(),
 				),
 			},
 		)
