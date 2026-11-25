@@ -19,10 +19,7 @@ const (
 func Methodfile(
 	files []source.File,
 ) (findings []report.Finding) {
-	checked := slices.DeleteFunc(
-		slices.Clone(files),
-		isMock,
-	)
+	checked := source.WithoutMocks(files)
 	directories := map[string][]string{}
 	for _, file := range checked {
 		directory := filepath.Dir(file.Path)
@@ -44,12 +41,6 @@ func Methodfile(
 	}
 
 	return findings
-}
-
-func isMock(
-	file source.File,
-) (excluded bool) {
-	return source.IsMock(file.Rel)
 }
 
 func numberedFindings(

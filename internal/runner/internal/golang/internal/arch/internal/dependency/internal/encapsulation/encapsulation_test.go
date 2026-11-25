@@ -236,6 +236,72 @@ func assertFindings(
 	}
 }
 
+func TestEncapsulationSnippets(
+	t *testing.T,
+) {
+	cases := []struct {
+		name  string
+		files map[string]string
+		want  string
+	}{
+		{
+			name: "leaf importer is told to absorb the package",
+			files: map[string]string{
+				"internal/square/square.go":     "package square\n\nimport \"example.com/m/internal/rounding\"\n\nvar _ = rounding.X\n",
+				"internal/rounding/rounding.go": "package rounding\n\nfunc X() {}\n",
+			},
+			want: "imported only by internal/square, a package without internal/ children, but visible to the whole module: merge its files into internal/square (same package, tests beside them) and delete it; nesting it under internal/square/internal/ would leave a lone internal/ child (R51) and turn the importer into a module",
+		},
+		{
+			name: "module importer is told to nest the package under its internal/",
+			files: map[string]string{
+				"internal/square/container.go":        "package square\n\nimport \"example.com/m/internal/rounding\"\n\nvar _ = rounding.X\n",
+				"internal/square/internal/power/p.go": "package power\n\nfunc P() {}\n",
+				"internal/square/internal/scale/s.go": "package scale\n\nfunc S() {}\n",
+				"internal/rounding/rounding.go":       "package rounding\n\nfunc X() {}\n",
+			},
+			want: "imported only by internal/square but visible to the whole module: move it under internal/square/internal/",
+		},
+		{
+			name: "public importer is told to nest the package under its internal/",
+			files: map[string]string{
+				"x/sub/s.go":        "package sub\n\nimport \"example.com/m/x/internal/y\"\n\nvar _ = y.X\n",
+				"x/internal/y/y.go": "package y\n\nfunc X() {}\n",
+			},
+			want: "imported only by x/sub but visible to the whole module: move it under x/sub/internal/",
+		},
+	}
+	for _, tc := range cases {
+		assertSnippet(
+			t,
+			tc.name,
+			checked(
+				t,
+				tc.files,
+			),
+			tc.want,
+		)
+	}
+}
+
+func assertSnippet(
+	t *testing.T,
+	name string,
+	findings []report.Finding,
+	want string,
+) {
+	t.Helper()
+	isMatch := len(findings) == 1 && findings[0].Snippet == want
+	if !isMatch {
+		t.Errorf(
+			"%s: findings = %v, want one with snippet %q",
+			name,
+			findings,
+			want,
+		)
+	}
+}
+
 func TestEncapsulationRejectsMissingRoot(
 	t *testing.T,
 ) {

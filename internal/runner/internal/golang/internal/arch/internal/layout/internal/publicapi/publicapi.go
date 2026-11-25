@@ -28,29 +28,72 @@ func Publicapi(
 			)
 	}
 
-	structs := packageStructs(files)
-	vocabularies := vocabularyImports(
-		modulePath,
-		files,
+	checked := source.WithoutMocks(files)
+	scopes := scopesOf(
+		checked,
+		sourceDirectories,
+		supportDirectories,
+		packageStructs(files),
+		vocabularyImports(
+			modulePath,
+			files,
+		),
 	)
+	return slices.Concat(
+			surfaceFindings(
+				checked,
+				scopes,
+			),
+			renderingFindings(
+				checked,
+				aliasedAcross(
+					modulePath,
+					checked,
+					scopes,
+				),
+			),
+		),
+		nil
+}
+
+func scopesOf(
+	files []source.File,
+	sourceDirectories []string,
+	supportDirectories []string,
+	structs map[string][]string,
+	vocabularies []string,
+) (scopes []scope) {
 	for _, file := range files {
+		scopes = append(
+			scopes,
+			scopeOf(
+				file,
+				sourceDirectories,
+				supportDirectories,
+				structs,
+				vocabularies,
+			),
+		)
+	}
+
+	return scopes
+}
+
+func surfaceFindings(
+	files []source.File,
+	scopes []scope,
+) (findings []report.Finding) {
+	for index, file := range files {
 		findings = append(
 			findings,
 			fileFindings(
 				file,
-				scopeOf(
-					file,
-					sourceDirectories,
-					supportDirectories,
-					structs,
-					vocabularies,
-				),
+				scopes[index],
 			)...,
 		)
 	}
 
-	return findings,
-		nil
+	return findings
 }
 
 func moduleLayout(

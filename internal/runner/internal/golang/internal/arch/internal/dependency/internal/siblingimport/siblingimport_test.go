@@ -54,6 +54,35 @@ func TestSiblingimports(
 			want: []string{"R16 internal/a/a.go:4"},
 		},
 		{
+			name: "helper importing a declaration-only model sibling stays a foundation",
+			files: map[string]string{
+				"internal/worker/worker.go":   unit("worker internal/helper"),
+				"internal/catalog/catalog.go": unit("catalog internal/helper internal/model"),
+				"internal/helper/helper.go":   unit("helper internal/model"),
+				"internal/model/model.go":     "package model\n\ntype Job struct{}\n\nfunc (j Job) String() (text string) {\n\treturn \"job\"\n}\n",
+			},
+			want: nil,
+		},
+		{
+			name: "helper importing a sibling with logic is no foundation",
+			files: map[string]string{
+				"internal/worker/worker.go": unit("worker internal/helper"),
+				"internal/helper/helper.go": unit("helper internal/model internal/engine"),
+				"internal/model/model.go":   declarationOnly,
+				"internal/engine/engine.go": unit("engine"),
+			},
+			want: []string{"R16 internal/worker/worker.go:4"},
+		},
+		{
+			name: "model whose String computes counts as logic",
+			files: map[string]string{
+				"internal/worker/worker.go": unit("worker internal/helper"),
+				"internal/helper/helper.go": unit("helper internal/model"),
+				"internal/model/model.go":   "package model\n\ntype Job int\n\nfunc (j Job) String() (text string) {\n\tif j > 0 {\n\t\treturn \"big\"\n\t}\n\n\treturn \"small\"\n}\n",
+			},
+			want: []string{"R16 internal/worker/worker.go:4"},
+		},
+		{
 			name: "chains are reported in public trees too",
 			files: map[string]string{
 				"cmd/a/a.go": unit("a cmd/b"),

@@ -1,6 +1,7 @@
 package mockimport_test
 
 import (
+	"maps"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -57,6 +58,105 @@ func TestMockimportSnippet(
 		fakesImport,
 	)})
 	want := "production file imports mock package example.com/m/internal/fakes: mocks and fakes exist for tests only; wire the real implementation here and import example.com/m/internal/fakes only from _test.go files"
+	isMatch := len(findings) == 1 && findings[0].Snippet == want
+	if !isMatch {
+		t.Errorf(
+			"Mockimport() = %v, want one finding with snippet %q",
+			findings,
+			want,
+		)
+	}
+}
+
+func TestMockimportUsedMocks(
+	t *testing.T,
+) {
+	cases := []struct {
+		name  string
+		files map[string]string
+		want  []string
+	}{
+		{
+			name: "mock file whose declarations production calls is reported",
+			files: map[string]string{
+				"fake.go":      "package arith\n\nfunc newFake() {}\n",
+				"container.go": "package arith\n\nfunc Arith() {\n\tnewFake()\n}\n",
+			},
+			want: []string{"R63 fake.go"},
+		},
+		{
+			name: "mock-named file imported by a production package is reported at the mock",
+			files: map[string]string{
+				"internal/report/mock_wiring.go": "package report\n\nfunc Wired() {}\n",
+				"internal/app/app.go":            "package app\n\nimport \"example.com/m/internal/report\"\n\nfunc Run() {\n\treport.Wired()\n}\n",
+			},
+			want: []string{"R63 internal/report/mock_wiring.go"},
+		},
+		{
+			name: "mock package imported by production is reported once, at the import",
+			files: map[string]string{
+				"store/mocks/store.go": "package mocks\n\ntype Store struct{}\n",
+				"app/app.go":           "package app\n\nimport \"example.com/m/store/mocks\"\n\nvar _ = mocks.Store{}\n",
+			},
+			want: []string{"R63 app/app.go:3"},
+		},
+		{
+			name: "mock referenced only from tests passes",
+			files: map[string]string{
+				"fake.go":       "package arith\n\nfunc newFake() {}\n",
+				"arith_test.go": "package arith\n\nfunc TestArith() {\n\tnewFake()\n}\n",
+			},
+			want: nil,
+		},
+	}
+	for _, tc := range cases {
+		assertFindings(
+			t,
+			tc.name,
+			mockimport.Mockimport(parsedFiles(
+				t,
+				tc.files,
+			)),
+			tc.want,
+		)
+	}
+}
+
+func parsedFiles(
+	t *testing.T,
+	sources map[string]string,
+) (files []source.File) {
+	t.Helper()
+	for _, rel := range slices.Sorted(maps.Keys(sources)) {
+		files = append(
+			files,
+			parsed(
+				t,
+				rel,
+				sources[rel],
+			),
+		)
+	}
+
+	return files
+}
+
+func TestMockimportUsedMockSnippet(
+	t *testing.T,
+) {
+	findings := mockimport.Mockimport([]source.File{
+		parsed(
+			t,
+			"fake.go",
+			"package arith\n\nfunc newFake() {}\n",
+		),
+		parsed(
+			t,
+			"container.go",
+			"package arith\n\nfunc Arith() {\n\tnewFake()\n}\n",
+		),
+	})
+	want := "fake.go is named like a mock but production file container.go uses its declarations: mocks and fakes exist for tests only, so it is checked as production code; name the file after what it implements and give it its own test, or reference it only from _test.go files"
 	isMatch := len(findings) == 1 && findings[0].Snippet == want
 	if !isMatch {
 		t.Errorf(

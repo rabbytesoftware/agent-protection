@@ -25,10 +25,7 @@ func Packagehygiene(
 	files []source.File,
 ) (findings []report.Finding) {
 	packages := map[string]source.File{}
-	for _, file := range slices.Backward(slices.DeleteFunc(
-		slices.Clone(files),
-		isMock,
-	)) {
+	for _, file := range slices.Backward(source.WithoutMocks(files)) {
 		packages[filepath.Dir(file.Rel)] = file
 	}
 
@@ -122,10 +119,4 @@ func checkFindings(
 			name,
 		),
 	}}
-}
-
-func isMock(
-	file source.File,
-) (excluded bool) {
-	return source.IsMock(file.Rel)
 }

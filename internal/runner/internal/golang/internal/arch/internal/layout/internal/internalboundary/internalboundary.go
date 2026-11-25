@@ -181,9 +181,14 @@ func soleChildFindings(
 		boundary,
 		sourceDirectories,
 	)
-	if len(children) != 1 {
+	parent, parentErr := source.RelPath(
+		root,
+		filepath.Dir(boundary),
+	)
+	isMergeable := len(children) == 1 && source.IsInternalTree(parent)
+	if !isMergeable {
 		return nil,
-			nil
+			parentErr
 	}
 
 	location, locationErr := source.RelPath(
@@ -192,10 +197,6 @@ func soleChildFindings(
 			boundary,
 			children[0],
 		),
-	)
-	parent, parentErr := source.RelPath(
-		root,
-		filepath.Dir(boundary),
 	)
 	return []report.Finding{{
 			Rule:     soleChildRule,

@@ -4,6 +4,7 @@ import "testing"
 
 const (
 	vocabularyPackage = "package vocab\n\ntype Reservation struct{ Seats int }\n\nconst Limit = 3\n"
+	sentinelPackage   = "package vocab\n\nimport \"errors\"\n\nconst Limit = 3\n\ntype Box struct{ ErrShut error }\n\nvar (\n\tErrFull = errors.New(\"full\")\n\tErrShut = errors.New(\"shut\")\n)\n"
 	reservationAlias  = "package ratelimit\n\nimport \"example.com/m/internal/vocab\"\n\ntype Reservation = vocab.Reservation\n\nconst Limit = vocab.Limit\n"
 )
 
@@ -54,6 +55,56 @@ func TestCompositionrootReExports(
 				"internal/limiter/l.go":   unit("limiter"),
 			},
 			want: []string{"R48 reservation.go:3"},
+		},
+		{
+			name: "Err sentinels re-exported from a vocabulary package pass",
+			files: map[string]string{
+				"container.go":            unit("ratelimit internal/limiter"),
+				"errors.go":               "package ratelimit\n\nimport \"example.com/m/internal/vocab\"\n\nvar (\n\tErrFull = vocab.ErrFull\n\tErrShut = vocab.ErrShut\n)\n",
+				"internal/vocab/vocab.go": sentinelPackage,
+				"internal/limiter/l.go":   unit("limiter"),
+			},
+			want: nil,
+		},
+		{
+			name: "var not named Err re-exporting a sentinel is reported",
+			files: map[string]string{
+				"container.go":            unit("ratelimit internal/limiter"),
+				"errors.go":               "package ratelimit\n\nimport \"example.com/m/internal/vocab\"\n\nvar Full = vocab.ErrFull\n",
+				"internal/vocab/vocab.go": sentinelPackage,
+				"internal/limiter/l.go":   unit("limiter"),
+			},
+			want: []string{"R48 errors.go:3"},
+		},
+		{
+			name: "Err var wrapping a vocabulary sentinel is reported",
+			files: map[string]string{
+				"container.go":            unit("ratelimit internal/limiter"),
+				"errors.go":               "package ratelimit\n\nimport (\n\t\"fmt\"\n\n\t\"example.com/m/internal/vocab\"\n)\n\nvar ErrFull = fmt.Errorf(\"full: %w\", vocab.ErrFull)\n",
+				"internal/vocab/vocab.go": sentinelPackage,
+				"internal/limiter/l.go":   unit("limiter"),
+			},
+			want: []string{"R48 errors.go:6"},
+		},
+		{
+			name: "Err var re-exporting a non-sentinel value is reported",
+			files: map[string]string{
+				"container.go":            unit("ratelimit internal/limiter"),
+				"errors.go":               "package ratelimit\n\nimport \"example.com/m/internal/vocab\"\n\nvar ErrLimit = vocab.Limit\n",
+				"internal/vocab/vocab.go": sentinelPackage,
+				"internal/limiter/l.go":   unit("limiter"),
+			},
+			want: []string{"R48 errors.go:3"},
+		},
+		{
+			name: "Err var without a value or with a nested selector is reported",
+			files: map[string]string{
+				"container.go":            unit("ratelimit internal/limiter"),
+				"errors.go":               "package ratelimit\n\nimport \"example.com/m/internal/vocab\"\n\nvar ErrNone, ErrBox = vocab.ErrFull, vocab.Box.ErrShut\n",
+				"internal/vocab/vocab.go": sentinelPackage,
+				"internal/limiter/l.go":   unit("limiter"),
+			},
+			want: []string{"R48 errors.go:3"},
 		},
 		{
 			name: "alias to an internal package with behavior is reported",

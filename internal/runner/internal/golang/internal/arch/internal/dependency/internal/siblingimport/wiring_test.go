@@ -37,6 +37,27 @@ func TestSiblingimportsWiresSubtrees(
 			want: nil,
 		},
 		{
+			name: "sibling wiring hidden in a mock file that production calls is reported",
+			files: map[string]string{
+				"internal/report/mock_wiring.go": "package report\n\nimport (\n\t\"example.com/m/internal/cube\"\n\t\"example.com/m/internal/square\"\n)\n\nfunc wired() {\n\tcube.Run()\n\tsquare.Run()\n}\n",
+				"internal/report/report.go":      "package report\n\nfunc Report() {\n\twired()\n}\n",
+				"internal/cube/cube.go":          unit("cube"),
+				"internal/square/square.go":      unit("square"),
+			},
+			want: []string{"R47 internal/report"},
+		},
+		{
+			name: "sibling wiring in a mock file only tests use passes",
+			files: map[string]string{
+				"internal/report/mock_wiring.go": "package report\n\nimport (\n\t\"example.com/m/internal/cube\"\n\t\"example.com/m/internal/square\"\n)\n\nfunc wired() {\n\tcube.Run()\n\tsquare.Run()\n}\n",
+				"internal/report/report.go":      "package report\n\nfunc Report() {}\n",
+				"internal/report/report_test.go": "package report\n\nfunc TestReport() {\n\twired()\n}\n",
+				"internal/cube/cube.go":          unit("cube"),
+				"internal/square/square.go":      unit("square"),
+			},
+			want: nil,
+		},
+		{
 			name: "declaration-only siblings reached from a subtree do not count towards wiring",
 			files: map[string]string{
 				"internal/app/app.go":            unit("app internal/engine"),

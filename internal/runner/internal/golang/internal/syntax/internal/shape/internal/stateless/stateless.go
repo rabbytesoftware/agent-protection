@@ -21,10 +21,7 @@ const (
 func Stateless(
 	files []source.File,
 ) (findings []report.Finding) {
-	checked := slices.DeleteFunc(
-		slices.Clone(files),
-		isMock,
-	)
+	checked := source.WithoutMocks(files)
 	known := interfaceMethods(checked)
 	packages := map[string][]source.File{}
 	for _, file := range checked {
@@ -339,12 +336,6 @@ func fileReceiverNames(
 	}
 
 	return names
-}
-
-func isMock(
-	file source.File,
-) (excluded bool) {
-	return source.IsMock(file.Rel)
 }
 
 func isNotMethod(

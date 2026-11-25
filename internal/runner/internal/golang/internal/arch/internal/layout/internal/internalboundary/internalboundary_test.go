@@ -72,6 +72,16 @@ func TestInternalboundary(
 			want: nil,
 		},
 		{
+			name: "sole child under a public package passes, since its API must keep the implementation under internal/",
+			files: map[string]string{
+				"container.go":            "package example\n\nfunc New() {}\n",
+				"internal/store/store.go": "package store\n\nfunc Store() {}\n",
+				"api/container.go":        "package api\n\nfunc New() {}\n",
+				"api/internal/x/x.go":     "package x\n\nfunc X() {}\n",
+			},
+			want: nil,
+		},
+		{
 			name: "module without internal directories passes",
 			files: map[string]string{
 				"golang.go": "package example\n\nfunc Run() {}\n",

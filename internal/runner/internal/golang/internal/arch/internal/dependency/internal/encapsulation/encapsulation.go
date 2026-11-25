@@ -18,6 +18,8 @@ const (
 	importQuotes    = "\"`"
 	internalSegment = "internal"
 	blankImport     = "_"
+	nestFormat      = "imported only by %s but visible to the whole module: move it under %s/internal/"
+	leafFormat      = "imported only by %s, a package without internal/ children, but visible to the whole module: merge its files into %s (same package, tests beside them) and delete it; nesting it under %s/internal/ would leave a lone internal/ child (R51) and turn the importer into a module"
 )
 
 func Encapsulation(
@@ -136,12 +138,35 @@ func exposureFindings(
 	return []report.Finding{{
 		Rule:     rule,
 		Location: filepath.FromSlash(imported),
-		Snippet: fmt.Sprintf(
-			"imported only by %s but visible to the whole module: move it under %s/internal/",
+		Snippet: exposureSnippet(
 			directories[0],
-			directories[0],
+			packageDirectories(files),
 		),
 	}}
+}
+
+func exposureSnippet(
+	importer string,
+	sourceDirectories []string,
+) (snippet string) {
+	isLeaf := source.IsInternalTree(importer) && !source.IsModule(
+		importer,
+		sourceDirectories,
+	)
+	if isLeaf {
+		return fmt.Sprintf(
+			leafFormat,
+			importer,
+			importer,
+			importer,
+		)
+	}
+
+	return fmt.Sprintf(
+		nestFormat,
+		importer,
+		importer,
+	)
 }
 
 func importersOf(
