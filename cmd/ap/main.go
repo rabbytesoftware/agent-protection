@@ -8,7 +8,7 @@ import (
 
 	"github.com/rabbytesoftware/agent-protection/internal/guide"
 	"github.com/rabbytesoftware/agent-protection/internal/report"
-	"github.com/rabbytesoftware/agent-protection/internal/rules"
+	"github.com/rabbytesoftware/agent-protection/internal/rulebook"
 	"github.com/rabbytesoftware/agent-protection/internal/runner"
 )
 
@@ -122,7 +122,7 @@ func checked(
 			err
 	}
 
-	registry, err := rules.Docs()
+	registry, err := rulebook.Docs()
 	if err != nil {
 		return report.Output{},
 			fmt.Errorf(

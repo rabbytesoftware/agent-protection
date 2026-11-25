@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/rewrite"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
@@ -39,7 +39,7 @@ func TestRewrite(
 	changed, err := rewrite.Rewrite(
 		root,
 		files,
-		astrules.Edits,
+		syntax.Edits,
 	)
 	if err != nil {
 		t.Fatalf(
@@ -150,7 +150,7 @@ func TestRewriteReportsWriteFailures(
 	_, err = rewrite.Rewrite(
 		root,
 		[]source.File{file},
-		astrules.Edits,
+		syntax.Edits,
 	)
 	if err == nil {
 		t.Error("Rewrite() error = nil, want a write error")

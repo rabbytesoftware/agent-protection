@@ -6,7 +6,7 @@ import (
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch"
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/lint"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/rewrite"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
@@ -44,7 +44,7 @@ func Golang(
 
 	return slices.Concat(
 			architecture,
-			astrules.Astrules(
+			syntax.Syntax(
 				files,
 				tests,
 			),
@@ -68,6 +68,6 @@ func Fix(
 			files,
 			tests,
 		),
-		astrules.Edits,
+		syntax.Edits,
 	)
 }

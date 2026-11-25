@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
-	"github.com/rabbytesoftware/agent-protection/internal/rules"
+	"github.com/rabbytesoftware/agent-protection/internal/rulebook"
 )
 
 func TestReport(
@@ -56,7 +56,7 @@ func assertReport(
 	wantDocs []string,
 ) {
 	t.Helper()
-	registry, err := rules.Docs()
+	registry, err := rulebook.Docs()
 	if err != nil {
 		t.Fatalf(
 			"%s: Docs() error = %v",

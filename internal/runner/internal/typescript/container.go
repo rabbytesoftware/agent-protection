@@ -4,7 +4,7 @@ import (
 	"slices"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/comments"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/commentscan"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/typescript/internal/manifest"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/typescript/internal/passthrough"
 )
@@ -24,9 +24,9 @@ func Typescript(
 			err
 	}
 
-	commented, err := comments.Comments(
+	commented, err := commentscan.Comments(
 		root,
-		comments.ScriptExtensions(),
+		commentscan.ScriptExtensions(),
 	)
 	if err != nil {
 		return nil,

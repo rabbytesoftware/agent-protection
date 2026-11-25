@@ -12,7 +12,7 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/packageset"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/publicapi"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/reach"
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/siblingimports"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/siblingimport"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/testpairing"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
@@ -21,7 +21,7 @@ func Arch(
 	root string,
 	files []source.File,
 ) (findings []report.Finding, err error) {
-	siblings, siblingsErr := siblingimports.Siblingimports(
+	siblings, siblingsErr := siblingimport.Siblingimport(
 		root,
 		files,
 	)

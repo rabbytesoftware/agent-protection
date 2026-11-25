@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
-	"go/build/constraint"
 	"go/parser"
 	"go/token"
 	"os"
@@ -12,7 +11,6 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"unicode"
 )
 
 const (
@@ -376,62 +374,6 @@ func isNotTest(
 	return !IsTest(path)
 }
 
-func hasIntegrationTag(
-	comments []*ast.Comment,
-) (tagged bool, err error) {
-	failures := []error{}
-	for _, comment := range slices.DeleteFunc(
-		slices.Clone(comments),
-		isNotGoBuild,
-	) {
-		integrationOnly, parseErr := isIntegrationOnly(comment.Text)
-		tagged = tagged || integrationOnly
-		failures = append(
-			failures,
-			parseErr,
-		)
-	}
-
-	return tagged,
-		errors.Join(failures...)
-}
-
-func isNotGoBuild(
-	comment *ast.Comment,
-) (excluded bool) {
-	return !constraint.IsGoBuild(comment.Text)
-}
-
-func isIntegrationOnly(
-	line string,
-) (integrationOnly bool, err error) {
-	expression, err := constraint.Parse(line)
-	if err != nil {
-		return false,
-			fmt.Errorf(
-				"parse build constraint %q: %w",
-				line,
-				err,
-			)
-	}
-
-	others := slices.DeleteFunc(
-		constraintTags(line),
-		isIntegrationTag,
-	)
-	isEnumerable := len(others) <= maxEnumeratedTags
-	return isEnumerable && isSatisfiable(
-			expression,
-			others,
-			[]string{integrationTag},
-		) && !isSatisfiable(
-			expression,
-			others,
-			nil,
-		),
-		nil
-}
-
 func Load(
 	root string,
 ) (files []File, tests []File, err error) {
@@ -458,67 +400,4 @@ func Load(
 	return files,
 		tests,
 		nil
-}
-
-func isSatisfiable(
-	expression constraint.Expr,
-	undecided []string,
-	enabled []string,
-) (satisfiable bool) {
-	if len(undecided) == 0 {
-		return expression.Eval(tagSetter(enabled))
-	}
-
-	return isSatisfiable(
-		expression,
-		undecided[1:],
-		slices.Concat(
-			enabled,
-			undecided[:1],
-		),
-	) || isSatisfiable(
-		expression,
-		undecided[1:],
-		enabled,
-	)
-}
-
-func tagSetter(
-	enabled []string,
-) (isSet func(string) bool) {
-	return func(
-		tag string,
-	) (set bool) {
-		return slices.Contains(
-			enabled,
-			tag,
-		)
-	}
-}
-
-func constraintTags(
-	line string,
-) (tags []string) {
-	tags = strings.FieldsFunc(
-		strings.TrimPrefix(
-			line,
-			buildDirective,
-		),
-		isNotTagRune,
-	)
-	slices.Sort(tags)
-	return slices.Compact(tags)
-}
-
-func isNotTagRune(
-	character rune,
-) (excluded bool) {
-	isTagRune := unicode.IsLetter(character) || unicode.IsDigit(character) || character == '_' || character == '.'
-	return !isTagRune
-}
-
-func isIntegrationTag(
-	tag string,
-) (matches bool) {
-	return tag == integrationTag
 }

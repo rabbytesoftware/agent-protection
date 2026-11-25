@@ -2,7 +2,7 @@ package rust
 
 import (
 	"github.com/rabbytesoftware/agent-protection/internal/report"
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/comments"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/commentscan"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/rust/internal/clippy"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/rust/internal/testmodule"
 )
@@ -25,9 +25,9 @@ func Rust(
 			err
 	}
 
-	commented, err := comments.Comments(
+	commented, err := commentscan.Comments(
 		root,
-		comments.RustExtensions(),
+		commentscan.RustExtensions(),
 	)
 	if err != nil {
 		return nil,

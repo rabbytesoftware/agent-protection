@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
-	"github.com/rabbytesoftware/agent-protection/internal/rules"
+	"github.com/rabbytesoftware/agent-protection/internal/rulebook"
 )
 
 func TestOutputJSON(
@@ -115,7 +115,7 @@ func mustReport(
 	findings []report.Finding,
 ) (output report.Output) {
 	t.Helper()
-	registry, err := rules.Docs()
+	registry, err := rulebook.Docs()
 	if err != nil {
 		t.Fatalf(
 			"Docs() error = %v",
