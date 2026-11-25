@@ -82,26 +82,40 @@ steps:
 
 Go: analyzer and architecture rules plus the golangci-lint proxies,
 covering the Rabbyte Go manifest wherever a rule is mechanically checkable.
-Code: one parameter per line (R01), at most two indentation levels (R02),
-guard clauses with no else (R03), named results and no naked returns (R04),
-no comments of any kind (R07), one type per file (R08), stateless types as
-functions (R11, R12), errors never dropped, wrapped with %w and never
-logged and ignored (R26), no init or package state (R24), no panic (R27),
-command-query separation (R33), no hidden side effects (R34), no
-content-free or numbered names (R56), gofmt (R62).
-Architecture: public packages and module directories expose only their API
-and wire through container.go (R14, R48), no reaching into another
-module's subpackages (R15), siblings form one layer and only the parent
-wires them (R16, R47), exported implementations stay unexported (R13),
-vocabulary packages hold declarations only (R57), interfaces are used and
-not only embedded (R60), no look-alike or duplicated package names (R58,
-R59), production never imports examples (R61), internal/ boundaries (R19,
+Code: one parameter, argument and literal element per line (R01, R52), at
+most two indentation levels (R02), guard clauses with no else (R03), named
+results on every function and no naked returns (R04), no comments of any
+kind in any file type, no prose smuggled into directives, strings or struct
+tags (R07), one type per file and no local or anonymous struct types (R08),
+methods live in their type's file and no numbered files (R66), stateless
+types as functions unless they only implement an interface (R11, R12),
+errors never dropped, overwritten or left unread (R26), no init or package
+state (R24), no panic, log.Fatal or os.Exit outside main (R27), interfaces
+and interface-embedding structs capped at 3 methods (R28), no bool flag
+parameters even behind a named type (R32), command-query separation
+including mutation through field method calls (R33), no hidden side
+effects (R34), no content-free or numbered names, exported or not (R56),
+gofmt (R62).
+Architecture: public packages, module directories and command directories
+expose only their API; container.go and main.go only delegate and return
+interfaces or types the module declares (R14, R48, R64); shared vocabulary
+lives in a declaration-only internal package and is re-exported with
+aliases; no reaching into another module's subpackages (R15); siblings form
+one layer, judged at the lowest common ancestor so cousin imports count,
+and only the parent wires them (R16, R47); exported implementations stay
+unexported (R13); vocabulary packages hold declarations only (R57);
+interfaces are used and not only embedded (R60); no look-alike, escape
+hatch or duplicated package names (R22, R58, R59); production never imports
+examples or mocks (R61, R63); generated files are exempt only from style
+rules and only with real generator provenance; internal/ boundaries (R19,
 R50, R51), naming (R21-R23), 1:1 test files (R42, R43), and file and
 directory size caps, the root included (R44, R46).
 Agent Protection passes its own gate.
-Rust: no comments (R07) and unwrap/expect/panic-risk detection through
+Every language, every file type (shell, SQL, YAML, Makefile, Dockerfile,
+JS/TS, Rust, Python, go.mod): no comments (R07), machine directives only.
+Rust: unwrap/expect/panic-risk detection through
 clippy, excluding inline `#[cfg(test)]` modules.
-TypeScript and JavaScript: no comments (R07), complexity, magic-number, no-else, no-debug-output,
+TypeScript and JavaScript: complexity, magic-number, no-else, no-debug-output,
 no-param-reassign, modern-syntax and one-class-per-file proxies via ESLint
 core rules.
 
