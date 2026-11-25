@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	blankImport     = "_"
 	chainRule       = "R16"
 	wiringRule      = "R47"
 	moduleRoot      = "."
@@ -133,7 +134,9 @@ func siblingEdge(
 		modulePath,
 		spec,
 	)
-	if !inModule {
+	isEdgeless := !inModule ||
+		spec.Name != nil && spec.Name.Name == blankImport
+	if isEdgeless {
 		return "",
 			nil
 	}

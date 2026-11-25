@@ -36,6 +36,15 @@ func TestSiblingimports(
 			want: nil,
 		},
 		{
+			name: "blank imports are not edges",
+			files: map[string]string{
+				"internal/a/a.go": "package a\n\nimport _ \"example.com/m/internal/b\"\n",
+				"internal/b/b.go": unit("b internal/c"),
+				"internal/c/c.go": unit("c"),
+			},
+			want: nil,
+		},
+		{
 			name: "importing a sibling that imports a sibling is reported at the import",
 			files: map[string]string{
 				"internal/a/a.go": unit("a internal/b"),

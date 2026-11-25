@@ -18,6 +18,8 @@ const (
 	initFunction   = "init"
 	blankName      = "_"
 	embedDirective = "//go:embed"
+	mainPackage    = "main"
+	stringType     = "string"
 	initSnippet    = "func init: no init; wire dependencies explicitly in container.go"
 	variableFormat = "package variable %s: no mutable package-level state; pass it in through a constructor"
 )
@@ -119,7 +121,13 @@ func specFindings(
 	node ast.Spec,
 ) (findings []report.Finding) {
 	spec, isValue := node.(*ast.ValueSpec)
-	isSkipped := !isValue || isEmbed(decl.Doc) || isEmbed(spec.Doc)
+	isSkipped := !isValue ||
+		isEmbed(decl.Doc) ||
+		isEmbed(spec.Doc) ||
+		isLinkerTarget(
+			file,
+			spec,
+		)
 	if isSkipped {
 		return nil
 	}
@@ -229,4 +237,15 @@ func isEmbedComment(
 
 func sentinelPrefixes() (prefixes []string) {
 	return []string{"Err", "err"}
+}
+
+func isLinkerTarget(
+	file source.File,
+	spec *ast.ValueSpec,
+) (target bool) {
+	typeName, isNamed := spec.Type.(*ast.Ident)
+	return file.Syntax.Name.Name == mainPackage &&
+		len(spec.Values) == 0 &&
+		isNamed &&
+		typeName.Name == stringType
 }

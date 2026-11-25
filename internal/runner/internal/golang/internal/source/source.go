@@ -173,7 +173,7 @@ func IsGenerated(
 	path string,
 ) (isGenerated bool, err error) {
 	comments, err := headerComments(path)
-	return isGeneratedHeader(comments),
+	return isGeneratedHeader(comments) && hasProvenance(path),
 		err
 }
 

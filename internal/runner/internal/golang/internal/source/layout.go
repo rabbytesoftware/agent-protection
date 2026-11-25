@@ -20,6 +20,8 @@ const (
 	containerFile     = "container.go"
 	mainFile          = "main.go"
 	mainPackage       = "main"
+	generateDirective = "//go:generate "
+	goModFile         = "go.mod"
 )
 
 const CompositionRootThreshold = 2
@@ -398,4 +400,79 @@ func isIntegrationTag(
 	tag string,
 ) (matches bool) {
 	return tag == integrationTag
+}
+
+func hasProvenance(
+	path string,
+) (proven bool) {
+	return hasGenerateDirective(path) || hasGeneratorConfig(filepath.Dir(path))
+}
+
+func hasGenerateDirective(
+	generated string,
+) (found bool) {
+	paths, err := filepath.Glob(filepath.Join(
+		filepath.Dir(generated),
+		"*"+goExtension,
+	))
+	for _, path := range paths {
+		found = found || path != generated && declaresGenerate(path)
+	}
+
+	return err == nil && found
+}
+
+func declaresGenerate(
+	path string,
+) (declares bool) {
+	content, err := os.ReadFile(path)
+	return err == nil && slices.ContainsFunc(
+		strings.Split(
+			string(content),
+			"\n",
+		),
+		isGenerateLine,
+	)
+}
+
+func isGenerateLine(
+	line string,
+) (matches bool) {
+	return strings.HasPrefix(
+		line,
+		generateDirective,
+	)
+}
+
+func hasGeneratorConfig(
+	directory string,
+) (found bool) {
+	for _, name := range generatorConfigs() {
+		found = found || exists(filepath.Join(
+			directory,
+			name,
+		))
+	}
+
+	parent := filepath.Dir(directory)
+	isLast := found || exists(filepath.Join(
+		directory,
+		goModFile,
+	)) || parent == directory
+	if isLast {
+		return found
+	}
+
+	return hasGeneratorConfig(parent)
+}
+
+func exists(
+	path string,
+) (present bool) {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func generatorConfigs() (names []string) {
+	return []string{"buf.gen.yaml", "buf.gen.yml", "sqlc.yaml", "sqlc.yml", "sqlc.json", "gqlgen.yml", "gqlgen.yaml", ".mockery.yaml", ".mockery.yml", "oapi-codegen.yaml", "ent"}
 }

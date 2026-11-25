@@ -27,6 +27,24 @@ func TestPackagestate(
 			want: []string{"R24 p.go:3"},
 		},
 		{
+			name: "uninitialized string var in package main is a linker target",
+			rel:  "main.go",
+			code: "package main\n\nvar version string\n",
+			want: nil,
+		},
+		{
+			name: "initialized string var in package main is state",
+			rel:  "main.go",
+			code: "package main\n\nvar version = \"dev\"\n",
+			want: []string{"R24 main.go:3"},
+		},
+		{
+			name: "uninitialized string var outside main is state",
+			rel:  "p.go",
+			code: "package p\n\nvar version string\n",
+			want: []string{"R24 p.go:3"},
+		},
+		{
 			name: "init is reported",
 			rel:  "p.go",
 			code: "package p\n\nfunc init() {\n}\n",
