@@ -27,6 +27,10 @@ func TestStringcommentTags(
 		{name: "escaped quote in a value passes", path: "p.go", code: "package p\n\ntype T struct {\n\tA int `json:\"a\\\"b\"`\n}\n", want: nil},
 		{name: "empty tag passes", path: "p.go", code: "package p\n\ntype T struct {\n\tA int ``\n}\n", want: nil},
 		{name: "tag on an anonymous struct is reported", path: "p.go", code: "package p\n\nfunc F() {\n\tv := struct {\n\t\tA int `why:\"x\"`\n\t}{}\n\tuse(v)\n}\n", want: []string{"R07 p.go:5"}},
+		{name: "marker in a help tag is reported", path: "p.go", code: "package p\n\ntype T struct {\n\tA int `help:\"TODO: drop once billing migrates\"`\n}\n", want: []string{"R07 p.go:4"}},
+		{name: "escape-hatch word in a jsonschema tag is reported beside an unknown key", path: "p.go", code: "package p\n\ntype T struct {\n\tA int `jsonschema:\"a hack for now\" why:\"x\"`\n}\n", want: []string{"R07 p.go:4", "R07 p.go:4"}},
+		{name: "a justification in a help tag is reported", path: "p.go", code: "package p\n\ntype T struct {\n\tNote string `help:\"factor stays at one because the billing export assumes it\"`\n}\n", want: []string{"R07 p.go:4"}},
+		{name: "plain help and marker words in machine keys pass", path: "p.go", code: "package p\n\ntype T struct {\n\tA int `help:\"path to the config file\" json:\"TODO\"`\n}\n", want: nil},
 		{name: "red team struct tag is reported", path: "p.go", code: "package square\n\ntype square struct {\n\tfactor int `why:\"multiplier kept for the old invoices, do not touch\"`\n}\n", want: []string{"R07 p.go:4"}},
 	}
 	for _, tc := range cases {

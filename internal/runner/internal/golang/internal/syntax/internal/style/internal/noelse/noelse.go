@@ -41,7 +41,10 @@ func fileFindings(
 		)
 	}
 
-	return findings
+	return append(
+		findings,
+		switchFindings(file)...,
+	)
 }
 
 func hasNoElse(

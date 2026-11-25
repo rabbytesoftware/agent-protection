@@ -146,22 +146,22 @@ func isBlockContent(
 func masked(
 	text []byte,
 	blocks []lexeme.Span,
-) (out []byte) {
+) (maskedText []byte) {
 	previous := 0
 	for _, block := range blocks {
-		out = append(
-			out,
+		maskedText = append(
+			maskedText,
 			text[previous:block.Start]...,
 		)
-		out = append(
-			out,
+		maskedText = append(
+			maskedText,
 			blanked(text[block.Start:block.End])...,
 		)
 		previous = block.End
 	}
 
 	return append(
-		out,
+		maskedText,
 		text[previous:]...,
 	)
 }

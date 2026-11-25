@@ -38,7 +38,7 @@ func Eslint(
 func run(
 	root string,
 	arguments []string,
-) (output []byte, err error) {
+) (combined []byte, err error) {
 	commandArguments := append(
 		[]string{
 			"x",
@@ -59,7 +59,7 @@ func run(
 		commandArguments...,
 	)
 	command.Dir = root
-	output, err = command.CombinedOutput()
+	combined, err = command.CombinedOutput()
 	var exitError *exec.ExitError
 	couldNotRun := err != nil && !errors.As(
 		err,
@@ -74,7 +74,7 @@ func run(
 			)
 	}
 
-	return output,
+	return combined,
 		nil
 }
 

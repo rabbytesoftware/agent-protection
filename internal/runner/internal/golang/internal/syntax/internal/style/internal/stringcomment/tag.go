@@ -14,12 +14,16 @@ import (
 )
 
 const (
-	keySnippetFormat = "struct tag key %s is not read by any known library: a tag carries machine metadata, not explanations; delete it and make the code say it through names and structure"
-	malformedSnippet = "struct tag is not a list of key:\"value\" pairs: a tag carries machine metadata, not explanations; delete the prose"
-	tagPattern       = `^\s*(?:[^\s:"\x7f]+:"(?:[^"\\]|\\.)*"\s*)*$`
-	keyPattern       = `([^\s:"\x7f]+):"(?:[^"\\]|\\.)*"`
-	keyGroup         = 1
-	allMatches       = -1
+	keySnippetFormat   = "struct tag key %s is not read by any known library: a tag carries machine metadata, not explanations; delete it and make the code say it through names and structure"
+	malformedSnippet   = "struct tag is not a list of key:\"value\" pairs: a tag carries machine metadata, not explanations; delete the prose"
+	tagPattern         = `^\s*(?:[^\s:"\x7f]+:"(?:[^"\\]|\\.)*"\s*)*$`
+	keyPattern         = `([^\s:"\x7f]+):"(?:[^"\\]|\\.)*"`
+	pairPattern        = `([^\s:"\x7f]+):"((?:[^"\\]|\\.)*)"`
+	proseSnippet       = "struct tag %s:%q carries a note about the code (a TODO marker, an escape-hatch word or a because): a tag value is read by a library or shown to users, not a place for notes; delete the note and fix the code"
+	justificationWords = `(?i)\bbecause\b`
+	keyGroup           = 1
+	valueGroup         = 2
+	allMatches         = -1
 )
 
 func tagFindings(
@@ -52,6 +56,10 @@ func fieldFindings(
 		return []report.Finding{{Rule: rule, Location: location, Snippet: malformedSnippet}}
 	}
 
+	findings = proseValueFindings(
+		location,
+		tag,
+	)
 	for _, key := range unknownKeys(tag) {
 		findings = append(
 			findings,
@@ -75,6 +83,70 @@ func tagValue(
 	tag, err := strconv.Unquote(literal)
 	return tag,
 		err == nil && regexp.MustCompile(tagPattern).MatchString(tag)
+}
+
+func proseValueFindings(
+	location string,
+	tag string,
+) (findings []report.Finding) {
+	for _, match := range regexp.MustCompile(pairPattern).FindAllStringSubmatch(
+		tag,
+		allMatches,
+	) {
+		findings = append(
+			findings,
+			proseValueFinding(
+				location,
+				match[keyGroup],
+				match[valueGroup],
+			)...,
+		)
+	}
+
+	return findings
+}
+
+func proseValueFinding(
+	location string,
+	key string,
+	value string,
+) (findings []report.Finding) {
+	isNote := slices.Contains(
+		proseKeys(),
+		key,
+	) && isNoteValue(value)
+	if !isNote {
+		return nil
+	}
+
+	return []report.Finding{{
+		Rule:     rule,
+		Location: location,
+		Snippet: fmt.Sprintf(
+			proseSnippet,
+			key,
+			excerpt(value),
+		),
+	}}
+}
+
+func isNoteValue(
+	value string,
+) (note bool) {
+	return isEscapeProse(value) ||
+		regexp.MustCompile(justificationWords).MatchString(value)
+}
+
+func proseKeys() (keys []string) {
+	return []string{
+		"help",
+		"example",
+		"jsonschema",
+		"jsonschema_description",
+		"description",
+		"usage",
+		"doc",
+	}
 }
 
 func unknownKeys(

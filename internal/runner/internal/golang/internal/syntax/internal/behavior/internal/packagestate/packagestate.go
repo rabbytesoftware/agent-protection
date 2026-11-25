@@ -221,7 +221,7 @@ func isNil(
 func valueAt(
 	values []ast.Expr,
 	index int,
-) (value ast.Expr) {
+) (assigned ast.Expr) {
 	isShared := len(values) == 1
 	if isShared {
 		return values[0]

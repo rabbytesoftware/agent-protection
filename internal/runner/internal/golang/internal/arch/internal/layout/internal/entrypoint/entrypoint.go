@@ -16,10 +16,6 @@ const (
 	containerFile = "container.go"
 	mainFile      = "main.go"
 	mainPackage   = "main"
-	containerRole = "container"
-	mainRole      = "main"
-	commandRole   = "command"
-	noRole        = ""
 	rootDirectory = "."
 	internalChild = "internal/"
 )
@@ -137,7 +133,7 @@ func entryFindings(
 func roleOf(
 	file source.File,
 	sourceDirectories []string,
-) (role string) {
+) (found role) {
 	if source.IsExample(file.Rel) {
 		return noRole
 	}
@@ -160,7 +156,7 @@ func roleOf(
 
 func commandFileRole(
 	base string,
-) (role string) {
+) (found role) {
 	if base == mainFile {
 		return mainRole
 	}

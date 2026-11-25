@@ -158,7 +158,7 @@ func run(
 	root string,
 	configPath string,
 	tags []string,
-) (output string, err error) {
+) (issues string, err error) {
 	command := exec.Command(
 		binary,
 		arguments(

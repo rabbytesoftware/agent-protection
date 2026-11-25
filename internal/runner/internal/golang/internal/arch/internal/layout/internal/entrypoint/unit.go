@@ -6,7 +6,7 @@ type unit struct {
 	file       source.File
 	modulePath string
 	directory  string
-	role       string
+	role       role
 	names      []string
 	interfaces []string
 }

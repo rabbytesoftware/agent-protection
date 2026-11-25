@@ -51,9 +51,10 @@ func fileFindings(
 		)
 	}
 
-	return append(
+	return slices.Concat(
 		findings,
-		tagFindings(file)...,
+		tagFindings(file),
+		logFindings(file),
 	)
 }
 

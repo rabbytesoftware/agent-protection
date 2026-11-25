@@ -405,7 +405,7 @@ func appendAssigned(
 func valueFor(
 	values []ast.Expr,
 	position int,
-) (value ast.Expr) {
+) (assigned ast.Expr) {
 	if len(values) == 1 {
 		return values[0]
 	}
