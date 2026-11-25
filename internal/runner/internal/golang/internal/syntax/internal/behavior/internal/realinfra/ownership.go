@@ -330,6 +330,28 @@ func isEphemeralAddress(
 	)
 }
 
+func isInMemoryDatabase(
+	argument ast.Expr,
+) (inMemory bool) {
+	literal, isLiteral := argument.(*ast.BasicLit)
+	if !isLiteral ||
+		literal.Kind != token.STRING {
+		return false
+	}
+
+	target := strings.Trim(
+		literal.Value,
+		stringQuotes,
+	)
+	return strings.Contains(
+		target,
+		memoryTarget,
+	) || strings.Contains(
+		target,
+		memoryMode,
+	)
+}
+
 func hasAnyPrefix(
 	name string,
 	prefixes []string,

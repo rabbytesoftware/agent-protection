@@ -124,7 +124,10 @@ func (s scope) isExempt(
 		exempt = exempt || s.mentionsOwned(argument)
 	}
 
-	return exempt || s.isEphemeralListen(call)
+	return exempt || s.isEphemeralListen(call) || slices.ContainsFunc(
+		call.Args,
+		isInMemoryDatabase,
+	)
 }
 
 func (s scope) isEphemeralListen(
@@ -178,7 +181,10 @@ func (s scope) isOwnedSeed(
 		return slices.Contains(
 			ownedConstructors()[importPath],
 			name,
-		) || s.isEphemeralListen(call)
+		) || s.isEphemeralListen(call) || slices.ContainsFunc(
+			call.Args,
+			isInMemoryDatabase,
+		)
 	}
 
 	switch function := ast.Unparen(call.Fun).(type) {

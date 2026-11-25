@@ -23,6 +23,8 @@ const (
 	digits              = "0123456789"
 	listenPrefix        = "Listen"
 	ephemeralPort       = ":0"
+	memoryTarget        = ":memory:"
+	memoryMode          = "mode=memory"
 	testDirectoryMethod = "TempDir"
 	addressMethod       = "Addr"
 	stringQuotes        = "\"`"

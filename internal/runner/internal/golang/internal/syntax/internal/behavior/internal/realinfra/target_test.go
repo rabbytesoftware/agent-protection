@@ -36,6 +36,15 @@ func TestRealinfraTargets(
 				},
 			},
 			{
+				name: "an in-memory database is owned by the test, a file or server dsn is live",
+				files: map[string]string{
+					"p/p_test.go": "package p\n\nimport (\n\t\"database/sql\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\tsql.Open(\"sqlite\", \":memory:\")\n\tsql.Open(\"sqlite3\", \"file:x?mode=memory&cache=shared\")\n\tsql.Open(\"postgres\", \"postgres://localhost/db\")\n}\n",
+				},
+				want: []string{
+					"p/p_test.go:13",
+				},
+			},
+			{
 				name: "an unrelated package exposing the same names is not live",
 				files: map[string]string{
 					"p/p_test.go": "package p\n\nimport (\n\t\"example.com/cache\"\n\t\"testing\"\n)\n\nfunc TestF(\n\tt *testing.T,\n) {\n\tcache.Open(\"x\")\n\tcache.Get(\"x\")\n\tcache.Dial(\"x\")\n}\n",
