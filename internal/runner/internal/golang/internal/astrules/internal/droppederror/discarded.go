@@ -36,6 +36,20 @@ func assignmentFindings(
 	assignment *ast.AssignStmt,
 	callees map[string]int,
 ) (findings []report.Finding) {
+	if isBlankedCall(
+		assignment,
+		callees,
+	) {
+		return []report.Finding{finding(
+			file,
+			assignment.Rhs[0],
+			fmt.Sprintf(
+				"the error from %s is assigned to _: return it wrapped with %%w, or handle it",
+				types.ExprString(assignment.Rhs[0]),
+			),
+		)}
+	}
+
 	if len(assignment.Lhs) != len(assignment.Rhs) {
 		return nil
 	}
@@ -77,6 +91,19 @@ func blankFinding(
 			types.ExprString(value),
 		),
 	)}
+}
+
+func isBlankedCall(
+	assignment *ast.AssignStmt,
+	callees map[string]int,
+) (blanked bool) {
+	isSingleCall := len(assignment.Rhs) == 1 && calleeName(assignment.Rhs[0]) != ""
+	if !isSingleCall {
+		return false
+	}
+
+	last := assignment.Lhs[len(assignment.Lhs)-1]
+	return identifierName(last) == blankName && callees[calleeName(assignment.Rhs[0])] == len(assignment.Lhs)
 }
 
 func isDroppable(

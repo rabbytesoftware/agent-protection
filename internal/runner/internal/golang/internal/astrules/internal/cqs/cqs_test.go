@@ -100,12 +100,12 @@ func TestCqsSnippet(
 		{
 			name: "direct write names only the function",
 			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) Get() (v int) {\n\tt.v++\n\treturn t.v\n}\n",
-			want: "func Get(...) returns a value and mutates its receiver or a pointer parameter: split the query from the command",
+			want: "func Get(...) returns a value and mutates its receiver or a pointer, map, slice or channel parameter: split the query from the command",
 		},
 		{
 			name: "write through a helper names the first mutating call",
 			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) bump() {\n\tt.v++\n}\n\nfunc (t *T) Get() (v int) {\n\t_ = t.value()\n\tt.bump()\n\treturn t.v\n}\n\nfunc (t *T) value() (v int) {\n\treturn t.v\n}\n",
-			want: "func Get(...) returns a value and mutates its receiver or a pointer parameter through t.bump(...): split the query from the command",
+			want: "func Get(...) returns a value and mutates its receiver or a pointer, map, slice or channel parameter through t.bump(...): split the query from the command",
 		},
 	}
 	for _, tc := range cases {

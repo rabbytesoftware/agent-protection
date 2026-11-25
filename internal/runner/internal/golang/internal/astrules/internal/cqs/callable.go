@@ -15,6 +15,7 @@ type callable struct {
 	key         string
 	declaration *ast.FuncDecl
 	pointers    map[string]int
+	references  map[string]int
 	types       map[string]string
 	calls       []*ast.CallExpr
 }
@@ -25,9 +26,16 @@ func callableOf(
 	return callable{
 		key:         declarationKey(declaration),
 		declaration: declaration,
-		pointers:    pointerPositions(declaration),
-		types:       namedTypes(declaration),
-		calls:       liveNodes[*ast.CallExpr](declaration.Body),
+		pointers: slotPositions(
+			declaration,
+			pointerName,
+		),
+		references: slotPositions(
+			declaration,
+			referenceName,
+		),
+		types: namedTypes(declaration),
+		calls: liveNodes[*ast.CallExpr](declaration.Body),
 	}
 }
 
@@ -52,15 +60,22 @@ func methodKey(
 	return receiverType + methodSeparator + method
 }
 
-func pointerPositions(
+func slotPositions(
 	declaration *ast.FuncDecl,
+	slotName func(*ast.Field) string,
 ) (positions map[string]int) {
 	positions = map[string]int{}
-	for _, name := range pointerSlots(flatParameters(declaration.Recv)) {
+	for _, name := range slotNames(
+		flatParameters(declaration.Recv),
+		slotName,
+	) {
 		positions[name] = receiverPosition
 	}
 
-	for position, name := range pointerSlots(flatParameters(declaration.Type.Params)) {
+	for position, name := range slotNames(
+		flatParameters(declaration.Type.Params),
+		slotName,
+	) {
 		positions[name] = position
 	}
 
@@ -120,13 +135,14 @@ func splitField(
 	return parameters
 }
 
-func pointerSlots(
+func slotNames(
 	parameters []*ast.Field,
+	slotName func(*ast.Field) string,
 ) (names []string) {
 	for _, parameter := range parameters {
 		names = append(
 			names,
-			pointerName(parameter),
+			slotName(parameter),
 		)
 	}
 
@@ -138,6 +154,33 @@ func pointerName(
 ) (name string) {
 	_, isPointer := parameter.Type.(*ast.StarExpr)
 	if !isPointer {
+		return ""
+	}
+
+	return parameter.Names[0].Name
+}
+
+func referenceName(
+	parameter *ast.Field,
+) (name string) {
+	switch typed := parameter.Type.(type) {
+	case *ast.StarExpr:
+		return ""
+	case *ast.ArrayType:
+		return sliceName(
+			parameter,
+			typed,
+		)
+	}
+
+	return parameter.Names[0].Name
+}
+
+func sliceName(
+	parameter *ast.Field,
+	array *ast.ArrayType,
+) (name string) {
+	if array.Len != nil {
 		return ""
 	}
 

@@ -13,8 +13,8 @@ import (
 const (
 	rule           = "R33"
 	errorType      = "error"
-	directFormat   = "func %s(...) returns a value and mutates its receiver or a pointer parameter: split the query from the command"
-	indirectFormat = "func %s(...) returns a value and mutates its receiver or a pointer parameter through %s(...): split the query from the command"
+	directFormat   = "func %s(...) returns a value and mutates its receiver or a pointer, map, slice or channel parameter: split the query from the command"
+	indirectFormat = "func %s(...) returns a value and mutates its receiver or a pointer, map, slice or channel parameter through %s(...): split the query from the command"
 )
 
 func Cqs(

@@ -7,17 +7,15 @@ import (
 	"maps"
 	"path/filepath"
 	"slices"
-	"strings"
-	"unicode"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
 const (
-	typeRule          = "R11"
-	constructorRule   = "R12"
-	constructorPrefix = "New"
+	typeRule        = "R11"
+	constructorRule = "R12"
+	blankName       = "_"
 )
 
 func Stateless(
@@ -201,15 +199,7 @@ func withoutAddress(
 func isNotConstructor(
 	function *ast.FuncDecl,
 ) (notConstructor bool) {
-	rest, hasPrefix := strings.CutPrefix(
-		function.Name.Name,
-		constructorPrefix,
-	)
-	isConstructorName := hasPrefix && (rest == "" || strings.IndexFunc(
-		rest,
-		unicode.IsUpper,
-	) == 0)
-	return function.Recv != nil || function.Body == nil || !isConstructorName
+	return function.Recv != nil || function.Body == nil
 }
 
 func emptyStructNames(
@@ -251,7 +241,25 @@ func isNotEmptyStruct(
 	spec *ast.TypeSpec,
 ) (notEmpty bool) {
 	structure, isStruct := spec.Type.(*ast.StructType)
-	return !isStruct || len(structure.Fields.List) > 0
+	return !isStruct || slices.ContainsFunc(
+		structure.Fields.List,
+		hasState,
+	)
+}
+
+func hasState(
+	field *ast.Field,
+) (stateful bool) {
+	return len(field.Names) == 0 || slices.ContainsFunc(
+		field.Names,
+		isNamed,
+	)
+}
+
+func isNamed(
+	name *ast.Ident,
+) (named bool) {
+	return name.Name != blankName
 }
 
 func receiverNames(

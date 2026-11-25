@@ -26,8 +26,8 @@ func TestCqsClosures(
 			want: nil,
 		},
 		{
-			name: "closure sent on a channel passes",
-			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) queue(\n\tjobs chan func(),\n) (n int) {\n\tjobs <- func() {\n\t\tt.v = 1\n\t}\n\treturn 1\n}\n",
+			name: "closure sent on a local channel passes",
+			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) queue() (n int) {\n\tjobs := make(chan func(), 1)\n\tjobs <- func() {\n\t\tt.v = 1\n\t}\n\treturn len(jobs)\n}\n",
 			want: nil,
 		},
 		{
