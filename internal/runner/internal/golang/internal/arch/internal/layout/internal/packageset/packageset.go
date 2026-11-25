@@ -7,7 +7,6 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
@@ -53,7 +52,7 @@ func packageNames(
 	names = map[string]string{}
 	failures := []error{}
 	for _, file := range slices.DeleteFunc(
-		slices.Clone(files),
+		source.HandWritten(files),
 		isTestFile,
 	) {
 		directory, relErr := source.RelPath(
@@ -91,11 +90,11 @@ func prefixFindings(
 	directory string,
 	directories []string,
 ) (findings []report.Finding) {
-	prefix := longestPrefixSibling(
+	lookalike := closestLookalike(
 		directory,
 		directories,
 	)
-	if prefix == "" {
+	if lookalike == "" {
 		return nil
 	}
 
@@ -105,44 +104,63 @@ func prefixFindings(
 		Snippet: fmt.Sprintf(
 			"%s and its sibling %s split one concept: merge them or name each for what it provides",
 			path.Base(directory),
-			prefix,
+			lookalike,
 		),
 	}}
 }
 
-func longestPrefixSibling(
+func closestLookalike(
 	directory string,
 	directories []string,
-) (prefix string) {
+) (closest string) {
 	for _, candidate := range directories {
-		prefix = closerPrefix(
-			prefix,
+		closest = closerLookalike(
+			closest,
 			directory,
 			candidate,
 		)
 	}
 
-	return prefix
+	return closest
 }
 
-func closerPrefix(
-	prefix string,
+func closerLookalike(
+	closest string,
 	directory string,
 	candidate string,
 ) (closer string) {
+	name := path.Base(directory)
 	candidateName := path.Base(candidate)
-	isCloser := candidate != directory &&
+	isCloser := candidate < directory &&
 		path.Dir(candidate) == path.Dir(directory) &&
-		len(candidateName) > len(prefix) &&
-		strings.HasPrefix(
-			path.Base(directory),
+		isLookalike(
+			name,
 			candidateName,
+		) &&
+		isCloserName(
+			name,
+			candidateName,
+			closest,
 		)
 	if !isCloser {
-		return prefix
+		return closest
 	}
 
 	return candidateName
+}
+
+func isCloserName(
+	name string,
+	candidate string,
+	closest string,
+) (closer bool) {
+	return closest == "" || sharedPrefix(
+		name,
+		candidate,
+	) > sharedPrefix(
+		name,
+		closest,
+	)
 }
 
 func duplicateFindings(

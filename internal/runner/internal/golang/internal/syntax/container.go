@@ -40,10 +40,29 @@ func Syntax(
 	files []source.File,
 	tests []source.File,
 ) (findings []report.Finding) {
+	handWritten := source.HandWritten(files)
 	everyFile := slices.Concat(
-		files,
-		tests,
+		handWritten,
+		source.HandWritten(tests),
 	)
+	return slices.Concat(
+		styleFindings(everyFile),
+		droppederror.Droppederror(slices.Concat(
+			files,
+			tests,
+		)),
+		designFindings(
+			files,
+			handWritten,
+		),
+		roleinterface.Roleinterface(everyFile),
+		realinfra.Realinfra(source.HandWritten(tests)),
+	)
+}
+
+func styleFindings(
+	everyFile []source.File,
+) (findings []report.Finding) {
 	return slices.Concat(
 		paramperline.Paramperline(everyFile),
 		argumentperline.Argumentperline(everyFile),
@@ -55,25 +74,30 @@ func Syntax(
 		noelse.Noelse(everyFile),
 		namedreturn.Namedreturn(everyFile),
 		genericname.Genericname(everyFile),
-		droppederror.Droppederror(everyFile),
 		gofmtcheck.Gofmtcheck(everyFile),
-		boolparam.Boolparam(files),
+	)
+}
+
+func designFindings(
+	files []source.File,
+	handWritten []source.File,
+) (findings []report.Finding) {
+	return slices.Concat(
+		boolparam.Boolparam(handWritten),
 		cqs.Cqs(files),
-		sideeffect.Sideeffect(files),
-		packagehygiene.Packagehygiene(files),
-		nostutter.Nostutter(files),
-		onetypeperfile.Onetypeperfile(files),
-		ctxfirstparam.Ctxfirstparam(files),
-		filelinelimit.Filelinelimit(files),
-		nopanic.Nopanic(files),
+		sideeffect.Sideeffect(handWritten),
+		packagehygiene.Packagehygiene(handWritten),
+		nostutter.Nostutter(handWritten),
+		onetypeperfile.Onetypeperfile(handWritten),
+		ctxfirstparam.Ctxfirstparam(handWritten),
+		filelinelimit.Filelinelimit(handWritten),
+		nopanic.Nopanic(handWritten),
 		deadstore.Deadstore(files),
-		methodfile.Methodfile(files),
-		interfacesize.Interfacesize(files),
+		methodfile.Methodfile(handWritten),
+		interfacesize.Interfacesize(handWritten),
 		packagestate.Packagestate(files),
-		stateless.Stateless(files),
+		stateless.Stateless(handWritten),
 		concretetype.Concretetype(files),
-		roleinterface.Roleinterface(everyFile),
-		realinfra.Realinfra(tests),
 	)
 }
 

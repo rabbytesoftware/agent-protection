@@ -46,10 +46,26 @@ func isGeneric(
 		generic = generic || slices.Contains(
 			genericNames(),
 			segment,
-		)
+		) || hasGenericAffix(segment)
 	}
 
 	return generic
+}
+
+func hasGenericAffix(
+	segment string,
+) (affixed bool) {
+	for _, affix := range genericAffixes() {
+		affixed = affixed || strings.HasPrefix(
+			segment,
+			affix,
+		) || strings.HasSuffix(
+			segment,
+			affix,
+		)
+	}
+
+	return affixed
 }
 
 func isNumbered(
@@ -92,7 +108,13 @@ func genericNames() (names []string) {
 		"util", "utils", "common", "helpers", "helper", "base", "misc", "shared",
 		"core", "kit", "lib", "libs", "support", "toolbox", "impl", "logic", "pkg", "stuff",
 		"processing", "manager", "managers", "part", "parts", "extra", "extras", "more", "other", "others",
+		"legacy", "compat", "tmp", "temp", "temporary", "wip", "hack", "hacks", "glue", "data", "generic",
+		"generics", "old", "new", "deprecated", "unused", "todo", "workaround", "junk", "general", "various",
 	}
+}
+
+func genericAffixes() (affixes []string) {
+	return []string{"util", "utils", "helper", "helpers", "legacy", "compat", "deprecated"}
 }
 
 func singularEndings() (endings []string) {

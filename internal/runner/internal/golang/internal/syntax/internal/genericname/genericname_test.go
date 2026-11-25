@@ -65,9 +65,9 @@ func TestGenericname(
 			want: nil,
 		},
 		{
-			name: "number after a capital is part of the name",
-			code: "package p\n\nfunc latencyP50() {}\n\nfunc latencyP99() {}\n\nfunc deliveryA1() {}\n\nfunc deliveryA2() {}\n",
-			want: nil,
+			name: "lone numbered name is reported",
+			code: "package p\n\nfunc retry3() {}\n",
+			want: []string{"R56 p.go:3"},
 		},
 		{
 			name: "var closure is checked",
@@ -80,9 +80,19 @@ func TestGenericname(
 			want: nil,
 		},
 		{
-			name: "unexported method is checked, exported names are not",
-			code: "package p\n\ntype t struct{}\n\nfunc (t) work() {}\n\nfunc (t) Handle() {}\n\nfunc RunHandler() {}\n",
-			want: []string{"R56 p.go:5"},
+			name: "exported names are checked like unexported ones",
+			code: "package p\n\ntype t struct{}\n\nfunc (t) work() {}\n\nfunc (t) Handle() {}\n\nfunc RunHandler() {}\n\nfunc DoWork() {}\n\nfunc HandleData1() {}\n\ntype Helper struct{}\n",
+			want: []string{"R56 p.go:5", "R56 p.go:9", "R56 p.go:11", "R56 p.go:13", "R56 p.go:15"},
+		},
+		{
+			name: "methods the standard library interfaces force pass",
+			code: "package p\n\ntype t struct{}\n\nfunc (t) Do() {}\n\nfunc (t) Value() {}\n\nfunc Do() {}\n",
+			want: []string{"R56 p.go:9"},
+		},
+		{
+			name: "name equal to its package name passes",
+			code: "package wrap\n\nfunc Wrap() {}\n\ntype wrap struct{}\n",
+			want: nil,
 		},
 		{
 			name: "program entry, package setup and blank are exempt",

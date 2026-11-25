@@ -11,16 +11,18 @@ import (
 	"strings"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
 const (
-	binary          = "golangci-lint"
-	buildTagsEnvVar = "AP_GO_BUILD_TAGS"
-	configName      = ".ap-lint-config.generated.yml"
-	configFileMode  = 0o644
-	typecheck       = "typecheck"
-	allMatches      = -1
-	issuesExitCode  = 1
+	binary            = "golangci-lint"
+	buildTagsEnvVar   = "AP_GO_BUILD_TAGS"
+	configName        = ".ap-lint-config.generated.yml"
+	configFileMode    = 0o644
+	typecheck         = "typecheck"
+	allMatches        = -1
+	issuesExitCode    = 1
+	locationSeparator = ":"
 )
 
 const (
@@ -33,6 +35,32 @@ const (
 func Lint(
 	root string,
 ) (findings []report.Finding, err error) {
+	root, err = filepath.Abs(root)
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"resolve lint root: %w",
+				err,
+			)
+	}
+
+	output, err := configuredRun(root)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	findings, err = parse(output)
+	return slices.DeleteFunc(
+			findings,
+			isGeneratedStyle(root),
+		),
+		err
+}
+
+func configuredRun(
+	root string,
+) (output string, err error) {
 	configPath := filepath.Join(
 		root,
 		configName,
@@ -43,7 +71,7 @@ func Lint(
 		configFileMode,
 	)
 	if err != nil {
-		return nil,
+		return "",
 			fmt.Errorf(
 				"write lint config: %w",
 				err,
@@ -59,11 +87,37 @@ func Lint(
 		removeConfig(configPath),
 	)
 	if err != nil {
-		return nil,
+		return "",
 			err
 	}
 
-	return parse(output)
+	return output,
+		nil
+}
+
+func isGeneratedStyle(
+	root string,
+) (isExempt func(report.Finding) bool) {
+	return func(
+		finding report.Finding,
+	) (exempt bool) {
+		path := finding.Location[:strings.LastIndex(
+			finding.Location,
+			locationSeparator,
+		)]
+		generated, err := source.IsGenerated(filepath.Join(
+			root,
+			path,
+		))
+		return err == nil && generated && !slices.Contains(
+			generatedRules(),
+			finding.Rule,
+		)
+	}
+}
+
+func generatedRules() (rules []string) {
+	return []string{"R24", "R26", "PROXY-GLOBAL-STATE"}
 }
 
 func run(
@@ -171,7 +225,7 @@ func issueFindings(
 
 	return []report.Finding{{
 		Rule:     rule,
-		Location: issue[pathGroup] + ":" + issue[lineGroup],
+		Location: issue[pathGroup] + locationSeparator + issue[lineGroup],
 		Snippet:  "[" + issue[linterGroup] + "] " + issue[textGroup],
 	}}
 }

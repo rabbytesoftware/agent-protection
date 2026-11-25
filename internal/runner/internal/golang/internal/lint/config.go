@@ -18,6 +18,8 @@ linters:
     - interfacebloat
     - ineffassign
     - staticcheck
+  exclusions:
+    generated: disable
   settings:
     errcheck:
       check-blank: true

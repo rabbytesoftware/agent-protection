@@ -15,13 +15,15 @@ import (
 )
 
 const (
-	internalDirectory = "internal"
-	moduleDirective   = "module "
-	containerFile     = "container.go"
-	mainFile          = "main.go"
-	mainPackage       = "main"
-	generateDirective = "//go:generate "
-	goModFile         = "go.mod"
+	internalDirectory  = "internal"
+	moduleDirective    = "module "
+	containerFile      = "container.go"
+	mainFile           = "main.go"
+	mainPackage        = "main"
+	generateDirective  = "//go:generate "
+	goModFile          = "go.mod"
+	entDirectory       = "ent"
+	entSchemaDirectory = "schema"
 )
 
 const CompositionRootThreshold = 2
@@ -165,56 +167,6 @@ func IsCompositionRoot(
 	return base == containerFile || base == mainFile && packageName == mainPackage
 }
 
-func HasSource(
-	dir string,
-) (hasSource bool, err error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return false,
-			fmt.Errorf(
-				"read %s: %w",
-				dir,
-				err,
-			)
-	}
-
-	return slices.ContainsFunc(
-			entries,
-			isSourceEntry,
-		),
-		nil
-}
-
-func Entries(
-	dir string,
-) (paths []string, err error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil,
-			fmt.Errorf(
-				"read %s: %w",
-				dir,
-				err,
-			)
-	}
-
-	for _, entry := range slices.DeleteFunc(
-		entries,
-		isNotSourceEntry,
-	) {
-		paths = append(
-			paths,
-			filepath.Join(
-				dir,
-				entry.Name(),
-			),
-		)
-	}
-
-	return paths,
-		nil
-}
-
 func isModuleDirective(
 	line string,
 ) (matches bool) {
@@ -229,18 +181,6 @@ func isFuncDecl(
 ) (isFunc bool) {
 	_, isFunc = decl.(*ast.FuncDecl)
 	return isFunc
-}
-
-func isSourceEntry(
-	entry os.DirEntry,
-) (isSource bool) {
-	return !entry.IsDir() && filepath.Ext(entry.Name()) == goExtension && !IsTest(entry.Name())
-}
-
-func isNotSourceEntry(
-	entry os.DirEntry,
-) (excluded bool) {
-	return !isSourceEntry(entry)
 }
 
 func isMockDirectory(
@@ -405,17 +345,28 @@ func isIntegrationTag(
 func hasProvenance(
 	path string,
 ) (proven bool) {
-	return hasGenerateDirective(path) || hasGeneratorConfig(filepath.Dir(path))
+	directory := filepath.Dir(path)
+	return hasGenerateDirective(
+		path,
+		directory,
+	) || hasGenerateDirective(
+		path,
+		moduleRoot(directory),
+	) || hasGeneratorConfig(directory)
 }
 
 func hasGenerateDirective(
 	generated string,
+	directory string,
 ) (found bool) {
 	paths, err := filepath.Glob(filepath.Join(
-		filepath.Dir(generated),
+		directory,
 		"*"+goExtension,
 	))
-	for _, path := range paths {
+	for _, path := range slices.DeleteFunc(
+		paths,
+		IsTest,
+	) {
 		found = found || path != generated && declaresGenerate(path)
 	}
 
@@ -438,22 +389,48 @@ func declaresGenerate(
 func isGenerateLine(
 	line string,
 ) (matches bool) {
-	return strings.HasPrefix(
+	command, isDirective := strings.CutPrefix(
 		line,
 		generateDirective,
 	)
+	fields := strings.Fields(command)
+	return isDirective && len(fields) > 0 && !slices.Contains(
+		inertCommands(),
+		fields[0],
+	)
+}
+
+func moduleRoot(
+	directory string,
+) (root string) {
+	parent := filepath.Dir(directory)
+	isRoot := exists(filepath.Join(
+		directory,
+		goModFile,
+	)) || parent == directory
+	if isRoot {
+		return directory
+	}
+
+	return moduleRoot(parent)
 }
 
 func hasGeneratorConfig(
 	directory string,
 ) (found bool) {
 	for _, name := range generatorConfigs() {
-		found = found || exists(filepath.Join(
+		found = found || isNonEmptyFile(filepath.Join(
 			directory,
 			name,
 		))
 	}
 
+	hasEntSchema, err := HasSource(filepath.Join(
+		directory,
+		entDirectory,
+		entSchemaDirectory,
+	))
+	found = found || err == nil && hasEntSchema
 	parent := filepath.Dir(directory)
 	isLast := found || exists(filepath.Join(
 		directory,
@@ -473,6 +450,17 @@ func exists(
 	return err == nil
 }
 
+func isNonEmptyFile(
+	path string,
+) (nonEmpty bool) {
+	info, err := os.Stat(path)
+	return err == nil && info.Mode().IsRegular() && info.Size() > 0
+}
+
+func inertCommands() (names []string) {
+	return []string{"echo", "true", "false", ":", "printf", "exit", "sleep", "test", "["}
+}
+
 func generatorConfigs() (names []string) {
-	return []string{"buf.gen.yaml", "buf.gen.yml", "sqlc.yaml", "sqlc.yml", "sqlc.json", "gqlgen.yml", "gqlgen.yaml", ".mockery.yaml", ".mockery.yml", "oapi-codegen.yaml", "ent"}
+	return []string{"buf.gen.yaml", "buf.gen.yml", "sqlc.yaml", "sqlc.yml", "sqlc.json", "gqlgen.yml", "gqlgen.yaml", ".mockery.yaml", ".mockery.yml", "oapi-codegen.yaml"}
 }

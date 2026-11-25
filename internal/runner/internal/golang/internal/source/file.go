@@ -7,11 +7,12 @@ import (
 )
 
 type File struct {
-	Path    string
-	Rel     string
-	FileSet *token.FileSet
-	Syntax  *ast.File
-	Content []byte
+	Path        string
+	Rel         string
+	FileSet     *token.FileSet
+	Syntax      *ast.File
+	Content     []byte
+	IsGenerated bool
 }
 
 func (f File) Location(
