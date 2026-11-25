@@ -12,12 +12,29 @@ const (
 	makefileExtension   = ".mk"
 	dockerfileName      = "Dockerfile"
 	dockerfileSeparator = "."
+	dotenvName          = ".env"
+	justExtension       = ".just"
 )
 
 func Shell() (language lexeme.Language) {
 	return lexeme.Language{
 		Matches: isShell,
 		Spans:   shellCode,
+		Interpreters: []string{
+			"sh",
+			"bash",
+			"zsh",
+			"ksh",
+			"dash",
+			"ash",
+		},
+	}
+}
+
+func Justfile() (language lexeme.Language) {
+	return lexeme.Language{
+		Matches: isJustfile,
+		Spans:   justfileCode,
 	}
 }
 
@@ -52,6 +69,16 @@ func shellCode(
 	)
 }
 
+func justfileCode(
+	text []byte,
+) (spans []lexeme.Span) {
+	return lexeme.Without(
+		text,
+		shellSpans(text),
+		isRecipeShebang,
+	)
+}
+
 func yamlCode(
 	text []byte,
 ) (spans []lexeme.Span) {
@@ -82,7 +109,22 @@ func isShell(
 			".ksh",
 		},
 		filepath.Ext(name),
+	) || slices.Contains(
+		[]string{dotenvName, ".envrc"},
+		name,
+	) || strings.HasPrefix(
+		name,
+		dotenvName+dockerfileSeparator,
 	)
+}
+
+func isJustfile(
+	name string,
+) (matched bool) {
+	return slices.Contains(
+		[]string{"justfile", "Justfile", ".justfile"},
+		name,
+	) || filepath.Ext(name) == justExtension
 }
 
 func isYaml(

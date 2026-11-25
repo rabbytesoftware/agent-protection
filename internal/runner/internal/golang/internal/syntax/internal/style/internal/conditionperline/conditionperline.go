@@ -47,11 +47,29 @@ func statementFindings(
 	file source.File,
 	statement *ast.IfStmt,
 ) (findings []report.Finding) {
+	collapsed := collapsedJoins(
+		file,
+		statement,
+	)
+	if len(collapsed) == 0 {
+		return nil
+	}
+
+	return []report.Finding{{
+		Rule:     rule,
+		Location: file.Location(statement.Cond),
+		Snippet:  snippet,
+	}}
+}
+
+func collapsedJoins(
+	file source.File,
+	statement *ast.IfStmt,
+) (collapsed []*ast.BinaryExpr) {
 	joins := slices.DeleteFunc(
 		source.Nodes[*ast.BinaryExpr](statement.Cond),
 		isNotLogical,
 	)
-	collapsed := []*ast.BinaryExpr{}
 	for _, join := range joins {
 		collapsed = append(
 			collapsed,
@@ -62,15 +80,7 @@ func statementFindings(
 		)
 	}
 
-	if len(collapsed) == 0 {
-		return nil
-	}
-
-	return []report.Finding{{
-		Rule:     rule,
-		Location: file.Location(statement.Cond),
-		Snippet:  snippet,
-	}}
+	return collapsed
 }
 
 func collapsedJoin(

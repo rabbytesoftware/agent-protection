@@ -24,6 +24,20 @@ func isToolDirective(
 		regexp.MustCompile(schemaPattern).Match(comment))
 }
 
+func isRecipeShebang(
+	text []byte,
+	span lexeme.Span,
+) (directive bool) {
+	return lexeme.IsLineLeading(
+		text,
+		span,
+	) && lexeme.HasPrefix(
+		text,
+		span.Start,
+		lexeme.Shebang,
+	)
+}
+
 func parserDirectivesEnd(
 	text []byte,
 ) (end int) {

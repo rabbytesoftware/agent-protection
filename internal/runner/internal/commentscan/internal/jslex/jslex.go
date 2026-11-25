@@ -327,6 +327,12 @@ func Jslex() (language lexeme.Language) {
 	return lexeme.Language{
 		Matches: matches,
 		Spans:   scriptSpans,
+		Interpreters: []string{
+			"node",
+			"nodejs",
+			"deno",
+			"bun",
+		},
 	}
 }
 

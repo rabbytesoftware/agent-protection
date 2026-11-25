@@ -38,15 +38,35 @@ func Genericname(
 func fileFindings(
 	file source.File,
 ) (findings []report.Finding) {
+	isExempt := isExemptIn(file.Syntax.Name.Name)
 	for _, identifier := range slices.DeleteFunc(
 		declaredNames(file.Syntax),
-		isExemptIn(file.Syntax.Name.Name),
+		isExempt,
 	) {
 		findings = append(
 			findings,
 			identifierFindings(
 				file,
 				identifier,
+				reasonsFor(file.Rel),
+			)...,
+		)
+	}
+
+	if isTestSupport(file.Rel) {
+		return findings
+	}
+
+	for _, identifier := range slices.DeleteFunc(
+		packageValueNames(file.Syntax),
+		isExempt,
+	) {
+		findings = append(
+			findings,
+			identifierFindings(
+				file,
+				identifier,
+				escapeReason,
 			)...,
 		)
 	}
@@ -57,8 +77,9 @@ func fileFindings(
 func identifierFindings(
 	file source.File,
 	identifier *ast.Ident,
+	reasonOf func(string) string,
 ) (findings []report.Finding) {
-	reason := genericReason(identifier.Name)
+	reason := reasonOf(identifier.Name)
 	if reason == "" {
 		return nil
 	}
@@ -72,6 +93,27 @@ func identifierFindings(
 			reason,
 		),
 	}}
+}
+
+func reasonsFor(
+	rel string,
+) (reasonOf func(string) string) {
+	if isTestSupport(rel) {
+		return genericReason
+	}
+
+	return anyReason
+}
+
+func anyReason(
+	name string,
+) (reason string) {
+	reason = genericReason(name)
+	if reason != "" {
+		return reason
+	}
+
+	return escapeReason(name)
 }
 
 func genericReason(

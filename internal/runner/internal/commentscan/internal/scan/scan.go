@@ -24,8 +24,14 @@ func Scan(
 	root string,
 	excluded []string,
 	languages []lexeme.Language,
+	fallback lexeme.Language,
 ) (findings []report.Finding, err error) {
-	visitor := &walker{root: root, excluded: excluded, languages: languages}
+	visitor := &walker{
+		root:      root,
+		excluded:  excluded,
+		languages: languages,
+		fallback:  fallback,
+	}
 	err = filepath.WalkDir(
 		root,
 		visitor.visit,
@@ -38,8 +44,21 @@ func Scan(
 			)
 	}
 
+	return filesFindings(
+		root,
+		unignored(
+			root,
+			visitor.files,
+		),
+	)
+}
+
+func filesFindings(
+	root string,
+	files []source,
+) (findings []report.Finding, err error) {
 	failures := []error{}
-	for _, file := range visitor.files {
+	for _, file := range files {
 		fileFound, fileErr := fileFindings(
 			root,
 			file,
@@ -71,7 +90,9 @@ func fileFindings(
 			)
 	}
 
-	isExempt := isGenerated(text) && hasGeneratedName(file.path)
+	language, isLexed := file.resolve(text)
+	isExempt := !isLexed ||
+		(isGenerated(text) && hasGeneratedName(file.path))
 	if isExempt {
 		return nil,
 			nil
@@ -93,7 +114,7 @@ func fileFindings(
 			filepath.ToSlash(rel),
 			lexeme.Lines(
 				text,
-				file.language.Spans(text),
+				language.Spans(text),
 			),
 		),
 		nil

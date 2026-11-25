@@ -44,6 +44,8 @@ func Edits(
 	return slices.Concat(
 		paramperline.Edits(file),
 		argumentperline.Edits(file),
+		conditionperline.Edits(file),
+		returnperline.Edits(file),
 		paragraph.Edits(file),
 	)
 }

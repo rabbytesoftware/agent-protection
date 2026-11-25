@@ -17,8 +17,8 @@ func TestComments(
 		excluded []string
 		want     []string
 	}{
-		{name: "every language in the tree is scanned", excluded: nil, want: []string{"Dockerfile:1", "Makefile:1", "a.go:3", "go.mod:3", "lib/a.rs:1", "migrations/1.sql:1", "scripts/a.sh:2", "tools/a.py:1", "tools/a.rb:1", "tools/a.toml:1", "web/a.ts:1", "workflow.yml:1"}},
-		{name: "an excluded extension is left to its language runner", excluded: []string{".go"}, want: []string{"Dockerfile:1", "Makefile:1", "go.mod:3", "lib/a.rs:1", "migrations/1.sql:1", "scripts/a.sh:2", "tools/a.py:1", "tools/a.rb:1", "tools/a.toml:1", "web/a.ts:1", "workflow.yml:1"}},
+		{name: "every language in the tree is scanned", excluded: nil, want: []string{".env:1", ".gitignore:1", "Dockerfile:1", "Justfile:1", "Makefile:1", "a.go:3", "config.jsonc:2", "config.unknown:1", "go.mod:3", "graph/a.graphqls:1", "infra/a.tf:1", "lib/a.lua:1", "lib/a.rs:1", "migrations/1.sql:1", "proto/a.proto:2", "scripts/a.sh:2", "scripts/deploy:2", "settings.ini:1", "tools/a.py:1", "tools/a.rb:1", "tools/a.toml:1", "web/a.css:1", "web/a.html:1", "web/a.html:2", "web/a.html:3", "web/a.ts:1", "workflow.yml:1"}},
+		{name: "an excluded extension is left to its language runner", excluded: []string{".go"}, want: []string{".env:1", ".gitignore:1", "Dockerfile:1", "Justfile:1", "Makefile:1", "config.jsonc:2", "config.unknown:1", "go.mod:3", "graph/a.graphqls:1", "infra/a.tf:1", "lib/a.lua:1", "lib/a.rs:1", "migrations/1.sql:1", "proto/a.proto:2", "scripts/a.sh:2", "scripts/deploy:2", "settings.ini:1", "tools/a.py:1", "tools/a.rb:1", "tools/a.toml:1", "web/a.css:1", "web/a.html:1", "web/a.html:2", "web/a.html:3", "web/a.ts:1", "workflow.yml:1"}},
 	}
 	root := fixture(t)
 	for _, tc := range cases {
@@ -104,6 +104,20 @@ func fixture(
 		"testdata/a.sh":    "# fixture\n",
 		"vendor/x/a.go":    "// vendored\n",
 		"notes.txt":        "# not code\n",
+		"proto/a.proto":    "syntax = \"proto3\";\n// why\n",
+		"graph/a.graphqls": "# why\n",
+		"web/a.html":       "<!-- why -->\n<p>{{/* hack */}}</p>\n<script>// x\n</script>\n",
+		"web/a.css":        "/* why */\n",
+		"infra/a.tf":       "# why\n",
+		".env":             "# why\n",
+		"settings.ini":     "; why\n",
+		"config.jsonc":     "{\n// why\n}\n",
+		"lib/a.lua":        "-- why\n",
+		"Justfile":         "# why\n",
+		".gitignore":       "# why\n",
+		"scripts/deploy":   "#!/usr/bin/env node\n// why\n",
+		"config.unknown":   "# why\n",
+		"LICENSE":          "# not code\n",
 	}
 	for path, code := range files {
 		write(

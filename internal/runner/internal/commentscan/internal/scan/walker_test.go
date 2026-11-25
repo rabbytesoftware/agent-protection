@@ -58,6 +58,7 @@ func TestWalkerFirstLanguageWins(
 			{Matches: isNote, Spans: noSpans},
 			{Matches: isNote, Spans: wholeText},
 		},
+		lexeme.Language{},
 	)
 	isWrong := err != nil || len(findings) != 0
 	if isWrong {

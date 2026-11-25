@@ -107,7 +107,6 @@ func genericNames() (names []string) {
 	return slices.Concat(
 		bucketNames(),
 		vagueNames(),
-		temporaryNames(),
 	)
 }
 
@@ -155,35 +154,12 @@ func vagueNames() (names []string) {
 	}
 }
 
-func temporaryNames() (names []string) {
-	return []string{
-		"legacy",
-		"compat",
-		"tmp",
-		"temp",
-		"temporary",
-		"wip",
-		"hack",
-		"hacks",
-		"old",
-		"new",
-		"deprecated",
-		"unused",
-		"todo",
-		"workaround",
-		"junk",
-	}
-}
-
 func genericAffixes() (affixes []string) {
 	return []string{
 		"util",
 		"utils",
 		"helper",
 		"helpers",
-		"legacy",
-		"compat",
-		"deprecated",
 	}
 }
 

@@ -32,6 +32,40 @@ func TestToml(
 	}
 }
 
+func TestGraphql(
+	t *testing.T,
+) {
+	cases := []struct {
+		name string
+		code string
+		want []int
+	}{
+		{name: "comment is reported", code: "type Query {\n  # deprecated\n  a: Int\n}\n", want: []int{2}},
+		{name: "hash in a description passes", code: "\"\"\"\n# not a comment\n\"\"\"\ntype A { a: Int }\n", want: nil},
+		{name: "hash in a string passes", code: "directive @a(x: String = \"#\") on FIELD\n", want: nil},
+	}
+	for _, tc := range cases {
+		assertLines(
+			t,
+			tc.name,
+			pylex.Graphql(),
+			tc.code,
+			tc.want,
+		)
+	}
+}
+
+func TestGraphqlMatches(
+	t *testing.T,
+) {
+	assertMatches(
+		t,
+		pylex.Graphql(),
+		[]string{"a.graphql", "schema.graphqls", "q.gql"},
+		[]string{"a.graph"},
+	)
+}
+
 func TestPythonMatches(
 	t *testing.T,
 ) {

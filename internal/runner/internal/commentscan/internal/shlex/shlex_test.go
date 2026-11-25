@@ -43,8 +43,50 @@ func TestShellMatches(
 			"b.bash",
 			"c.zsh",
 			"d.ksh",
+			".env",
+			".envrc",
+			".env.local",
 		},
-		[]string{"a.py", "sh"},
+		[]string{"a.py", "sh", "a.env.go"},
+	)
+}
+
+func TestJustfile(
+	t *testing.T,
+) {
+	cases := []struct {
+		name string
+		code string
+		want []int
+	}{
+		{name: "comment is reported", code: "# legacy\nbuild:\n\tgo build ./...\n", want: []int{1}},
+		{name: "recipe shebang passes", code: "test:\n    #!/usr/bin/env bash\n    go test\n", want: nil},
+		{name: "recipe comment is reported", code: "test:\n    go test # why\n", want: []int{2}},
+	}
+	for _, tc := range cases {
+		assertLines(
+			t,
+			tc.name,
+			shlex.Justfile(),
+			tc.code,
+			tc.want,
+		)
+	}
+}
+
+func TestJustfileMatches(
+	t *testing.T,
+) {
+	assertMatches(
+		t,
+		shlex.Justfile(),
+		[]string{
+			"Justfile",
+			"justfile",
+			".justfile",
+			"ci.just",
+		},
+		[]string{"Justfile.md", "just"},
 	)
 }
 

@@ -25,6 +25,11 @@ func checks() (all []nameCheck) {
 		},
 		{
 			rule:     genericRule,
+			format:   "%s %q is an escape-hatch name: name it after what it does, not after how provisional or patched it is",
+			violates: isEscapeHatch,
+		},
+		{
+			rule:     genericRule,
 			format:   "%s %q is a numbered overflow: merge it back into the package it split from, or name it after what it holds",
 			violates: isNumbered,
 		},

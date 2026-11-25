@@ -31,6 +31,7 @@ func TestScanSnippet(
 		root,
 		nil,
 		noteLanguages(),
+		lexeme.Language{},
 	)
 	want := []report.Finding{{Rule: "R07", Location: "a.note:1", Snippet: "comment: delete it and make the code say it through names and structure"}}
 	isWrong := err != nil || !slices.Equal(
@@ -84,6 +85,7 @@ func TestScanRejectsMissingRoot(
 		),
 		nil,
 		noteLanguages(),
+		lexeme.Language{},
 	)
 	if err == nil {
 		t.Error("Scan() error = nil, want one for a missing root")
@@ -119,6 +121,7 @@ func TestScanRejectsUnreadableFile(
 		root,
 		nil,
 		noteLanguages(),
+		lexeme.Language{},
 	)
 	if err == nil {
 		t.Error("Scan() error = nil, want one for an unreadable file")
@@ -193,6 +196,7 @@ func TestScanSkipsIgnoredDirectories(
 		root,
 		nil,
 		noteLanguages(),
+		lexeme.Language{},
 	)
 	if err != nil {
 		t.Fatalf(
@@ -233,6 +237,7 @@ func assertScanned(
 		root,
 		excluded,
 		noteLanguages(),
+		lexeme.Language{},
 	)
 	if err != nil {
 		t.Fatalf(

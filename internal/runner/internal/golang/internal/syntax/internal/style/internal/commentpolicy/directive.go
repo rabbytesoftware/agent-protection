@@ -17,7 +17,7 @@ const (
 	lineDirectivePrefix   = "//line "
 	exportDirectivePrefix = "//export "
 	externDirectivePrefix = "//extern "
-	legacyBuildPrefix     = "// +build "
+	plusBuildPrefix       = "// +build "
 	buildDirectivePrefix  = "//go:build "
 	positionSeparator     = ":"
 	settingSeparator      = "="
@@ -49,7 +49,7 @@ func isDirective(
 			comment.Text,
 			externDirectivePrefix,
 		) ||
-		isLegacyBuild(
+		isPlusBuild(
 			file,
 			comment,
 		)
@@ -201,13 +201,13 @@ func isConstraint(
 		comment.End() < file.Syntax.Package
 }
 
-func isLegacyBuild(
+func isPlusBuild(
 	file source.File,
 	comment *ast.Comment,
 ) (legacy bool) {
 	return strings.HasPrefix(
 		comment.Text,
-		legacyBuildPrefix,
+		plusBuildPrefix,
 	) && isConstraint(
 		file,
 		comment,

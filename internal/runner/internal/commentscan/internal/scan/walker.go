@@ -13,6 +13,7 @@ type walker struct {
 	root      string
 	excluded  []string
 	languages []lexeme.Language
+	fallback  lexeme.Language
 	files     []source
 }
 
@@ -40,18 +41,40 @@ func (w *walker) visit(
 		return nil
 	}
 
+	w.files = append(
+		w.files,
+		w.sourcesOf(
+			path,
+			entry.Name(),
+		)...,
+	)
+	return nil
+}
+
+func (w *walker) sourcesOf(
+	path string,
+	name string,
+) (sources []source) {
 	language, found := languageOf(
 		w.languages,
-		entry.Name(),
+		name,
 	)
 	if found {
-		w.files = append(
-			w.files,
-			source{path: path, language: language},
-		)
+		return []source{{
+			path:     path,
+			language: language,
+		}}
 	}
 
-	return nil
+	if !isCandidate(name) {
+		return nil
+	}
+
+	return []source{{
+		path:       path,
+		candidates: w.languages,
+		fallback:   w.fallback,
+	}}
 }
 
 func languageOf(

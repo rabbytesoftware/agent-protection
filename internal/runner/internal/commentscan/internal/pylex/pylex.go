@@ -9,15 +9,24 @@ import (
 
 func Python() (language lexeme.Language) {
 	return lexeme.Language{
-		Matches: isPython,
-		Spans:   pythonCode,
+		Matches:      isPython,
+		Spans:        pythonCode,
+		Interpreters: []string{"python", "pypy"},
 	}
 }
 
 func Ruby() (language lexeme.Language) {
 	return lexeme.Language{
-		Matches: isRuby,
-		Spans:   rubyCode,
+		Matches:      isRuby,
+		Spans:        rubyCode,
+		Interpreters: []string{"ruby"},
+	}
+}
+
+func Graphql() (language lexeme.Language) {
+	return lexeme.Language{
+		Matches: isGraphql,
+		Spans:   hashSpans,
 	}
 }
 
@@ -76,6 +85,15 @@ func isRuby(
 	) || slices.Contains(
 		[]string{"Rakefile", "Gemfile"},
 		name,
+	)
+}
+
+func isGraphql(
+	name string,
+) (matched bool) {
+	return slices.Contains(
+		[]string{".graphql", ".graphqls", ".gql"},
+		filepath.Ext(name),
 	)
 }
 

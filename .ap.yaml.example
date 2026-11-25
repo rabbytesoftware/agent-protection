@@ -1,16 +1,7 @@
-# Copy this file to .ap.yaml at the root of the component folder this
-# instance of Agent Protection checks (one language per folder -- see
-# README). This is the ONLY file in a consuming repo that owns the pinned
-# version; lefthook.yml, .claude/settings.json, and the CI workflow all
-# read it instead of hardcoding their own copy.
 version: v0.1.0
 
-# Optional: paths excluded from checks (generated code, vendored deps).
 exclude:
   - vendor/
   - generated/
 
-# Optional: build tags this Go module needs to type-check (e.g. a module
-# with a //go:embed target that only exists after a separate frontend
-# build step). Leave unset if the module builds cleanly with no tags.
 go_build_tags: ""
