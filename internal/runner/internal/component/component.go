@@ -20,15 +20,13 @@ const (
 
 func Check(
 	root string,
+	environment func(string) string,
 	checkers []Checker,
 	comments func(string, []string) ([]report.Finding, error),
 ) (findings []report.Finding, err error) {
-	index := slices.Index(
-		presence(
-			root,
-			checkers,
-		),
-		true,
+	index := markedIndex(
+		root,
+		checkers,
 	)
 	if index < 0 {
 		return nil,
@@ -38,7 +36,10 @@ func Check(
 			)
 	}
 
-	own, err := checkers[index].Check(root)
+	own, err := checkers[index].Check(
+		root,
+		environment,
+	)
 	if err != nil {
 		return nil,
 			err
@@ -58,6 +59,19 @@ func Check(
 			commented...,
 		),
 		nil
+}
+
+func markedIndex(
+	root string,
+	checkers []Checker,
+) (index int) {
+	return slices.Index(
+		presence(
+			root,
+			checkers,
+		),
+		true,
+	)
 }
 
 func presence(

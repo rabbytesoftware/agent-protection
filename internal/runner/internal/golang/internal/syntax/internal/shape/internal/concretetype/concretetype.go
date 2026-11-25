@@ -13,9 +13,11 @@ import (
 )
 
 const (
-	rule        = "R13"
-	mainPackage = "main"
-	errorMethod = "Error"
+	rule          = "R13"
+	mainPackage   = "main"
+	errorMethod   = "Error"
+	pointerFormat = "exported struct %s has pointer-receiver methods: it is an implementation; unexport it and return an interface from its constructor"
+	writerFormat  = "exported struct %s has %s: it is an implementation like a pointer receiver; unexport it and return an interface from its constructor"
 )
 
 func Concretetype(
@@ -47,12 +49,14 @@ func packageFindings(
 	files []source.File,
 ) (findings []report.Finding) {
 	implementations := implementationNames(files)
+	writers := writtenThrough(files)
 	for _, file := range files {
 		findings = append(
 			findings,
 			fileFindings(
 				file,
 				implementations,
+				writers,
 			)...,
 		)
 	}
@@ -63,6 +67,7 @@ func packageFindings(
 func fileFindings(
 	file source.File,
 	implementations []string,
+	writers map[string]string,
 ) (findings []report.Finding) {
 	for _, spec := range exportedStructs(file) {
 		findings = append(
@@ -71,6 +76,7 @@ func fileFindings(
 				file,
 				spec,
 				implementations,
+				writers,
 			)...,
 		)
 	}
@@ -82,21 +88,34 @@ func specFindings(
 	file source.File,
 	spec *ast.TypeSpec,
 	implementations []string,
+	writers map[string]string,
 ) (findings []report.Finding) {
-	if !slices.Contains(
+	name := spec.Name.Name
+	snippet := fmt.Sprintf(
+		pointerFormat,
+		name,
+	)
+	writer, isWriter := writers[name]
+	if isWriter {
+		snippet = fmt.Sprintf(
+			writerFormat,
+			name,
+			writer,
+		)
+	}
+
+	isImplementation := isWriter || slices.Contains(
 		implementations,
-		spec.Name.Name,
-	) {
+		name,
+	)
+	if !isImplementation {
 		return nil
 	}
 
 	return []report.Finding{{
 		Rule:     rule,
 		Location: file.Location(spec),
-		Snippet: fmt.Sprintf(
-			"exported struct %s has pointer-receiver methods: it is an implementation; unexport it and return an interface from its constructor",
-			spec.Name.Name,
-		),
+		Snippet:  snippet,
 	}}
 }
 
@@ -104,10 +123,7 @@ func implementationNames(
 	files []source.File,
 ) (names []string) {
 	declared := packageMethods(files)
-	errorTypes := receiverNames(slices.DeleteFunc(
-		slices.Clone(declared),
-		isNotErrorMethod,
-	))
+	errorTypes := errorTypeNames(declared)
 	for _, name := range receiverNames(slices.DeleteFunc(
 		declared,
 		isValueReceiver,
@@ -120,6 +136,15 @@ func implementationNames(
 	}
 
 	return names
+}
+
+func errorTypeNames(
+	declared []*ast.FuncDecl,
+) (names []string) {
+	return receiverNames(slices.DeleteFunc(
+		slices.Clone(declared),
+		isNotErrorMethod,
+	))
 }
 
 func appendImplementation(

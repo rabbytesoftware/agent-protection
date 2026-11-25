@@ -42,3 +42,42 @@ func TestDroppederrorFailureIdentification(
 		)
 	}
 }
+
+func TestDroppederrorIgnoredParameter(
+	t *testing.T,
+) {
+	cases := []struct {
+		name string
+		path string
+		code string
+		want []string
+	}{
+		{name: "blank error parameter is reported", path: "p.go", code: "package p\n\nfunc Silence(\n\t_ error,\n) {\n}\n", want: []string{"R26 p.go:4"}},
+		{name: "unnamed error parameter is reported", path: "p.go", code: "package p\n\nfunc Silence(error) {\n}\n", want: []string{"R26 p.go:3"}},
+		{name: "named error parameter never read is reported", path: "p.go", code: "package p\n\ntype quiet struct{}\n\nfunc (quiet) Report(\n\terr error,\n) {\n\tcount++\n}\n", want: []string{"R26 p.go:6"}},
+		{name: "func literal ignoring its error parameter is reported", path: "p.go", code: "package p\n\nfunc f() {\n\twire(func(err error) {\n\t})\n}\n", want: []string{"R26 p.go:4"}},
+		{name: "error parameter read in the body passes", path: "p.go", code: "package p\n\nfunc Report(\n\terr error,\n) {\n\trecord(err)\n}\n", want: nil},
+		{name: "error parameter shadowed and never read is reported", path: "p.go", code: "package p\n\nfunc Report(\n\terr error,\n) {\n\tif err := other(); err != nil {\n\t\trecord(err)\n\t}\n}\n", want: []string{"R26 p.go:4"}},
+		{name: "declaration without a body passes", path: "p.go", code: "package p\n\nfunc Report(\n\terr error,\n)\n", want: nil},
+		{name: "non-error parameter never read passes", path: "p.go", code: "package p\n\nfunc Report(\n\tvalue int,\n) {\n}\n", want: nil},
+		{name: "func literal default reporter is reported", path: "p.go", code: "package p\n\nfunc defaults(\n\tc config,\n) (completed config) {\n\tcompleted = c\n\tcompleted.report = func(error) {\n\t}\n\n\treturn completed\n}\n", want: []string{"R26 p.go:7"}},
+		{name: "func literal passed as a reporter argument is reported", path: "p.go", code: "package p\n\nfunc f() {\n\tstart(func(_ error) {\n\t})\n}\n", want: []string{"R26 p.go:4"}},
+		{name: "method with an unnamed error parameter is reported", path: "p.go", code: "package p\n\ntype sink struct{}\n\nfunc (s sink) Report(error) {\n}\n", want: []string{"R26 p.go:5"}},
+		{name: "variadic error parameter never read is reported", path: "p.go", code: "package p\n\nfunc Report(\n\terrs ...error,\n) {\n}\n", want: []string{"R26 p.go:4"}},
+		{name: "one of two error parameters never read is reported", path: "p.go", code: "package p\n\nfunc Report(\n\tfirst, second error,\n) {\n\trecord(first)\n}\n", want: []string{"R26 p.go:4"}},
+		{name: "test helpers ignoring an error pass", path: "p_test.go", code: "package p\n\nfunc ignore(\n\t_ error,\n) {\n}\n", want: nil},
+		{name: "mock files ignoring an error pass", path: "mocks/p.go", code: "package mocks\n\nfunc ignore(\n\t_ error,\n) {\n}\n", want: nil},
+	}
+	for _, tc := range cases {
+		assertFindings(
+			t,
+			tc.name,
+			droppederror.Droppederror([]source.File{parsedAt(
+				t,
+				tc.path,
+				tc.code,
+			)}),
+			tc.want,
+		)
+	}
+}

@@ -11,9 +11,11 @@ import (
 
 func Runner(
 	root string,
+	environment func(string) string,
 ) (findings []report.Finding, err error) {
 	return component.Check(
 		root,
+		environment,
 		[]component.Checker{
 			{
 				Marker: component.GoMarker,

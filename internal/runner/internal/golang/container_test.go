@@ -35,7 +35,10 @@ func TestGolang(
 		),
 		"package fixture\n\n// Branch picks a label.\nfunc Branch(x bool) (label string) {\n\tif x {\n\t\treturn \"yes\"\n\t} else {\n\t\treturn \"no\"\n\t}\n}\n",
 	)
-	findings, err := golang.Golang(root)
+	findings, err := golang.Golang(
+		root,
+		os.Getenv,
+	)
 	if err != nil {
 		t.Fatalf(
 			"Golang() error = %v",
@@ -125,7 +128,10 @@ func generatedFixtureRules(
 		)
 	}
 
-	findings, err := golang.Golang(root)
+	findings, err := golang.Golang(
+		root,
+		os.Getenv,
+	)
 	if err != nil {
 		t.Fatalf(
 			"Golang() error = %v",
@@ -378,7 +384,10 @@ func assertNoLayoutFindings(
 	root string,
 ) {
 	t.Helper()
-	findings, err := golang.Golang(root)
+	findings, err := golang.Golang(
+		root,
+		os.Getenv,
+	)
 	if err != nil {
 		t.Fatalf(
 			"Golang() error = %v",
@@ -452,7 +461,10 @@ func assertGolangError(
 		"PATH",
 		path,
 	)
-	_, err := golang.Golang(root)
+	_, err := golang.Golang(
+		root,
+		os.Getenv,
+	)
 	if err == nil {
 		t.Errorf(
 			"Golang(%s) with PATH %s: error = nil, want one",

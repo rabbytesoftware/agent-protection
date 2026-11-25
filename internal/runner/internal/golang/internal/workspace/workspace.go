@@ -22,9 +22,13 @@ const (
 
 func Workspace(
 	root string,
-	check func(string) ([]report.Finding, error),
+	environment func(string) string,
+	check func(string, func(string) string) ([]report.Finding, error),
 ) (findings []report.Finding, err error) {
-	findings, err = check(root)
+	findings, err = check(
+		root,
+		environment,
+	)
 	if err != nil {
 		return nil,
 			err
@@ -46,6 +50,7 @@ func Workspace(
 		root,
 		nested,
 		members,
+		environment,
 		check,
 	)
 	return distinct(slices.Concat(
@@ -59,7 +64,8 @@ func modulesFindings(
 	root string,
 	nested []string,
 	members []string,
-	check func(string) ([]report.Finding, error),
+	environment func(string) string,
+	check func(string, func(string) string) ([]report.Finding, error),
 ) (findings []report.Finding, err error) {
 	failures := []error{}
 	for _, module := range nested {
@@ -67,6 +73,7 @@ func modulesFindings(
 			root,
 			module,
 			members,
+			environment,
 			check,
 		)
 		findings = append(
@@ -87,7 +94,8 @@ func nestedFindings(
 	root string,
 	module string,
 	members []string,
-	check func(string) ([]report.Finding, error),
+	environment func(string) string,
+	check func(string, func(string) string) ([]report.Finding, error),
 ) (findings []report.Finding, err error) {
 	directory := filepath.Join(
 		root,
@@ -104,7 +112,10 @@ func nestedFindings(
 			nil
 	}
 
-	checked, err := check(directory)
+	checked, err := check(
+		directory,
+		environment,
+	)
 	if err != nil {
 		return nil,
 			fmt.Errorf(

@@ -12,7 +12,10 @@ import (
 func TestRunnerRejectsFolderWithoutLanguageMarker(
 	t *testing.T,
 ) {
-	_, err := runner.Runner(t.TempDir())
+	_, err := runner.Runner(
+		t.TempDir(),
+		os.Getenv,
+	)
 	if err == nil {
 		t.Error("Runner() error = nil, want an unsupported-folder error")
 	}
@@ -52,7 +55,10 @@ func TestRunnerChecksGoModule(
 		)
 	}
 
-	findings, err := runner.Runner(root)
+	findings, err := runner.Runner(
+		root,
+		os.Getenv,
+	)
 	if err != nil {
 		t.Fatalf(
 			"Runner() error = %v",
@@ -88,7 +94,10 @@ func TestRunnerScansCommentsInEveryLanguage(
 		)
 	}
 
-	findings, err := runner.Runner(root)
+	findings, err := runner.Runner(
+		root,
+		os.Getenv,
+	)
 	got := []string{}
 	for _, finding := range findings {
 		got = append(
@@ -244,7 +253,10 @@ func assertDispatch(
 		"PATH",
 		tools+string(os.PathListSeparator)+os.Getenv("PATH"),
 	)
-	findings, err := runner.Runner(root)
+	findings, err := runner.Runner(
+		root,
+		os.Getenv,
+	)
 	if err != nil {
 		t.Fatalf(
 			"Runner() with %s error = %v",

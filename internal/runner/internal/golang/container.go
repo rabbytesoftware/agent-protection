@@ -15,15 +15,18 @@ import (
 
 func Golang(
 	root string,
+	environment func(string) string,
 ) (findings []report.Finding, err error) {
 	return workspace.Workspace(
 		root,
+		environment,
 		Module,
 	)
 }
 
 func Module(
 	root string,
+	environment func(string) string,
 ) (findings []report.Finding, err error) {
 	files, tests, err := source.Load(root)
 	if err != nil {
@@ -43,13 +46,13 @@ func Module(
 			)
 	}
 
-	linted, err := lint.Lint(root)
+	linted, err := lint.Lint(
+		root,
+		environment,
+	)
 	if err != nil {
 		return nil,
-			fmt.Errorf(
-				"lint checks: %w",
-				err,
-			)
+			err
 	}
 
 	return slices.Concat(

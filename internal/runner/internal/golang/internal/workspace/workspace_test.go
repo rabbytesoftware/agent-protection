@@ -83,7 +83,7 @@ func TestWorkspaceErrors(
 	cases := []struct {
 		name  string
 		root  string
-		check func(string) ([]report.Finding, error)
+		check func(string, func(string) string) ([]report.Finding, error)
 	}{
 		{name: "a failing root check is an error", root: t.TempDir(), check: failingBelow("")},
 		{
@@ -99,6 +99,7 @@ func TestWorkspaceErrors(
 	for _, tc := range cases {
 		_, err := workspace.Workspace(
 			tc.root,
+			os.Getenv,
 			tc.check,
 		)
 		assertFailed(
@@ -118,6 +119,7 @@ func assertWorkspace(
 	t.Helper()
 	findings, err := workspace.Workspace(
 		root,
+		os.Getenv,
 		located(root),
 	)
 	got := summaries(findings)
@@ -152,9 +154,10 @@ func assertFailed(
 
 func located(
 	root string,
-) (check func(string) ([]report.Finding, error)) {
+) (check func(string, func(string) string) ([]report.Finding, error)) {
 	return func(
 		directory string,
+		environment func(string) string,
 	) (findings []report.Finding, err error) {
 		return moduleFindings(
 				root,
@@ -181,9 +184,10 @@ func moduleFindings(
 
 func failingBelow(
 	root string,
-) (check func(string) ([]report.Finding, error)) {
+) (check func(string, func(string) string) ([]report.Finding, error)) {
 	return func(
 		directory string,
+		environment func(string) string,
 	) (findings []report.Finding, err error) {
 		return nil,
 			failure(

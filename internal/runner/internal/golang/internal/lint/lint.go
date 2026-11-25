@@ -36,6 +36,27 @@ const (
 
 func Lint(
 	root string,
+	environment func(string) string,
+) (findings []report.Finding, err error) {
+	findings, err = linted(
+		root,
+		environment,
+	)
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"lint checks: %w",
+				err,
+			)
+	}
+
+	return findings,
+		nil
+}
+
+func linted(
+	root string,
+	environment func(string) string,
 ) (findings []report.Finding, err error) {
 	root, err = filepath.Abs(root)
 	if err != nil {
@@ -48,7 +69,7 @@ func Lint(
 
 	sets, err := tagSets(
 		root,
-		envTags(os.Getenv(buildTagsEnvVar)),
+		envTags(environment(buildTagsEnvVar)),
 	)
 	if err != nil {
 		return nil,

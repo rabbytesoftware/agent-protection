@@ -167,3 +167,110 @@ func isNotRecoverCheck(
 ) (excluded bool) {
 	return comparison.Op != token.NEQ || !isRecoverCall(comparedWithNil(comparison))
 }
+
+func inlineFindings(
+	file source.File,
+	callees map[string]int,
+) (findings []report.Finding) {
+	statements := source.Nodes[*ast.IfStmt](file.Syntax)
+	for _, comparison := range source.Nodes[*ast.BinaryExpr](file.Syntax) {
+		findings = append(
+			findings,
+			inlineFinding(
+				file,
+				comparison,
+				statements,
+				callees,
+			)...,
+		)
+	}
+
+	return findings
+}
+
+func inlineFinding(
+	file source.File,
+	comparison *ast.BinaryExpr,
+	statements []*ast.IfStmt,
+	callees map[string]int,
+) (findings []report.Finding) {
+	call := ast.Unparen(comparedWithNil(comparison))
+	isDrop := calleeName(call) != "" && resultsOf(
+		call,
+		callees,
+	) == errorOnly && !isHandledInline(
+		file,
+		comparison,
+		enclosingIf(
+			comparison,
+			statements,
+		),
+	)
+	if !isDrop {
+		return nil
+	}
+
+	return []report.Finding{finding(
+		file,
+		comparison,
+		fmt.Sprintf(
+			"the error from %s is compared with nil and then dropped: bind it with err := %s, then return it wrapped with %%w, or handle it",
+			types.ExprString(call),
+			types.ExprString(call),
+		),
+	)}
+}
+
+func isHandledInline(
+	file source.File,
+	comparison *ast.BinaryExpr,
+	statement *ast.IfStmt,
+) (handled bool) {
+	isChecked := statement != nil && comparison.Op == token.NEQ
+	if isChecked {
+		return !isExiting(lastStatement(statement.Body))
+	}
+
+	return source.IsTest(file.Path)
+}
+
+func isExiting(
+	last ast.Stmt,
+) (exiting bool) {
+	switch exit := last.(type) {
+	case *ast.ReturnStmt:
+		return true
+	case *ast.BranchStmt:
+		return exit.Tok != token.GOTO
+	}
+
+	return false
+}
+
+func enclosingIf(
+	comparison *ast.BinaryExpr,
+	statements []*ast.IfStmt,
+) (enclosing *ast.IfStmt) {
+	for _, statement := range statements {
+		enclosing = innermost(
+			enclosing,
+			statement,
+			comparison,
+		)
+	}
+
+	return enclosing
+}
+
+func innermost(
+	enclosing *ast.IfStmt,
+	statement *ast.IfStmt,
+	comparison *ast.BinaryExpr,
+) (inner *ast.IfStmt) {
+	isInside := statement.Cond.Pos() <= comparison.Pos() && comparison.End() <= statement.Cond.End()
+	if !isInside {
+		return enclosing
+	}
+
+	return statement
+}

@@ -32,6 +32,7 @@ func TestCheck(
 				t,
 				tc.markers,
 			),
+			os.Getenv,
 			checkers(),
 			scanned,
 		)
@@ -54,6 +55,7 @@ func TestCheckFailingCommentScan(
 			t,
 			[]string{component.GoMarker},
 		),
+		os.Getenv,
 		checkers(),
 		failingScan,
 	)
@@ -107,9 +109,10 @@ func checkers() (registered []component.Checker) {
 
 func labelled(
 	label string,
-) (check func(string) ([]report.Finding, error)) {
+) (check func(string, func(string) string) ([]report.Finding, error)) {
 	return func(
 		root string,
+		environment func(string) string,
 	) (findings []report.Finding, err error) {
 		return []report.Finding{{Rule: label}},
 			nil
@@ -118,6 +121,7 @@ func labelled(
 
 func failing(
 	root string,
+	environment func(string) string,
 ) (findings []report.Finding, err error) {
 	return nil,
 		errors.New("unreachable")

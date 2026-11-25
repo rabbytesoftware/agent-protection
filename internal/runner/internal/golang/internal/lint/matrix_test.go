@@ -84,7 +84,10 @@ func moduleWith(
 func lintSnippets(
 	root string,
 ) (snippets []string, err error) {
-	findings, err := lint.Lint(root)
+	findings, err := lint.Lint(
+		root,
+		os.Getenv,
+	)
 	for _, finding := range findings {
 		snippets = append(
 			snippets,

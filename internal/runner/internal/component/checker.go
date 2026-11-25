@@ -4,6 +4,6 @@ import "github.com/rabbytesoftware/agent-protection/internal/report"
 
 type Checker struct {
 	Marker string
-	Check  func(string) ([]report.Finding, error)
+	Check  func(string, func(string) string) ([]report.Finding, error)
 	Owned  []string
 }

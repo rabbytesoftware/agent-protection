@@ -63,6 +63,11 @@ func fileFindings(
 			callees,
 		),
 		recoverFindings(file),
+		inlineFindings(
+			file,
+			callees,
+		),
+		ignoredFindings(file),
 	)
 }
 

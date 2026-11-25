@@ -8,6 +8,7 @@ import (
 
 func Rust(
 	root string,
+	environment func(string) string,
 ) (findings []report.Finding, err error) {
 	warnings, err := clippy.Clippy(root)
 	if err != nil {

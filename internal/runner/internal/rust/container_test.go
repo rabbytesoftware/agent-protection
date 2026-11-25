@@ -36,7 +36,10 @@ func TestRust(
 		t,
 		"printf '%s\\n' 'src/lib.rs:2:5: warning: used `unwrap()` on an `Option` value' 'src/lib.rs:8:9: warning: used `unwrap()` on an `Option` value'",
 	)
-	findings, err := rust.Rust(root)
+	findings, err := rust.Rust(
+		root,
+		os.Getenv,
+	)
 	if err != nil {
 		t.Fatalf(
 			"Rust() error = %v",
@@ -63,7 +66,10 @@ func TestRustUnreadableWarnedFile(
 		t,
 		"printf '%s\\n' 'src/gone.rs:2:5: warning: used `unwrap()` on an `Option` value'",
 	)
-	_, err := rust.Rust(t.TempDir())
+	_, err := rust.Rust(
+		t.TempDir(),
+		os.Getenv,
+	)
 	if err == nil {
 		t.Error("Rust() error = nil, want an error for a warned file that cannot be read")
 	}
@@ -76,7 +82,10 @@ func TestRustClippyFailure(
 		t,
 		"exit 101",
 	)
-	_, err := rust.Rust(t.TempDir())
+	_, err := rust.Rust(
+		t.TempDir(),
+		os.Getenv,
+	)
 	if err == nil {
 		t.Error("Rust() error = nil, want the clippy failure")
 	}

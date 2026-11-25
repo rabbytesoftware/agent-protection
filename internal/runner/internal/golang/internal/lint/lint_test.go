@@ -80,7 +80,10 @@ func TestLintWithoutGolangciLint(
 		"PATH",
 		t.TempDir(),
 	)
-	_, err := lint.Lint(t.TempDir())
+	_, err := lint.Lint(
+		t.TempDir(),
+		os.Getenv,
+	)
 	if err == nil {
 		t.Error("Lint() error = nil, want an error when golangci-lint is not installed")
 	}
@@ -98,7 +101,10 @@ func TestLintPassesBuildTags(
 		`printf 'pkg/a.go:1:1: %s (errcheck)\n' "$*"
 exit 1`,
 	)
-	findings, err := lint.Lint(t.TempDir())
+	findings, err := lint.Lint(
+		t.TempDir(),
+		os.Getenv,
+	)
 	if err != nil {
 		t.Fatalf(
 			"Lint() error = %v",
@@ -184,7 +190,10 @@ func TestLintRejectsUnresolvableRoots(
 		)
 	}
 
-	_, err = lint.Lint("module")
+	_, err = lint.Lint(
+		"module",
+		os.Getenv,
+	)
 	if err == nil {
 		t.Error("Lint() error = nil, want one when the working directory is gone")
 	}
@@ -301,7 +310,10 @@ func assertLint(
 	wantErr bool,
 ) {
 	t.Helper()
-	findings, err := lint.Lint(root)
+	findings, err := lint.Lint(
+		root,
+		os.Getenv,
+	)
 	if (err != nil) != wantErr {
 		t.Errorf(
 			"%s: error = %v, wantErr %v",
@@ -396,6 +408,9 @@ func lintInto(
 	root string,
 	results chan<- error,
 ) {
-	_, err := lint.Lint(root)
+	_, err := lint.Lint(
+		root,
+		os.Getenv,
+	)
 	results <- err
 }

@@ -131,6 +131,7 @@ func isNotQuery(
 	return function.Body == nil ||
 		!returnsValue(function) ||
 		isChainable(function) ||
+		isStandardMethod(function) ||
 		reportsOutcome(function)
 }
 

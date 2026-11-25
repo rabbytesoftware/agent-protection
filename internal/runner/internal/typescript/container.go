@@ -10,6 +10,7 @@ import (
 
 func Typescript(
 	root string,
+	environment func(string) string,
 ) (findings []report.Finding, err error) {
 	own, err := passthrough.Passthrough(root)
 	if err != nil {

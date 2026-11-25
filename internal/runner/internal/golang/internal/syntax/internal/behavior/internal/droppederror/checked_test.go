@@ -59,3 +59,30 @@ func TestDroppederrorCheckedErrors(
 		)
 	}
 }
+
+func TestDroppederrorNegatedMatchInTests(
+	t *testing.T,
+) {
+	cases := []struct {
+		name string
+		code string
+	}{
+		{name: "negated errors.Is failing with the error passes", code: "package p\n\nfunc TestF(t *testing.T) {\n\t_, err := load()\n\tif !errors.Is(err, ErrMissing) {\n\t\tt.Fatalf(\"err = %v, want ErrMissing\", err)\n\t}\n}\n"},
+		{name: "negated errors.Is failing without the error passes", code: "package p\n\nfunc TestF(t *testing.T) {\n\terr := save()\n\tif !errors.Is(err, ErrMissing) {\n\t\tt.Fatal(\"want ErrMissing\")\n\t}\n}\n"},
+		{name: "negated errors.Is reporting with Errorf passes", code: "package p\n\nfunc TestF(t *testing.T) {\n\terr := save()\n\tif !errors.Is(err, ErrMissing) {\n\t\tt.Errorf(\"err = %v\", err)\n\t}\n}\n"},
+		{name: "negated errors.Is reporting with Error passes", code: "package p\n\nfunc TestF(t *testing.T) {\n\terr := save()\n\tif !errors.Is(err, ErrMissing) {\n\t\tt.Error(\"want ErrMissing\")\n\t}\n}\n"},
+		{name: "negated errors.As failing passes", code: "package p\n\nfunc TestF(t *testing.T) {\n\terr := save()\n\tvar target *Failure\n\tif !errors.As(err, &target) {\n\t\tt.Fatalf(\"err = %v\", err)\n\t}\n}\n"},
+	}
+	for _, tc := range cases {
+		assertFindings(
+			t,
+			tc.name,
+			droppederror.Droppederror([]source.File{parsedAt(
+				t,
+				"p_test.go",
+				tc.code,
+			)}),
+			nil,
+		)
+	}
+}

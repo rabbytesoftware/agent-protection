@@ -83,6 +83,7 @@ func TestCheckReportsRegistryFailure(
 			runner.Runner,
 			failingDocs,
 			guide.Guide,
+			os.Getenv,
 		).Run(fixtureModule(
 			t,
 			"clean",
@@ -199,5 +200,6 @@ func realCheck() (command *check) {
 		runner.Runner,
 		rulebook.Docs,
 		guide.Guide,
+		os.Getenv,
 	)
 }

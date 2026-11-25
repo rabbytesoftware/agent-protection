@@ -47,7 +47,10 @@ func TestTypescript(
 			),
 		),
 	)
-	findings, err := typescript.Typescript(root)
+	findings, err := typescript.Typescript(
+		root,
+		os.Getenv,
+	)
 	if err != nil {
 		t.Fatalf(
 			"Typescript() error = %v",
@@ -76,7 +79,10 @@ func TestTypescriptEslintFailure(
 		t,
 		"exit 2",
 	)
-	_, err := typescript.Typescript(t.TempDir())
+	_, err := typescript.Typescript(
+		t.TempDir(),
+		os.Getenv,
+	)
 	if err == nil {
 		t.Error("Typescript() error = nil, want an error when eslint prints no report")
 	}
@@ -99,7 +105,10 @@ func TestTypescriptProjectEslintFailure(
 		t,
 		"exit 2",
 	)
-	_, err := typescript.Typescript(root)
+	_, err := typescript.Typescript(
+		root,
+		os.Getenv,
+	)
 	if err == nil {
 		t.Error("Typescript() error = nil, want the project eslint run failure")
 	}

@@ -15,20 +15,23 @@ const (
 )
 
 type check struct {
-	run    func(root string) (findings []report.Finding, err error)
-	docs   func() (docs map[string]report.RuleDoc, err error)
-	manual func() (guide string)
+	run         func(root string, environment func(string) string) (findings []report.Finding, err error)
+	docs        func() (docs map[string]report.RuleDoc, err error)
+	manual      func() (guide string)
+	environment func(key string) (value string)
 }
 
 func Check(
-	run func(root string) (findings []report.Finding, err error),
+	run func(root string, environment func(string) string) (findings []report.Finding, err error),
 	docs func() (docs map[string]report.RuleDoc, err error),
 	manual func() (guide string),
+	environment func(key string) (value string),
 ) (command *check) {
 	return &check{
-		run:    run,
-		docs:   docs,
-		manual: manual,
+		run:         run,
+		docs:        docs,
+		manual:      manual,
+		environment: environment,
 	}
 }
 
@@ -67,7 +70,10 @@ func (c *check) Run(
 func (c *check) checked(
 	root string,
 ) (output report.Output, err error) {
-	findings, err := c.run(root)
+	findings, err := c.run(
+		root,
+		c.environment,
+	)
 	if err != nil {
 		return report.Output{},
 			err

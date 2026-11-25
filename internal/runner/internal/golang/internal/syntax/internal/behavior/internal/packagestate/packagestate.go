@@ -56,7 +56,36 @@ func fileFindings(
 		)
 	}
 
-	return findings
+	return append(
+		findings,
+		slices.DeleteFunc(
+			environmentFindings(file),
+			isReportedIn(findings),
+		)...,
+	)
+}
+
+func isReportedIn(
+	findings []report.Finding,
+) (reported func(report.Finding) bool) {
+	return func(
+		candidate report.Finding,
+	) (isReported bool) {
+		return slices.ContainsFunc(
+			findings,
+			isAt(candidate.Location),
+		)
+	}
+}
+
+func isAt(
+	location string,
+) (matches func(report.Finding) bool) {
+	return func(
+		finding report.Finding,
+	) (isSame bool) {
+		return finding.Location == location
+	}
 }
 
 func declFindings(

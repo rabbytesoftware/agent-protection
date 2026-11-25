@@ -1,6 +1,7 @@
 package workspace_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/workspace"
@@ -15,6 +16,7 @@ func TestWorkspaceRejectsUnreadableGoWork(
 	)
 	_, err := workspace.Workspace(
 		root,
+		os.Getenv,
 		located(root),
 	)
 	assertFailed(

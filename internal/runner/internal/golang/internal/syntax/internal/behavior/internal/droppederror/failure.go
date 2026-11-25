@@ -1,16 +1,22 @@
 package droppederror
 
 import (
+	"fmt"
 	"go/ast"
 	"slices"
 	"strings"
+
+	"github.com/rabbytesoftware/agent-protection/internal/report"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
 const (
-	errorName   = "err"
-	errorSuffix = "Err"
-	nilName     = "nil"
-	recoverName = "recover"
+	errorName     = "err"
+	errorSuffix   = "Err"
+	nilName       = "nil"
+	recoverName   = "recover"
+	literalName   = "literal"
+	ignoredFormat = "func %s takes an error parameter it never reads: a reporter that accepts an error must record, wrap or return it; drop the parameter or handle the error"
 )
 
 func isFailure(
@@ -232,4 +238,125 @@ func isBuiltin(
 ) (builtin bool) {
 	identifier, isIdent := expression.(*ast.Ident)
 	return isIdent && identifier.Obj == nil && identifier.Name == name
+}
+
+func ignoredFindings(
+	file source.File,
+) (findings []report.Finding) {
+	isSkipped := source.IsTest(file.Path) || source.IsMock(file.Rel) || file.IsGenerated
+	if isSkipped {
+		return nil
+	}
+
+	for _, function := range source.Nodes[*ast.FuncDecl](file.Syntax) {
+		findings = append(
+			findings,
+			signatureFindings(
+				file,
+				function.Name.Name,
+				function.Type,
+				function.Body,
+			)...,
+		)
+	}
+
+	for _, literal := range source.Nodes[*ast.FuncLit](file.Syntax) {
+		findings = append(
+			findings,
+			signatureFindings(
+				file,
+				literalName,
+				literal.Type,
+				literal.Body,
+			)...,
+		)
+	}
+
+	return findings
+}
+
+func signatureFindings(
+	file source.File,
+	name string,
+	signature *ast.FuncType,
+	body *ast.BlockStmt,
+) (findings []report.Finding) {
+	if body == nil {
+		return nil
+	}
+
+	for _, parameter := range signature.Params.List {
+		findings = appendIgnored(
+			findings,
+			file,
+			name,
+			parameter,
+			body,
+		)
+	}
+
+	return findings
+}
+
+func appendIgnored(
+	findings []report.Finding,
+	file source.File,
+	name string,
+	parameter *ast.Field,
+	body *ast.BlockStmt,
+) (appended []report.Finding) {
+	isIgnored := isErrorParameter(parameter.Type) && (len(parameter.Names) == 0 || slices.ContainsFunc(
+		parameter.Names,
+		isUnreadIn(body),
+	))
+	if !isIgnored {
+		return findings
+	}
+
+	return append(
+		findings,
+		finding(
+			file,
+			parameter,
+			fmt.Sprintf(
+				ignoredFormat,
+				name,
+			),
+		),
+	)
+}
+
+func isErrorParameter(
+	expression ast.Expr,
+) (isError bool) {
+	variadic, isVariadic := expression.(*ast.Ellipsis)
+	if isVariadic {
+		return isErrorType(variadic.Elt)
+	}
+
+	return isErrorType(expression)
+}
+
+func isUnreadIn(
+	body *ast.BlockStmt,
+) (unread func(*ast.Ident) bool) {
+	references := source.Nodes[*ast.Ident](body)
+	return func(
+		parameter *ast.Ident,
+	) (ignored bool) {
+		return parameter.Name == blankName || parameter.Obj != nil && !slices.ContainsFunc(
+			references,
+			isReferenceTo(parameter.Obj),
+		)
+	}
+}
+
+func isReferenceTo(
+	object *ast.Object,
+) (matches func(*ast.Ident) bool) {
+	return func(
+		identifier *ast.Ident,
+	) (referenced bool) {
+		return identifier.Obj == object
+	}
 }

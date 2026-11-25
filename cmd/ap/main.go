@@ -17,6 +17,7 @@ func main() {
 			runner.Runner,
 			rulebook.Docs,
 			guide.Guide,
+			os.Getenv,
 		),
 		command.Fix(runner.Fix),
 		command.Markdown(os.ReadFile),
