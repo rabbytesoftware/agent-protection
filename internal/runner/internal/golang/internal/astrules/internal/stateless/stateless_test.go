@@ -76,8 +76,43 @@ func TestStateless(
 			want:  nil,
 		},
 		{
-			name:  "function whose name only starts with New passes",
-			files: map[string]string{"p/a.go": "package p\n\ntype service struct{}\n\nfunc Newline() service {\n\treturn service{}\n}\n"},
+			name:  "function returning an empty struct is reported whatever its name",
+			files: map[string]string{"p/a.go": "package p\n\ntype service struct{}\n\nfunc MakeService() service {\n\treturn service{}\n}\n\nfunc Default() *service {\n\treturn &service{}\n}\n"},
+			want:  []string{"R12 p/a.go:5", "R12 p/a.go:9"},
+		},
+		{
+			name:  "struct with only blank fields and a method is reported",
+			files: map[string]string{"p/a.go": "package p\n\ntype Pricer struct {\n\t_ struct{}\n\t_, _ int\n}\n\nfunc (Pricer) Price() {\n}\n"},
+			want:  []string{"R11 p/a.go:3"},
+		},
+		{
+			name:  "function returning a struct with only blank fields is reported",
+			files: map[string]string{"p/a.go": "package p\n\ntype Pricer struct {\n\t_ struct{}\n}\n\nfunc MakePricer() (pricer Pricer) {\n\treturn Pricer{}\n}\n"},
+			want:  []string{"R12 p/a.go:7"},
+		},
+		{
+			name:  "struct mixing a blank and a named field passes",
+			files: map[string]string{"p/a.go": "package p\n\ntype Pricer struct {\n\t_    struct{}\n\trate int\n}\n\nfunc (Pricer) Price() {\n}\n\nfunc MakePricer() (pricer Pricer) {\n\treturn Pricer{}\n}\n"},
+			want:  nil,
+		},
+		{
+			name:  "struct with an embedded field passes",
+			files: map[string]string{"p/a.go": "package p\n\ntype Pricer struct {\n\tbase\n}\n\nfunc (Pricer) Price() {\n}\n"},
+			want:  nil,
+		},
+		{
+			name:  "function with a bare return passes",
+			files: map[string]string{"p/a.go": "package p\n\ntype service struct{}\n\nfunc run() {\n\treturn\n}\n"},
+			want:  nil,
+		},
+		{
+			name:  "generic constructors and a parenthesized receiver of empty structs are reported",
+			files: map[string]string{"p/a.go": "package p\n\ntype box[T any] struct{}\n\ntype pair[K comparable, V any] struct{}\n\nfunc MakeBox() box[int] {\n\treturn box[int]{}\n}\n\nfunc MakePair() pair[string, int] {\n\treturn pair[string, int]{}\n}\n\nfunc (b (box[T])) Get() {\n}\n"},
+			want:  []string{"R11 p/a.go:3", "R12 p/a.go:7", "R12 p/a.go:11"},
+		},
+		{
+			name:  "method returning an empty struct is not a constructor",
+			files: map[string]string{"p/a.go": "package p\n\ntype marker struct{}\n\ntype holder struct {\n\tname string\n}\n\nfunc (h holder) Marker() marker {\n\treturn marker{}\n}\n"},
 			want:  nil,
 		},
 		{

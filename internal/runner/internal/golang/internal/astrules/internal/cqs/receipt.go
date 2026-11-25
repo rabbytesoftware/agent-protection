@@ -246,6 +246,12 @@ func writesPointer(
 		writes = writes || isPointer
 	}
 
+	shared := everySlot(described)
+	for _, name := range sharedAssignmentRoots(assignment) {
+		_, isShared := shared[name]
+		writes = writes || isShared
+	}
+
 	return writes
 }
 

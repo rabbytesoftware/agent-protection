@@ -33,19 +33,28 @@ func fileFindings(
 	callees map[string]int,
 ) (findings []report.Finding) {
 	for _, function := range source.Nodes[*ast.FuncDecl](file.Syntax) {
-		findings = append(
+		findings = slices.Concat(
 			findings,
 			checkedFindings(
 				file,
 				function,
 				callees,
-			)...,
+			),
+			loggedFindings(
+				file,
+				function,
+				callees,
+			),
 		)
 	}
 
 	return slices.Concat(
 		findings,
 		blankFindings(
+			file,
+			callees,
+		),
+		wrappingFindings(
 			file,
 			callees,
 		),

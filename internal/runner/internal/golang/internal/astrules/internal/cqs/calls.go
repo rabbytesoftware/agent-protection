@@ -72,7 +72,7 @@ func callMutations(
 	)] {
 		positions = appendPosition(
 			positions,
-			caller,
+			everySlot(caller),
 			passedPointer(argumentAt(
 				call,
 				calleePosition,

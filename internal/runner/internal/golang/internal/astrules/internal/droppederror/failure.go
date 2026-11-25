@@ -62,17 +62,67 @@ func isBoundToFailure(
 	values []ast.Expr,
 	callees map[string]int,
 ) (failure bool) {
+	if isRecoveredBinding(
+		name,
+		targets,
+		values,
+	) {
+		return true
+	}
+
 	index := slices.Index(
 		identifierNames(targets),
 		name,
 	)
-	isRecovered := index >= 0 && len(values) == len(targets) && isRecoverCall(values[index])
-	if isRecovered {
-		return true
-	}
-
 	isLastResult := index >= 0 && index == len(targets)-1 && len(values) == 1
 	return isLastResult && callees[calleeName(values[0])] == len(targets)
+}
+
+func isRecoveredBinding(
+	name string,
+	targets []ast.Expr,
+	values []ast.Expr,
+) (recovered bool) {
+	index := slices.Index(
+		identifierNames(targets),
+		name,
+	)
+	return index >= 0 && len(values) == len(targets) && isRecoverCall(values[index])
+}
+
+func isCaughtError(
+	name *ast.Ident,
+	callees map[string]int,
+) (caught bool) {
+	return isFailure(
+		name,
+		callees,
+	) && !isRecovered(name)
+}
+
+func isRecovered(
+	name *ast.Ident,
+) (recovered bool) {
+	if name.Obj == nil {
+		return false
+	}
+
+	switch declaration := name.Obj.Decl.(type) {
+	case *ast.AssignStmt:
+		return isRecoveredBinding(
+			name.Name,
+			declaration.Lhs,
+			declaration.Rhs,
+		)
+	case *ast.ValueSpec:
+		return isRecoveredBinding(
+			name.Name,
+			identifiers(declaration.Names),
+			declaration.Values,
+		)
+	}
+
+	return false
 }
 
 func identifiers(

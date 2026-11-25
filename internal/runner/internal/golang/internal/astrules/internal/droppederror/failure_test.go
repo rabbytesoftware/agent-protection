@@ -23,7 +23,7 @@ func TestDroppederrorFailureIdentification(
 		{name: "callback parameter declared as error is an error", code: "package p\n\nfunc f() {\n\twalk(func(problem error) {\n\t\tif problem != nil {\n\t\t\treturn\n\t\t}\n\t})\n}\n", want: []string{"R26 p.go:5"}},
 		{name: "package-level function value is not an error", code: "package p\n\nfunc callback()\n\nfunc f() {\n\tif callback != nil {\n\t\treturn\n\t}\n}\n", want: nil},
 		{name: "result of an indexed call is not an error", code: "package p\n\nfunc f() {\n\tvalue := makers[0]()\n\tif value != nil {\n\t\treturn\n\t}\n}\n", want: nil},
-		{name: "earlier result of an erroring function is not an error", code: "package p\n\nfunc load() (*int, error)\n\nfunc f() {\n\tvalue, _ := load()\n\tif value != nil {\n\t\treturn\n\t}\n}\n", want: nil},
+		{name: "earlier result of an erroring function is not an error", code: "package p\n\nfunc load() (*int, error)\n\nfunc f() {\n\tvalue, err := load()\n\tif value != nil {\n\t\treturn\n\t}\n\n\tuse(err)\n}\n", want: nil},
 		{name: "result of a function that returns no error is not an error", code: "package p\n\nfunc find() *int\n\nfunc f() {\n\tvalue := find()\n\tif value != nil {\n\t\treturn\n\t}\n}\n", want: nil},
 		{name: "result of an unknown function is not an error", code: "package p\n\nfunc f() {\n\tvalue := other.Find()\n\tif value != nil {\n\t\treturn\n\t}\n}\n", want: nil},
 		{name: "result of a non-call is not an error", code: "package p\n\nfunc f() {\n\tvalue := cache[key]\n\tif value != nil {\n\t\treturn\n\t}\n}\n", want: nil},

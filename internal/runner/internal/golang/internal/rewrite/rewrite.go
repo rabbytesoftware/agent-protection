@@ -1,6 +1,7 @@
 package rewrite
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"go/format"
@@ -45,11 +46,6 @@ func rewriteFile(
 	file source.File,
 	edits func(source.File) []source.Edit,
 ) (rewritten []string, err error) {
-	if len(edits(file)) == 0 {
-		return nil,
-			nil
-	}
-
 	content, err := settle(
 		root,
 		file.Path,
@@ -60,6 +56,14 @@ func rewriteFile(
 	if err != nil {
 		return nil,
 			err
+	}
+
+	if bytes.Equal(
+		content,
+		file.Content,
+	) {
+		return nil,
+			nil
 	}
 
 	err = os.WriteFile(

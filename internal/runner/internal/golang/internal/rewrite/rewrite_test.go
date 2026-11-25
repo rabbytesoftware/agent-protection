@@ -15,8 +15,14 @@ func TestRewrite(
 	t *testing.T,
 ) {
 	root := t.TempDir()
-	untouched := "package p\n\nvar  x = 1\n"
+	untouched := "package p\n\nvar x = 1\n"
 	files := []source.File{
+		fixture(
+			t,
+			root,
+			"aligned.go",
+			"package p\n\nvar  y = 1\n",
+		),
 		fixture(
 			t,
 			root,
@@ -45,7 +51,15 @@ func TestRewrite(
 	assertChanged(
 		t,
 		changed,
-		[]string{"fixed.go"},
+		[]string{"aligned.go", "fixed.go"},
+	)
+	assertContent(
+		t,
+		filepath.Join(
+			root,
+			"aligned.go",
+		),
+		"package p\n\nvar y = 1\n",
 	)
 	assertContent(
 		t,

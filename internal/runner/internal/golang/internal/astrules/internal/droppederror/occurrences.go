@@ -218,3 +218,35 @@ func earlier(
 
 	return candidate
 }
+
+func earliestAfter(
+	names []*ast.Ident,
+	position token.Pos,
+	limit token.Pos,
+) (earliest token.Pos) {
+	earliest = limit
+	for _, name := range names {
+		earliest = min(
+			earliest,
+			later(
+				name.Pos(),
+				position,
+				limit,
+			),
+		)
+	}
+
+	return earliest
+}
+
+func later(
+	candidate token.Pos,
+	position token.Pos,
+	limit token.Pos,
+) (after token.Pos) {
+	if candidate <= position {
+		return limit
+	}
+
+	return candidate
+}
