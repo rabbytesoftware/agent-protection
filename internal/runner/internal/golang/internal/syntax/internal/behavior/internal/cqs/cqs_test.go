@@ -60,6 +60,11 @@ func TestCqs(
 			want: []string{"p.go:7"},
 		},
 		{
+			name: "handing an error to an injected reporter is not a mutation",
+			code: "package p\n\ntype S struct {\n\treport func(err error)\n}\n\nfunc (s *S) attempt(\n\terr error,\n) (next int) {\n\tif err != nil {\n\t\ts.report(err)\n\t\treturn 1\n\t}\n\n\treturn 0\n}\n",
+			want: nil,
+		},
+		{
 			name: "bool reported next to another value is still a query",
 			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) Next() (v int, ok bool) {\n\tt.v++\n\treturn t.v,\n\t\ttrue\n}\n",
 			want: []string{"p.go:7"},

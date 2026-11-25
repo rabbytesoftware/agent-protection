@@ -21,6 +21,11 @@ func TestCqsCreatedValue(
 			want: nil,
 		},
 		{
+			name: "returning the id of a value a receiver builder prepared and then stored passes",
+			code: "package p\n\ntype Job struct {\n\tID string\n}\n\ntype P struct {\n\tprefix string\n\tjobs   map[string]Job\n}\n\nfunc (p *P) prepare() (job Job, err error) {\n\treturn Job{ID: p.prefix}, nil\n}\n\nfunc (p *P) save(\n\tjob Job,\n) {\n\tp.jobs[job.ID] = job\n}\n\nfunc (p *P) Enqueue() (id string, err error) {\n\tjob, err := p.prepare()\n\tif err != nil {\n\t\treturn \"\", err\n\t}\n\n\tp.save(job)\n\treturn job.ID, nil\n}\n",
+			want: nil,
+		},
+		{
 			name: "returning a value read from the receiver is reported",
 			code: "package p\n\ntype S struct {\n\tn int\n}\n\nfunc (s *S) Next() (id int) {\n\tid = s.counter()\n\ts.n = id\n\treturn id\n}\n\nfunc (s *S) counter() (n int) {\n\treturn s.n + 1\n}\n",
 			want: []string{"p.go:7"},

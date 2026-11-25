@@ -20,7 +20,7 @@ const (
 	panicName         = "panic"
 	fatalPrefix       = "Fatal"
 	panicPrefix       = "Panic"
-	loggedFormat      = "%s(...) logs %s and carries on: logging an error and carrying on swallows it: return it"
+	loggedFormat      = "%s(...) logs %s and carries on: logging an error and carrying on swallows it: return it, or hand it to an error reporter the caller injected (an OnError func or error channel) when nothing can return it"
 	printPrefix       = "Print"
 	logPrefix         = "Log"
 	streamPrefix      = "Fprint"

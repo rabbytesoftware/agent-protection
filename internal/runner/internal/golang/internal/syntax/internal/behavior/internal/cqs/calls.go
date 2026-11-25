@@ -259,6 +259,9 @@ func isExemptCommand(
 	isLifecycle := slices.Contains(
 		lockMethods(),
 		name,
+	) || slices.Contains(
+		reporterNames(),
+		name,
 	) || strings.HasSuffix(
 		name,
 		cancelSuffix,
@@ -318,5 +321,15 @@ func lockMethods() (names []string) {
 		"unlock",
 		"rlock",
 		"runlock",
+	}
+}
+
+func reporterNames() (names []string) {
+	return []string{
+		"report",
+		"reporterror",
+		"onerror",
+		"notifyerror",
+		"handleerror",
 	}
 }

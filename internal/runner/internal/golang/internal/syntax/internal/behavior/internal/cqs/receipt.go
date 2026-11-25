@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/token"
 	"slices"
+	"strings"
 
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
@@ -105,7 +106,7 @@ func isCreatedValue(
 	value ast.Expr,
 	stored []string,
 ) (created bool) {
-	name := identifierName(value)
+	name := identifierName(rootOf(value))
 	isCandidate := name != "" &&
 		slices.Contains(
 			stored,
@@ -155,10 +156,53 @@ func isFresh(
 	described callable,
 	origin ast.Expr,
 ) (fresh bool) {
-	return isConstruction(origin) && !readsPointer(
+	return isConstruction(origin) && (isBuilderCall(origin) || !readsPointer(
 		described,
 		origin,
-	)
+	))
+}
+
+func isBuilderCall(
+	origin ast.Expr,
+) (builds bool) {
+	call, isCall := ast.Unparen(origin).(*ast.CallExpr)
+	if !isCall {
+		return false
+	}
+
+	name := strings.ToLower(lastName(call.Fun))
+	for _, prefix := range builderPrefixes() {
+		builds = builds || strings.HasPrefix(
+			name,
+			prefix,
+		)
+	}
+
+	return builds
+}
+
+func builderPrefixes() (prefixes []string) {
+	return []string{
+		"new",
+		"build",
+		"make",
+		"create",
+		"prepare",
+		"compose",
+		"assemble",
+		"construct",
+	}
+}
+
+func rootOf(
+	value ast.Expr,
+) (root ast.Expr) {
+	selector, isSelector := ast.Unparen(value).(*ast.SelectorExpr)
+	if !isSelector {
+		return value
+	}
+
+	return rootOf(selector.X)
 }
 
 func isConstruction(
