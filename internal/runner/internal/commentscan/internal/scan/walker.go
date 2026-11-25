@@ -2,6 +2,7 @@ package scan
 
 import (
 	"io/fs"
+	"os/exec"
 	"path/filepath"
 	"slices"
 
@@ -76,10 +77,14 @@ func directoryVerdict(
 	path string,
 	name string,
 ) (verdict error) {
-	isSkipped := path != root && slices.Contains(
-		skippedDirectories(),
-		name,
-	)
+	isSkipped := path != root &&
+		(slices.Contains(
+			skippedDirectories(),
+			name,
+		) || isIgnored(
+			root,
+			path,
+		))
 	if isSkipped {
 		return filepath.SkipDir
 	}
@@ -89,4 +94,18 @@ func directoryVerdict(
 
 func skippedDirectories() (names []string) {
 	return []string{"vendor", "node_modules", ".git", "testdata"}
+}
+
+func isIgnored(
+	root string,
+	path string,
+) (ignored bool) {
+	return exec.Command(
+		gitBinary,
+		"-C",
+		root,
+		"check-ignore",
+		"--quiet",
+		path,
+	).Run() == nil
 }

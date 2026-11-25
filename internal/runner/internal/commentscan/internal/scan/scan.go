@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/commentscan/internal/lexeme"
@@ -16,6 +17,7 @@ const (
 	snippet         = "comment: delete it and make the code say it through names and structure"
 	locationFormat  = "%s:%d"
 	generatedWindow = 500
+	gitBinary       = "git"
 )
 
 func Scan(
@@ -69,7 +71,8 @@ func fileFindings(
 			)
 	}
 
-	if isGenerated(text) {
+	isExempt := isGenerated(text) && hasGeneratedName(file.path)
+	if isExempt {
 		return nil,
 			nil
 	}
@@ -137,4 +140,22 @@ func isGenerated(
 
 func generatedMarkers() (markers []string) {
 	return []string{"Code generated", "@generated", "DO NOT EDIT"}
+}
+
+func hasGeneratedName(
+	path string,
+) (generated bool) {
+	name := filepath.Base(path)
+	for _, marker := range generatedNameMarkers() {
+		generated = generated || strings.Contains(
+			name,
+			marker,
+		)
+	}
+
+	return generated
+}
+
+func generatedNameMarkers() (markers []string) {
+	return []string{".pb.", "_pb2.", "_pb2_grpc.", "_pb.", "_grpc_pb.", ".min.", ".generated.", ".gen.", "_gen.", "_generated."}
 }
