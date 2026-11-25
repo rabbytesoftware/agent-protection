@@ -4,11 +4,19 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/siblingimports"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
+)
+
+const (
+	modulePath       = "example.com/m"
+	moduleRootImport = "."
+	declarationOnly  = "package contracts\n\ntype Order struct{}\n\ntype Store interface {\n\tSave() error\n}\n"
+	errorsOnly       = "package failures\n\ntype NotFound struct{}\n\nfunc (NotFound) Error() (message string) {\n\treturn \"not found\"\n}\n"
 )
 
 func TestSiblingimports(
@@ -20,53 +28,143 @@ func TestSiblingimports(
 		want  []string
 	}{
 		{
-			name: "sibling business package import is reported at the import",
+			name: "leaf importing one foundation sibling passes",
 			files: map[string]string{
-				"internal/a/service.go": "package a\n\nimport \"example.com/m/internal/b\"\n\nvar _ = b.X\n",
-				"internal/b/handler.go": "package b\n\nfunc X() {}\n",
-			},
-			want: []string{"R16 internal/a/service.go:3"},
-		},
-		{
-			name: "shared support package import passes",
-			files: map[string]string{
-				"internal/a/a.go":      "package a\n\nimport \"example.com/m/internal/errors\"\n\nvar _ = errors.ErrX\n",
-				"internal/errors/e.go": "package errors\n\nimport \"errors\"\n\nvar ErrX = errors.New(\"x\")\n",
+				"internal/a/a.go": unit("a internal/b"),
+				"internal/b/b.go": unit("b"),
 			},
 			want: nil,
 		},
 		{
-			name: "container.go wiring several siblings passes",
+			name: "importing a sibling that imports a sibling is reported at the import",
 			files: map[string]string{
-				"internal/app/container.go": wiring("app"),
-				"internal/engine/e.go":      "package engine\n\nfunc X() {}\n",
-				"internal/adapter/a.go":     "package adapter\n\nfunc Y() {}\n",
+				"internal/a/a.go": unit("a internal/b"),
+				"internal/b/b.go": unit("b internal/c"),
+				"internal/c/c.go": unit("c"),
+			},
+			want: []string{"R16 internal/a/a.go:4"},
+		},
+		{
+			name: "chains are reported in public trees too",
+			files: map[string]string{
+				"cmd/a/a.go": unit("a cmd/b"),
+				"cmd/b/b.go": unit("b cmd/c"),
+				"cmd/c/c.go": unit("c"),
+			},
+			want: []string{"R16 cmd/a/a.go:4"},
+		},
+		{
+			name: "container.go gets no exemption",
+			files: map[string]string{
+				"internal/app/container.go": unit("app internal/b"),
+				"internal/b/b.go":           unit("b internal/c"),
+				"internal/c/c.go":           unit("c"),
+			},
+			want: []string{"R16 internal/app/container.go:4"},
+		},
+		{
+			name: "shared support names get no exemption",
+			files: map[string]string{
+				"internal/a/a.go":           unit("a internal/errors"),
+				"internal/errors/errors.go": unit("errors internal/c"),
+				"internal/c/c.go":           unit("c"),
+			},
+			want: []string{"R16 internal/a/a.go:4"},
+		},
+		{
+			name: "package importing two siblings is reported once at its directory",
+			files: map[string]string{
+				"internal/app/app.go":     unit("app internal/engine"),
+				"internal/app/run.go":     unit("app internal/adapter internal/engine"),
+				"internal/engine/e.go":    unit("engine"),
+				"internal/adapter/ad.go":  unit("adapter"),
+				"internal/adapter/ad2.go": unit("adapter"),
+			},
+			want: []string{"R47 internal/app"},
+		},
+		{
+			name: "wiring and chains are both reported",
+			files: map[string]string{
+				"internal/app/app.go":    unit("app internal/adapter internal/engine"),
+				"internal/engine/e.go":   unit("engine"),
+				"internal/adapter/ad.go": unit("adapter internal/engine"),
+			},
+			want: []string{"R16 internal/app/app.go:4", "R47 internal/app"},
+		},
+		{
+			name: "declaration-only siblings do not count towards wiring",
+			files: map[string]string{
+				"internal/app/app.go":            unit("app internal/contracts internal/failures internal/engine"),
+				"internal/engine/e.go":           unit("engine"),
+				"internal/contracts/contract.go": declarationOnly,
+				"internal/failures/failures.go":  errorsOnly,
 			},
 			want: nil,
 		},
 		{
-			name: "file named after its own package wiring several siblings passes",
+			name: "importer below a sibling is lifted to that sibling",
 			files: map[string]string{
-				"internal/config/config.go": wiring("config"),
-				"internal/engine/e.go":      "package engine\n\nfunc X() {}\n",
-				"internal/adapter/a.go":     "package adapter\n\nfunc Y() {}\n",
+				"internal/alpha/alpha.go":               unit("alpha"),
+				"internal/alpha/internal/deep/scan.go":  unit("deep internal/beta"),
+				"internal/beta/beta.go":                 unit("beta internal/gamma"),
+				"internal/gamma/gamma.go":               unit("gamma"),
+				"internal/alpha/internal/store/s.go":    unit("store"),
+				"internal/alpha/internal/deep/other.go": unit("deep internal/alpha/internal/store"),
+			},
+			want: []string{"R16 internal/alpha/internal/deep/scan.go:4"},
+		},
+		{
+			name: "imported sibling's own subtree is lifted when deciding it is a foundation",
+			files: map[string]string{
+				"internal/alpha/alpha.go":         unit("alpha internal/beta"),
+				"internal/beta/beta.go":           unit("beta"),
+				"internal/beta/refund/refund.go":  unit("refund internal/gamma"),
+				"internal/gamma/gamma.go":         unit("gamma"),
+				"internal/beta/refund/refund2.go": unit("refund"),
+			},
+			want: []string{"R16 internal/alpha/alpha.go:4"},
+		},
+		{
+			name: "lifted imports do not count towards wiring",
+			files: map[string]string{
+				"internal/alpha/alpha.go":     unit("alpha internal/beta"),
+				"internal/alpha/sub/sub.go":   unit("sub internal/gamma"),
+				"internal/beta/beta.go":       unit("beta"),
+				"internal/gamma/gamma.go":     unit("gamma"),
+				"internal/alpha/sub/other.go": unit("sub"),
 			},
 			want: nil,
 		},
 		{
-			name: "unconventionally named wiring file gets one wiring finding",
+			name: "leaf importing an uncle foundation passes",
 			files: map[string]string{
-				"internal/app/service.go": wiring("app"),
-				"internal/engine/e.go":    "package engine\n\nfunc X() {}\n",
-				"internal/adapter/a.go":   "package adapter\n\nfunc Y() {}\n",
+				"golang/golang.go":                             unit("golang golang/internal/arch golang/internal/source"),
+				"golang/internal/source/source.go":             unit("source"),
+				"golang/internal/arch/arch.go":                 unit("arch golang/internal/arch/internal/roots golang/internal/source"),
+				"golang/internal/arch/internal/roots/roots.go": unit("roots golang/internal/source"),
+				"golang/internal/arch/internal/pairs/pairs.go": unit("pairs golang/internal/source"),
 			},
-			want: []string{"R47 internal/app/service.go:1"},
+			want: nil,
 		},
 		{
-			name: "package outside any internal tree is not checked",
+			name: "importing the module root or a child is not a sibling import",
 			files: map[string]string{
-				"cmd/a/a.go": "package a\n\nimport \"example.com/m/cmd/b\"\n\nvar _ = b.X\n",
-				"cmd/b/b.go": "package b\n\nfunc X() {}\n",
+				"m.go":                 unit("m internal/a internal/b"),
+				"cmd/tool/main.go":     unit("main . cmd/tool/flags"),
+				"cmd/tool/flags/f.go":  unit("flags"),
+				"internal/a/a.go":      unit("a"),
+				"internal/b/b.go":      unit("b"),
+				"internal/b/sub/s.go":  unit("sub internal/b"),
+				"internal/b/sub/s2.go": unit("sub"),
+			},
+			want: nil,
+		},
+		{
+			name: "imports outside the module are ignored",
+			files: map[string]string{
+				"internal/a/a.go": "package a\n\nimport (\n\t\"fmt\"\n\t\"example.com/mx/internal/b\"\n\t\"example.com/mx/internal/c\"\n)\n",
+				"internal/b/b.go": unit("b internal/c"),
+				"internal/c/c.go": unit("c"),
 			},
 			want: nil,
 		},
@@ -84,10 +182,114 @@ func TestSiblingimports(
 	}
 }
 
-func wiring(
-	packageName string,
+func TestSiblingimportsSnippets(
+	t *testing.T,
+) {
+	findings := checked(
+		t,
+		map[string]string{
+			"internal/app/app.go":                  unit("app internal/adapter internal/engine"),
+			"internal/engine/e.go":                 unit("engine"),
+			"internal/adapter/ad.go":               unit("adapter internal/engine"),
+			"internal/app/internal/deep/d.go":      unit("deep internal/adapter"),
+			"internal/app/internal/deep/other.go":  unit("deep"),
+			"internal/app/internal/deep/other2.go": unit("deep"),
+		},
+	)
+	want := []string{
+		"imports sibling adapter, which itself imports sibling engine: siblings form one layer; have the parent's container.go pass adapter in",
+		"imports sibling adapter (through app), which itself imports sibling engine: siblings form one layer; have the parent's container.go pass adapter in",
+		"imports siblings adapter, engine: wiring siblings together is the parent's job; move it into container.go and inject what this package needs through an interface it declares",
+	}
+	got := []string{}
+	for _, finding := range findings {
+		got = append(
+			got,
+			finding.Snippet,
+		)
+	}
+
+	if !slices.Equal(
+		got,
+		want,
+	) {
+		t.Errorf(
+			"snippets = %q, want %q",
+			got,
+			want,
+		)
+	}
+}
+
+func TestSiblingimportsNamesTheOwningModule(
+	t *testing.T,
+) {
+	findings := checked(
+		t,
+		map[string]string{
+			"svc/svc.go":                unit("svc"),
+			"svc/internal/app/app.go":   unit("app svc/internal/engine svc/internal/store"),
+			"svc/internal/engine/e.go":  unit("engine"),
+			"svc/internal/store/s.go":   unit("store"),
+			"svc/internal/store/s2.go":  unit("store"),
+			"svc/internal/engine/e2.go": unit("engine"),
+		},
+	)
+	isNamed := len(findings) == 1 && strings.Contains(
+		findings[0].Snippet,
+		"move it into svc/container.go",
+	)
+	if !isNamed {
+		t.Errorf(
+			"findings = %v, want one R47 naming svc/container.go",
+			findings,
+		)
+	}
+}
+
+func TestSiblingimportsRejectsMissingRoot(
+	t *testing.T,
+) {
+	missing := filepath.Join(
+		t.TempDir(),
+		"missing",
+	)
+	_, err := siblingimports.Siblingimports(
+		missing,
+		nil,
+	)
+	if err == nil {
+		t.Error("Siblingimports() error = nil, want one for a missing root")
+	}
+}
+
+func unit(
+	spec string,
 ) (code string) {
-	return "package " + packageName + "\n\nimport (\n\t\"example.com/m/internal/adapter\"\n\t\"example.com/m/internal/engine\"\n)\n\nvar _ = engine.X\n\nvar _ = adapter.Y\n"
+	fields := strings.Fields(spec)
+	code = "package " + fields[0] + "\n\nimport (\n"
+	for _, imported := range fields[1:] {
+		code += "\t\"" + importPath(imported) + "\"\n"
+	}
+
+	return code + ")\n\nfunc Run() {}\n"
+}
+
+func importPath(
+	imported string,
+) (path string) {
+	if imported == moduleRootImport {
+		return modulePath
+	}
+
+	if !strings.Contains(
+		imported,
+		"/",
+	) {
+		return imported
+	}
+
+	return modulePath + "/" + imported
 }
 
 func checked(
@@ -196,6 +398,7 @@ func assertFindings(
 		)
 	}
 
+	slices.Sort(got)
 	if !slices.Equal(
 		got,
 		want,
@@ -206,21 +409,5 @@ func assertFindings(
 			got,
 			want,
 		)
-	}
-}
-
-func TestSiblingimportsRejectsMissingRoot(
-	t *testing.T,
-) {
-	missing := filepath.Join(
-		t.TempDir(),
-		"missing",
-	)
-	_, err := siblingimports.Siblingimports(
-		missing,
-		nil,
-	)
-	if err == nil {
-		t.Error("Siblingimports() error = nil, want one for a missing root")
 	}
 }

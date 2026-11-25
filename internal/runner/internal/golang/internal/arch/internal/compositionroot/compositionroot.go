@@ -1,10 +1,8 @@
 package compositionroot
 
 import (
-	"errors"
 	"fmt"
 	"go/ast"
-	"go/token"
 	"maps"
 	"path/filepath"
 	"slices"
@@ -15,16 +13,18 @@ import (
 )
 
 const (
-	missingRule = "R48"
-	structRule  = "R13"
-	looseRule   = "R49"
+	rule              = "R48"
+	importQuotes      = "\"`"
+	moduleRoot        = "."
+	internalDirectory = "internal"
+	mainPackage       = "main"
 )
 
 func Compositionroot(
 	root string,
 	files []source.File,
 ) (findings []report.Finding, err error) {
-	directories, err := source.Directories(root)
+	modulePath, err := source.ModulePath(root)
 	if err != nil {
 		return nil,
 			fmt.Errorf(
@@ -33,422 +33,213 @@ func Compositionroot(
 			)
 	}
 
-	paths, err := source.Paths(root)
-	if err != nil {
-		return nil,
-			fmt.Errorf(
-				"composition roots: %w",
-				err,
-			)
-	}
-
-	findings, err = everyComponentFindings(
-		root,
-		directories,
-		paths,
-		files,
-	)
-	if err != nil {
-		return nil,
-			fmt.Errorf(
-				"composition roots: %w",
-				err,
-			)
-	}
-
-	return findings,
-		nil
-}
-
-func everyComponentFindings(
-	root string,
-	directories []string,
-	paths []string,
-	files []source.File,
-) (findings []report.Finding, err error) {
-	groups := groupByDirectory(paths)
-	parsed := indexByPath(files)
-	found, err := components(
-		root,
-		directories,
-		slices.Collect(maps.Keys(groups)),
-	)
-	failures := []error{err}
-	for _, directory := range found {
-		componentFound, componentErr := componentFindings(
-			root,
-			directory,
-			groups[directory],
-			parsed,
-		)
+	packages := groupByDirectory(files)
+	directories := slices.Sorted(maps.Keys(packages))
+	for _, directory := range directories {
 		findings = append(
 			findings,
-			componentFound...,
-		)
-		failures = append(
-			failures,
-			componentErr,
-		)
-	}
-
-	return findings,
-		errors.Join(failures...)
-}
-
-func groupByDirectory(
-	paths []string,
-) (groups map[string][]string) {
-	groups = map[string][]string{}
-	for _, path := range paths {
-		directory := filepath.Dir(path)
-		groups[directory] = append(
-			groups[directory],
-			path,
-		)
-	}
-
-	return groups
-}
-
-func indexByPath(
-	files []source.File,
-) (index map[string]source.File) {
-	index = map[string]source.File{}
-	for _, file := range files {
-		index[file.Path] = file
-	}
-
-	return index
-}
-
-func components(
-	root string,
-	directories []string,
-	sourceDirectories []string,
-) (found []string, err error) {
-	failures := []error{}
-	for _, directory := range directories {
-		component, componentErr := asComponent(
-			root,
-			directory,
-			sourceDirectories,
-		)
-		found = append(
-			found,
-			component...,
-		)
-		failures = append(
-			failures,
-			componentErr,
-		)
-	}
-
-	return found,
-		errors.Join(failures...)
-}
-
-func asComponent(
-	root string,
-	directory string,
-	sourceDirectories []string,
-) (component []string, err error) {
-	rel, err := source.RelPath(
-		root,
-		directory,
-	)
-	if err != nil {
-		return nil,
-			err
-	}
-
-	isInsideBoundary := source.IsInternalTree(rel) && !source.IsInternalDirectory(directory)
-	isComponent := isInsideBoundary && len(childPackages(
-		directory,
-		sourceDirectories,
-	)) >= source.CompositionRootThreshold
-	if !isComponent {
-		return nil,
-			nil
-	}
-
-	return []string{directory},
-		nil
-}
-
-func childPackages(
-	directory string,
-	sourceDirectories []string,
-) (children []string) {
-	for _, sourceDirectory := range sourceDirectories {
-		children = append(
-			children,
-			childPackage(
+			moduleFindings(
+				modulePath,
 				directory,
-				sourceDirectory,
+				directories,
+				packages[directory],
 			)...,
 		)
 	}
 
-	slices.Sort(children)
-	return slices.Compact(children)
-}
-
-func childPackage(
-	directory string,
-	sourceDirectory string,
-) (child []string) {
-	rel, isBeneath := strings.CutPrefix(
-		sourceDirectory,
-		directory+string(filepath.Separator),
-	)
-	if !isBeneath {
-		return nil
-	}
-
-	segments := strings.Split(
-		filepath.ToSlash(rel),
-		"/",
-	)
-	if !source.IsInternalDirectory(segments[0]) {
-		return segments[:1]
-	}
-
-	if len(segments) == 1 {
-		return nil
-	}
-
-	return []string{strings.Join(
-		segments[:2],
-		"/",
-	)}
-}
-
-func componentFindings(
-	root string,
-	directory string,
-	entries []string,
-	parsed map[string]source.File,
-) (findings []report.Finding, err error) {
-	index := slices.IndexFunc(
-		entries,
-		isCompositionRoot,
-	)
-	if index < 0 {
-		return missingRootFindings(
-			root,
-			directory,
-		)
-	}
-
-	strays, err := strayFindings(
-		root,
-		slices.Delete(
-			slices.Clone(entries),
-			index,
-			index+1,
-		),
-	)
-	return slices.Concat(
-			contractFindings(parsed[entries[index]]),
-			strays,
-		),
-		err
-}
-
-func missingRootFindings(
-	root string,
-	directory string,
-) (findings []report.Finding, err error) {
-	location, err := source.RelPath(
-		root,
-		directory,
-	)
-	if err != nil {
-		return nil,
-			err
-	}
-
-	return []report.Finding{{
-			Rule:     missingRule,
-			Location: location,
-			Snippet: fmt.Sprintf(
-				"component directory has no composition root: add %s.go",
-				filepath.Base(directory),
-			),
-		}},
+	return findings,
 		nil
 }
 
-func contractFindings(
-	file source.File,
+func groupByDirectory(
+	files []source.File,
+) (packages map[string][]source.File) {
+	packages = map[string][]source.File{}
+	for _, file := range files {
+		directory := filepath.Dir(file.Rel)
+		packages[directory] = append(
+			packages[directory],
+			file,
+		)
+	}
+
+	return packages
+}
+
+func moduleFindings(
+	modulePath string,
+	directory string,
+	directories []string,
+	files []source.File,
 ) (findings []report.Finding) {
-	if file.Syntax == nil {
+	isWiredByContainer := source.IsModule(
+		directory,
+		directories,
+	) && !slices.ContainsFunc(
+		files,
+		isMain,
+	)
+	if !isWiredByContainer {
 		return nil
 	}
 
-	types := exportedTypes(file.Syntax)
-	findings = structFindings(
-		file,
-		types,
+	name := moduleName(
+		directory,
+		files,
 	)
-	isExposed := slices.ContainsFunc(
-		types,
-		isInterface,
-	) || hasEntryFunction(file.Syntax)
-	if isExposed {
-		return findings
-	}
-
-	return append(
-		findings,
-		report.Finding{
-			Rule:     missingRule,
-			Location: file.Location(file.Syntax.Name),
-			Snippet: fmt.Sprintf(
-				"composition root exposes no exported interface and no func %s",
-				entryName(file.Syntax.Name.Name),
-			),
-		},
+	return slices.Concat(
+		missingContainerFindings(
+			directory,
+			name,
+			files,
+		),
+		strayWiringFindings(
+			modulePath,
+			directory,
+			name,
+			files,
+		),
 	)
 }
 
-func structFindings(
-	file source.File,
-	types []*ast.TypeSpec,
+func strayWiringFindings(
+	modulePath string,
+	directory string,
+	name string,
+	files []source.File,
 ) (findings []report.Finding) {
-	for _, spec := range slices.DeleteFunc(
-		slices.Clone(types),
-		isNotStruct,
+	for _, file := range slices.DeleteFunc(
+		slices.Clone(files),
+		isContainer,
 	) {
 		findings = append(
 			findings,
-			report.Finding{
-				Rule:     structRule,
-				Location: file.Location(spec),
-				Snippet: fmt.Sprintf(
-					"composition root exports struct %s: expose an interface or an entry function instead",
-					spec.Name.Name,
-				),
-			},
+			wiringFindings(
+				modulePath,
+				directory,
+				name,
+				file,
+			)...,
 		)
 	}
 
 	return findings
 }
 
-func strayFindings(
-	root string,
-	strays []string,
-) (findings []report.Finding, err error) {
-	failures := []error{}
-	for _, stray := range strays {
-		location, locationErr := source.RelPath(
-			root,
-			stray,
-		)
-		findings = append(
-			findings,
-			report.Finding{
-				Rule:     looseRule,
-				Location: location,
-				Snippet:  "file beside the composition root: move it into its own package under internal/",
-			},
-		)
-		failures = append(
-			failures,
-			locationErr,
-		)
-	}
-
-	return findings,
-		errors.Join(failures...)
-}
-
-func exportedTypes(
-	syntax *ast.File,
-) (types []*ast.TypeSpec) {
-	for _, declaration := range syntax.Decls {
-		types = append(
-			types,
-			typeSpecs(declaration)...,
-		)
-	}
-
-	return slices.DeleteFunc(
-		types,
-		isUnexported,
-	)
-}
-
-func typeSpecs(
-	declaration ast.Decl,
-) (specs []*ast.TypeSpec) {
-	general, isGeneral := declaration.(*ast.GenDecl)
-	isTypeDeclaration := isGeneral && general.Tok == token.TYPE
-	if !isTypeDeclaration {
+func missingContainerFindings(
+	directory string,
+	name string,
+	files []source.File,
+) (findings []report.Finding) {
+	if slices.ContainsFunc(
+		files,
+		isContainer,
+	) {
 		return nil
 	}
 
-	return source.Nodes[*ast.TypeSpec](general)
+	return []report.Finding{{
+		Rule:     rule,
+		Location: filepath.ToSlash(directory),
+		Snippet: fmt.Sprintf(
+			"module %s has internal packages but no container.go: add container.go and construct them there",
+			name,
+		),
+	}}
 }
 
-func hasEntryFunction(
-	syntax *ast.File,
-) (hasEntry bool) {
-	names := []string{}
-	for _, function := range slices.DeleteFunc(
-		source.Nodes[*ast.FuncDecl](syntax),
-		isNotExportedFunction,
-	) {
-		names = append(
-			names,
-			strings.ToLower(function.Name.Name),
+func wiringFindings(
+	modulePath string,
+	directory string,
+	name string,
+	file source.File,
+) (findings []report.Finding) {
+	for _, spec := range file.Syntax.Imports {
+		findings = append(
+			findings,
+			wiringFinding(
+				modulePath,
+				directory,
+				name,
+				file,
+				spec,
+			)...,
 		)
 	}
 
-	return slices.Contains(
-		names,
-		strings.ToLower(syntax.Name.Name),
+	return findings
+}
+
+func wiringFinding(
+	modulePath string,
+	directory string,
+	name string,
+	file source.File,
+	spec *ast.ImportSpec,
+) (findings []report.Finding) {
+	imported, inModule := importedDirectory(
+		modulePath,
+		spec,
 	)
+	isOwnInternal := inModule && strings.HasPrefix(
+		imported,
+		filepath.Join(
+			directory,
+			internalDirectory,
+		)+string(filepath.Separator),
+	)
+	if !isOwnInternal {
+		return nil
+	}
+
+	return []report.Finding{{
+		Rule:     rule,
+		Location: file.Location(spec),
+		Snippet: fmt.Sprintf(
+			"only container.go wires %s's internal packages",
+			name,
+		),
+	}}
 }
 
-func entryName(
-	packageName string,
+func importedDirectory(
+	modulePath string,
+	spec *ast.ImportSpec,
+) (directory string, inModule bool) {
+	importPath := strings.Trim(
+		spec.Path.Value,
+		importQuotes,
+	)
+	imported, inModule := strings.CutPrefix(
+		importPath,
+		modulePath+"/",
+	)
+	return filepath.FromSlash(imported),
+		inModule
+}
+
+func moduleName(
+	directory string,
+	files []source.File,
 ) (name string) {
-	return strings.ToUpper(packageName[:1]) + packageName[1:]
+	if directory == moduleRoot {
+		return files[0].Syntax.Name.Name
+	}
+
+	return filepath.ToSlash(directory)
 }
 
-func isCompositionRoot(
-	path string,
+func isMain(
+	file source.File,
+) (isMainPackage bool) {
+	return file.Syntax.Name.Name == mainPackage
+}
+
+func isContainer(
+	file source.File,
 ) (isRoot bool) {
 	return source.IsCompositionRoot(
-		path,
-		filepath.Base(filepath.Dir(path)),
+		file.Path,
+		file.Syntax.Name.Name,
 	)
-}
-
-func isUnexported(
-	spec *ast.TypeSpec,
-) (unexported bool) {
-	return !spec.Name.IsExported()
-}
-
-func isInterface(
-	spec *ast.TypeSpec,
-) (matches bool) {
-	_, matches = spec.Type.(*ast.InterfaceType)
-	return matches
-}
-
-func isNotStruct(
-	spec *ast.TypeSpec,
-) (notStruct bool) {
-	_, isStruct := spec.Type.(*ast.StructType)
-	return !isStruct
-}
-
-func isNotExportedFunction(
-	function *ast.FuncDecl,
-) (excluded bool) {
-	return function.Recv != nil || !function.Name.IsExported()
 }
