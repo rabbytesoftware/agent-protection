@@ -99,7 +99,7 @@ func TestOutputTextNotAFix(
 	)
 	notAFixAt := strings.Index(
 		text,
-		"\nNOT A FIX: Wrappers like saveBestEffort",
+		"\nNOT A FIX: Comparing the call with nil inline",
 	)
 	isAfterFix := fixAt >= 0 && notAFixAt > fixAt
 	if !isAfterFix {
