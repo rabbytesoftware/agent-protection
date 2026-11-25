@@ -363,3 +363,31 @@ func readFile(
 	return content,
 		nil
 }
+
+func Load(
+	root string,
+) (files []File, tests []File, err error) {
+	files, err = Source(root)
+	if err != nil {
+		return nil,
+			nil,
+			fmt.Errorf(
+				"load go sources: %w",
+				err,
+			)
+	}
+
+	tests, err = Tests(root)
+	if err != nil {
+		return nil,
+			nil,
+			fmt.Errorf(
+				"load go tests: %w",
+				err,
+			)
+	}
+
+	return files,
+		tests,
+		nil
+}

@@ -173,7 +173,7 @@ func literalUses(
 	bound := boundLiterals(root)
 	uses = map[*ast.FuncLit][]*ast.Ident{}
 	for _, ident := range source.Nodes[*ast.Ident](root) {
-		uses = appendUses(
+		recordUses(
 			uses,
 			bound[ident.Obj],
 			ident,
@@ -183,40 +183,36 @@ func literalUses(
 	return uses
 }
 
-func appendUses(
+func recordUses(
 	uses map[*ast.FuncLit][]*ast.Ident,
 	literals []*ast.FuncLit,
 	ident *ast.Ident,
-) (appended map[*ast.FuncLit][]*ast.Ident) {
+) {
 	for _, literal := range literals {
-		uses = appendUse(
+		recordUse(
 			uses,
 			literal,
 			ident,
 		)
 	}
-
-	return uses
 }
 
-func appendUse(
+func recordUse(
 	uses map[*ast.FuncLit][]*ast.Ident,
 	literal *ast.FuncLit,
 	ident *ast.Ident,
-) (appended map[*ast.FuncLit][]*ast.Ident) {
+) {
 	if encloses(
 		literal.Body,
 		ident,
 	) {
-		return uses
+		return
 	}
 
 	uses[literal] = append(
 		uses[literal],
 		ident,
 	)
-
-	return uses
 }
 
 func boundLiterals(
@@ -224,7 +220,7 @@ func boundLiterals(
 ) (bound map[*ast.Object][]*ast.FuncLit) {
 	bound = map[*ast.Object][]*ast.FuncLit{}
 	for _, assign := range source.Nodes[*ast.AssignStmt](root) {
-		bound = bindAll(
+		bindPairs(
 			bound,
 			assign.Lhs,
 			assign.Rhs,
@@ -232,7 +228,7 @@ func boundLiterals(
 	}
 
 	for _, spec := range source.Nodes[*ast.ValueSpec](root) {
-		bound = bindAll(
+		bindPairs(
 			bound,
 			names(spec),
 			spec.Values,
@@ -255,42 +251,38 @@ func names(
 	return expressions
 }
 
-func bindAll(
+func bindPairs(
 	bound map[*ast.Object][]*ast.FuncLit,
 	targets []ast.Expr,
 	values []ast.Expr,
-) (extended map[*ast.Object][]*ast.FuncLit) {
+) {
 	if len(targets) != len(values) {
-		return bound
+		return
 	}
 
 	for index, value := range values {
-		bound = bind(
+		bindLiteral(
 			bound,
 			targets[index],
 			value,
 		)
 	}
-
-	return bound
 }
 
-func bind(
+func bindLiteral(
 	bound map[*ast.Object][]*ast.FuncLit,
 	target ast.Expr,
 	value ast.Expr,
-) (extended map[*ast.Object][]*ast.FuncLit) {
+) {
 	ident, isIdent := target.(*ast.Ident)
 	literal, isLiteral := value.(*ast.FuncLit)
 	isBinding := isIdent && isLiteral && ident.Obj != nil
 	if !isBinding {
-		return bound
+		return
 	}
 
 	bound[ident.Obj] = append(
 		bound[ident.Obj],
 		literal,
 	)
-
-	return bound
 }

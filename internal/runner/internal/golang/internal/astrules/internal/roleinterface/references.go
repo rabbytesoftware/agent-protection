@@ -171,7 +171,7 @@ func fileAliases(
 ) (aliases map[string]string) {
 	aliases = map[string]string{}
 	for _, spec := range file.Syntax.Imports {
-		aliases = withAlias(
+		recordAlias(
 			aliases,
 			spec,
 			modulePath,
@@ -182,12 +182,12 @@ func fileAliases(
 	return aliases
 }
 
-func withAlias(
+func recordAlias(
 	aliases map[string]string,
 	spec *ast.ImportSpec,
 	modulePath string,
 	packageNames map[string]string,
-) (extended map[string]string) {
+) {
 	importPath := importedPath(spec)
 	directory, isLocal := importedDirectory(
 		importPath,
@@ -202,8 +202,6 @@ func withAlias(
 	if isNamed {
 		aliases[alias] = directory
 	}
-
-	return aliases
 }
 
 func importAlias(

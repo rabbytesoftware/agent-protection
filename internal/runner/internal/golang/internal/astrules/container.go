@@ -14,6 +14,7 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/droppederror"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/filelinelimit"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/genericname"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/gofmtcheck"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/maxdepth"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/namedreturn"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/noelse"
@@ -51,6 +52,7 @@ func Astrules(
 		namedreturn.Namedreturn(everyFile),
 		genericname.Genericname(everyFile),
 		droppederror.Droppederror(everyFile),
+		gofmtcheck.Gofmtcheck(everyFile),
 		boolparam.Boolparam(files),
 		cqs.Cqs(files),
 		sideeffect.Sideeffect(files),

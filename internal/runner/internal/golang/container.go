@@ -15,7 +15,7 @@ import (
 func Golang(
 	root string,
 ) (findings []report.Finding, err error) {
-	files, tests, err := load(root)
+	files, tests, err := source.Load(root)
 	if err != nil {
 		return nil,
 			err
@@ -56,7 +56,7 @@ func Golang(
 func Fix(
 	root string,
 ) (changed []string, err error) {
-	files, tests, err := load(root)
+	files, tests, err := source.Load(root)
 	if err != nil {
 		return nil,
 			err
@@ -70,32 +70,4 @@ func Fix(
 		),
 		astrules.Edits,
 	)
-}
-
-func load(
-	root string,
-) (files []source.File, tests []source.File, err error) {
-	files, err = source.Source(root)
-	if err != nil {
-		return nil,
-			nil,
-			fmt.Errorf(
-				"load go sources: %w",
-				err,
-			)
-	}
-
-	tests, err = source.Tests(root)
-	if err != nil {
-		return nil,
-			nil,
-			fmt.Errorf(
-				"load go tests: %w",
-				err,
-			)
-	}
-
-	return files,
-		tests,
-		nil
 }
