@@ -14,6 +14,7 @@ import (
 
 const (
 	missingTestRule = "R42"
+	emptySnippet    = "empty source file: delete it; a file exists for the declarations it holds"
 	orphanTestRule  = "R43"
 	goExtension     = ".go"
 	testSuffix      = "_test.go"
@@ -113,13 +114,27 @@ func untestedSource(
 	path string,
 	tests []string,
 ) (findings []report.Finding, err error) {
-	exempt, err := isExempt(path)
-	if err != nil {
+	syntax, err := handWritten(path)
+	if syntax == nil ||
+		err != nil {
 		return nil,
 			err
 	}
 
-	if exempt {
+	if !slices.ContainsFunc(
+		syntax.Decls,
+		isDeclaration,
+	) {
+		return emptySourceFindings(
+			root,
+			path,
+		)
+	}
+
+	if !slices.ContainsFunc(
+		syntax.Decls,
+		isFunction,
+	) {
 		return nil,
 			nil
 	}
@@ -263,12 +278,16 @@ func orphanTestFindings(
 	paths []string,
 ) (findings []report.Finding, err error) {
 	candidates := pairedSources(test)
-	if containsAny(
-		paths,
+	index := slices.IndexFunc(
 		candidates,
-	) {
-		return nil,
-			nil
+		isIn(paths),
+	)
+	if index >= 0 {
+		return testlessFindings(
+			root,
+			test,
+			candidates[index],
+		)
 	}
 
 	location, err := source.RelPath(
@@ -324,39 +343,65 @@ func appendKindSource(
 	)
 }
 
-func containsAny(
+func isIn(
 	paths []string,
-	candidates []string,
-) (found bool) {
-	for _, candidate := range candidates {
-		found = found || slices.Contains(
+) (contains func(string) bool) {
+	return func(
+		candidate string,
+	) (found bool) {
+		return slices.Contains(
 			paths,
 			candidate,
 		)
 	}
+}
 
-	return found
+func emptySourceFindings(
+	root string,
+	path string,
+) (findings []report.Finding, err error) {
+	location, err := source.RelPath(
+		root,
+		path,
+	)
+	return []report.Finding{{
+			Rule:     missingTestRule,
+			Location: location,
+			Snippet:  emptySnippet,
+		}},
+		err
+}
+
+func testlessFindings(
+	root string,
+	test string,
+	paired string,
+) (findings []report.Finding, err error) {
+	declares, err := declaresTests(test)
+	if declares ||
+		err != nil {
+		return nil,
+			err
+	}
+
+	location, err := source.RelPath(
+		root,
+		test,
+	)
+	return []report.Finding{{
+			Rule:     missingTestRule,
+			Location: location,
+			Snippet: fmt.Sprintf(
+				"%s declares no tests for %s",
+				filepath.Base(test),
+				filepath.Base(paired),
+			),
+		}},
+		err
 }
 
 func testKinds() (kinds []string) {
 	return []string{"_bench", "_integration"}
-}
-
-func isExempt(
-	path string,
-) (exempt bool, err error) {
-	declarationOnly, err := source.IsDeclarationOnly(path)
-	if err != nil {
-		return false,
-			err
-	}
-
-	if declarationOnly {
-		return true,
-			nil
-	}
-
-	return source.IsGenerated(path)
 }
 
 func isNotTestFile(

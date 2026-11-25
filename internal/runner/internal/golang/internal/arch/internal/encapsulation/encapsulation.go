@@ -17,6 +17,7 @@ const (
 	mainPackage     = "main"
 	importQuotes    = "\"`"
 	internalSegment = "internal"
+	blankImport     = "_"
 )
 
 func Encapsulation(
@@ -75,7 +76,10 @@ func moduleImports(
 	modulePath string,
 	file source.File,
 ) (packages []string) {
-	for _, spec := range file.Syntax.Imports {
+	for _, spec := range slices.DeleteFunc(
+		slices.Clone(file.Syntax.Imports),
+		isBlankImport,
+	) {
 		packages = append(
 			packages,
 			modulePackage(
@@ -207,14 +211,11 @@ func isUnderOwnInternal(
 func isNotExposed(
 	imported string,
 ) (excluded bool) {
-	segments := strings.Split(
-		imported,
-		"/",
-	)
-	outsideBoundaries := slices.DeleteFunc(
-		slices.Clone(segments),
-		source.IsInternalDirectory,
-	)
-	isBehindOneBoundary := len(segments)-len(outsideBoundaries) == 1
-	return !isBehindOneBoundary
+	return !source.IsInternalTree(imported)
+}
+
+func isBlankImport(
+	spec *ast.ImportSpec,
+) (blank bool) {
+	return spec.Name != nil && spec.Name.Name == blankImport
 }

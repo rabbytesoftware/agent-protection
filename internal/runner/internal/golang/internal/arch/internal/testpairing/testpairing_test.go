@@ -12,7 +12,7 @@ import (
 
 const (
 	behavior = "package x\n\nfunc A() {}\n"
-	unitTest = "package x_test\n"
+	unitTest = "package x_test\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n"
 )
 
 func TestTestpairing(
@@ -70,7 +70,7 @@ func TestTestpairing(
 		},
 		{
 			name:  "package main pairs like any other package",
-			files: map[string]string{"cmd/app/main.go": "package main\n\nfunc main() {}\n", "cmd/app/main_test.go": "package main\n", "cmd/app/app_test.go": "package main\n"},
+			files: map[string]string{"cmd/app/main.go": "package main\n\nfunc main() {}\n", "cmd/app/main_test.go": "package main\n\nfunc TestMain() {}\n", "cmd/app/app_test.go": "package main\n"},
 			want:  []string{"R43 cmd/app/app_test.go"},
 		},
 	}
@@ -102,6 +102,7 @@ func checked(
 			err,
 		)
 	}
+
 	return findings
 }
 
@@ -121,6 +122,7 @@ func module(
 			content,
 		)
 	}
+
 	return root
 }
 
@@ -141,6 +143,7 @@ func write(
 			err,
 		)
 	}
+
 	err = os.WriteFile(
 		path,
 		[]byte(content),
@@ -169,6 +172,7 @@ func assertFindings(
 			finding.Rule+" "+finding.Location,
 		)
 	}
+
 	if !slices.Equal(
 		got,
 		want,

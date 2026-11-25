@@ -23,6 +23,7 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/nostutter"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/onetypeperfile"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/packagehygiene"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/packagestate"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/paragraph"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/paramperline"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/astrules/internal/returnperline"
@@ -62,6 +63,7 @@ func Astrules(
 		ctxfirstparam.Ctxfirstparam(files),
 		filelinelimit.Filelinelimit(files),
 		nopanic.Nopanic(files),
+		packagestate.Packagestate(files),
 		stateless.Stateless(files),
 		concretetype.Concretetype(files),
 		roleinterface.Roleinterface(everyFile),

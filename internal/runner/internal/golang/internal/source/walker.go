@@ -7,6 +7,7 @@ import (
 )
 
 type walker struct {
+	root        string
 	files       []string
 	directories []string
 }
@@ -20,7 +21,7 @@ func (w *walker) visit(
 		return err
 	}
 
-	isSkipped := entry.IsDir() && slices.Contains(
+	isSkipped := entry.IsDir() && filepath.Dir(path) == w.root && slices.Contains(
 		skippedDirectories(),
 		entry.Name(),
 	)

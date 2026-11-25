@@ -3,18 +3,25 @@ package source
 import (
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/build/constraint"
 	"go/parser"
 	"go/token"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
+	"unicode"
 )
 
 const (
-	goExtension             = ".go"
-	testSuffix              = "_test.go"
-	generatedHeaderMaxBytes = 500
+	goExtension       = ".go"
+	testSuffix        = "_test.go"
+	integrationTag    = "integration"
+	generatedMarker   = `^// Code generated .* DO NOT EDIT\.$`
+	maxEnumeratedTags = 12
+	buildDirective    = "//go:build"
 )
 
 func Source(
@@ -167,36 +174,69 @@ func IsTest(
 func IsGenerated(
 	path string,
 ) (isGenerated bool, err error) {
-	content, err := readFile(path)
-	if err != nil {
-		return false,
-			err
+	comments, err := headerComments(path)
+	return isGeneratedHeader(comments),
+		err
+}
+
+func isGeneratedHeader(
+	comments []*ast.Comment,
+) (isGenerated bool) {
+	marker := regexp.MustCompile(generatedMarker)
+	for _, comment := range comments {
+		isGenerated = isGenerated || marker.MatchString(comment.Text)
 	}
 
-	return isGeneratedContent(content),
+	return isGenerated
+}
+
+func headerComments(
+	path string,
+) (comments []*ast.Comment, err error) {
+	syntax, err := parser.ParseFile(
+		token.NewFileSet(),
+		path,
+		nil,
+		parser.PackageClauseOnly|parser.ParseComments,
+	)
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"read header of %s: %w",
+				path,
+				err,
+			)
+	}
+
+	for _, group := range syntax.Comments {
+		comments = append(
+			comments,
+			commentsBefore(
+				group,
+				syntax.Package,
+			)...,
+		)
+	}
+
+	return comments,
 		nil
 }
 
-func isGeneratedContent(
-	content []byte,
-) (isGenerated bool) {
-	header := string(content[:min(
-		len(content),
-		generatedHeaderMaxBytes,
-	)])
-	return strings.Contains(
-		header,
-		"Code generated",
-	) || strings.Contains(
-		header,
-		"DO NOT EDIT",
-	)
+func commentsBefore(
+	group *ast.CommentGroup,
+	position token.Pos,
+) (comments []*ast.Comment) {
+	if group.End() >= position {
+		return nil
+	}
+
+	return group.List
 }
 
 func walk(
 	root string,
 ) (found *walker, err error) {
-	found = &walker{}
+	found = &walker{root: filepath.Clean(root)}
 	err = filepath.WalkDir(
 		root,
 		found.visit,
@@ -313,20 +353,21 @@ func handWrittenPath(
 func unitTestPath(
 	path string,
 ) (kept []string, err error) {
-	content, err := readFile(path)
+	comments, err := headerComments(path)
 	if err != nil {
 		return nil,
 			err
 	}
 
-	isExcluded := isGeneratedContent(content) || hasIntegrationTag(content)
+	tagged, err := hasIntegrationTag(comments)
+	isExcluded := tagged || isGeneratedHeader(comments)
 	if isExcluded {
 		return nil,
-			nil
+			err
 	}
 
 	return []string{path},
-		nil
+		err
 }
 
 func isNotTest(
@@ -336,31 +377,58 @@ func isNotTest(
 }
 
 func hasIntegrationTag(
-	content []byte,
-) (tagged bool) {
-	return strings.Contains(
-		string(content),
-		"//go:build",
-	) && strings.Contains(
-		string(content),
-		"integration",
-	)
+	comments []*ast.Comment,
+) (tagged bool, err error) {
+	failures := []error{}
+	for _, comment := range slices.DeleteFunc(
+		slices.Clone(comments),
+		isNotGoBuild,
+	) {
+		integrationOnly, parseErr := isIntegrationOnly(comment.Text)
+		tagged = tagged || integrationOnly
+		failures = append(
+			failures,
+			parseErr,
+		)
+	}
+
+	return tagged,
+		errors.Join(failures...)
 }
 
-func readFile(
-	path string,
-) (content []byte, err error) {
-	content, err = os.ReadFile(path)
+func isNotGoBuild(
+	comment *ast.Comment,
+) (excluded bool) {
+	return !constraint.IsGoBuild(comment.Text)
+}
+
+func isIntegrationOnly(
+	line string,
+) (integrationOnly bool, err error) {
+	expression, err := constraint.Parse(line)
 	if err != nil {
-		return nil,
+		return false,
 			fmt.Errorf(
-				"read %s: %w",
-				path,
+				"parse build constraint %q: %w",
+				line,
 				err,
 			)
 	}
 
-	return content,
+	others := slices.DeleteFunc(
+		constraintTags(line),
+		isIntegrationTag,
+	)
+	isEnumerable := len(others) <= maxEnumeratedTags
+	return isEnumerable && isSatisfiable(
+			expression,
+			others,
+			[]string{integrationTag},
+		) && !isSatisfiable(
+			expression,
+			others,
+			nil,
+		),
 		nil
 }
 
@@ -390,4 +458,67 @@ func Load(
 	return files,
 		tests,
 		nil
+}
+
+func isSatisfiable(
+	expression constraint.Expr,
+	undecided []string,
+	enabled []string,
+) (satisfiable bool) {
+	if len(undecided) == 0 {
+		return expression.Eval(tagSetter(enabled))
+	}
+
+	return isSatisfiable(
+		expression,
+		undecided[1:],
+		slices.Concat(
+			enabled,
+			undecided[:1],
+		),
+	) || isSatisfiable(
+		expression,
+		undecided[1:],
+		enabled,
+	)
+}
+
+func tagSetter(
+	enabled []string,
+) (isSet func(string) bool) {
+	return func(
+		tag string,
+	) (set bool) {
+		return slices.Contains(
+			enabled,
+			tag,
+		)
+	}
+}
+
+func constraintTags(
+	line string,
+) (tags []string) {
+	tags = strings.FieldsFunc(
+		strings.TrimPrefix(
+			line,
+			buildDirective,
+		),
+		isNotTagRune,
+	)
+	slices.Sort(tags)
+	return slices.Compact(tags)
+}
+
+func isNotTagRune(
+	character rune,
+) (excluded bool) {
+	isTagRune := unicode.IsLetter(character) || unicode.IsDigit(character) || character == '_' || character == '.'
+	return !isTagRune
+}
+
+func isIntegrationTag(
+	tag string,
+) (matches bool) {
+	return tag == integrationTag
 }
