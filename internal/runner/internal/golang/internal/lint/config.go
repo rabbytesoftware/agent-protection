@@ -1,13 +1,10 @@
 package lint
 
 const config = `version: "2"
+run:
+  relative-path-mode: wd
 linters:
   default: none
-  exclusions:
-    paths:
-      - "docs/"
-      - "generated/"
-      - "gen/"
   enable:
     - gocyclo
     - gocognit
@@ -21,12 +18,20 @@ linters:
     - errcheck
     - nakedret
     - interfacebloat
+    - ineffassign
+    - staticcheck
+    - unused
+  exclusions:
+    generated: disable
   settings:
     errcheck:
       check-blank: true
       check-type-assertions: true
     interfacebloat:
       max: 3
+    staticcheck:
+      checks:
+        - SA4006
     nakedret:
       max-func-lines: 0
     gocyclo:

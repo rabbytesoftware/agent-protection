@@ -1,8 +1,8 @@
 package source_test
 
 import (
+	"fmt"
 	"path/filepath"
-	"slices"
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
@@ -101,7 +101,12 @@ func TestIsDeclarationOnly(
 func TestIsInternalTree(
 	t *testing.T,
 ) {
-	cases := map[string]bool{"a/internal": true, "a/internal/b/c": true, "a/internalize": false, "a/b": false}
+	cases := map[string]bool{
+		"a/internal":     true,
+		"a/internal/b/c": true,
+		"a/internalize":  false,
+		"a/b":            false,
+	}
 	for dir, want := range cases {
 		assertBool(
 			t,
@@ -126,30 +131,19 @@ func TestIsInternalDirectory(
 	}
 }
 
-func TestIsSharedSupport(
-	t *testing.T,
-) {
-	cases := map[string]bool{"internal/report": true, "internal/errors": true, "internal/runner": false}
-	for dir, want := range cases {
-		assertBool(
-			t,
-			"IsSharedSupport("+dir+")",
-			source.IsSharedSupport(dir),
-			want,
-		)
-	}
-}
-
 func TestIsMock(
 	t *testing.T,
 ) {
 	cases := map[string]bool{
-		"internal/mocks/bus.go":  true,
-		"store/fakes/clock.go":   true,
-		"store/bus_mock.go":      true,
-		"store/FakeClock.go":     true,
-		"internal/bus/bus.go":    false,
-		"internal/remote/sms.go": false,
+		"internal/mocks/bus.go":   true,
+		"store/fakes/clock.go":    true,
+		"store/bus_mock.go":       true,
+		"store/fake_clock.go":     true,
+		"store/mocks.go":          true,
+		"store/FakeClock.go":      false,
+		"internal/mockbuses/b.go": false,
+		"internal/bus/bus.go":     false,
+		"internal/remote/sms.go":  false,
 	}
 	for path, want := range cases {
 		assertBool(
@@ -161,10 +155,53 @@ func TestIsMock(
 	}
 }
 
+func TestIsExample(
+	t *testing.T,
+) {
+	cases := map[string]bool{"example/commands/c.go": true, "examples/x.go": true, "internal/exampler/x.go": false}
+	for path, want := range cases {
+		assertBool(
+			t,
+			"IsExample("+path+")",
+			source.IsExample(path),
+			want,
+		)
+	}
+}
+
+func TestIsModule(
+	t *testing.T,
+) {
+	sources := []string{"a/internal/b", "c", "d/internalized"}
+	cases := map[string]bool{
+		"a":            true,
+		"c":            false,
+		"d":            false,
+		"a/internal/b": false,
+	}
+	for dir, want := range cases {
+		assertBool(
+			t,
+			"IsModule("+dir+")",
+			source.IsModule(
+				dir,
+				sources,
+			),
+			want,
+		)
+	}
+}
+
 func TestIsCompositionRoot(
 	t *testing.T,
 ) {
-	cases := map[string]bool{"x/container.go": true, "x/wire.go": true, "x/arch.go": true, "x/helpers.go": false}
+	cases := map[string]bool{
+		"x/container.go": true,
+		"x/main.go":      false,
+		"x/wire.go":      false,
+		"x/arch.go":      false,
+		"x/helpers.go":   false,
+	}
 	for path, want := range cases {
 		assertBool(
 			t,
@@ -174,100 +211,6 @@ func TestIsCompositionRoot(
 				"arch",
 			),
 			want,
-		)
-	}
-}
-
-func TestHasSource(
-	t *testing.T,
-) {
-	root := t.TempDir()
-	writeFile(
-		t,
-		filepath.Join(
-			root,
-			"src/a.go",
-		),
-		"package a\n",
-	)
-	writeFile(
-		t,
-		filepath.Join(
-			root,
-			"tests/a_test.go",
-		),
-		"package a\n",
-	)
-	cases := map[string]bool{"src": true, "tests": false}
-	for dir, want := range cases {
-		hasSource, err := source.HasSource(filepath.Join(
-			root,
-			dir,
-		))
-		assertBoolResult(
-			t,
-			"HasSource("+dir+")",
-			hasSource,
-			err,
-			want,
-		)
-	}
-
-	_, err := source.HasSource(filepath.Join(
-		root,
-		"missing",
-	))
-	if err == nil {
-		t.Error("HasSource(missing) error = nil, want a read error")
-	}
-}
-
-func TestEntries(
-	t *testing.T,
-) {
-	root := t.TempDir()
-	writeFile(
-		t,
-		filepath.Join(
-			root,
-			"a.go",
-		),
-		"package a\n",
-	)
-	writeFile(
-		t,
-		filepath.Join(
-			root,
-			"a_test.go",
-		),
-		"package a\n",
-	)
-	writeFile(
-		t,
-		filepath.Join(
-			root,
-			"child/b.go",
-		),
-		"package b\n",
-	)
-	paths, err := source.Entries(root)
-	if err != nil {
-		t.Fatalf(
-			"Entries() error = %v",
-			err,
-		)
-	}
-
-	if !slices.Equal(
-		paths,
-		[]string{filepath.Join(
-			root,
-			"a.go",
-		)},
-	) {
-		t.Errorf(
-			"Entries() = %v, want only a.go",
-			paths,
 		)
 	}
 }
@@ -311,4 +254,61 @@ func assertBoolResult(
 		got,
 		want,
 	)
+}
+
+func TestBuildConstraint(
+	t *testing.T,
+) {
+	cases := []struct {
+		name    string
+		content string
+		want    string
+		wantErr bool
+	}{
+		{name: "a constrained file yields its expression", content: "//go:build prod && !windows\n\npackage p\n", want: "prod && !windows"},
+		{name: "an unconstrained file yields nothing", content: "package p\n", want: "<nil>"},
+		{name: "a malformed constraint is an error", content: "//go:build prod &&\n\npackage p\n", want: "<nil>", wantErr: true},
+		{name: "an unparsable file is an error", content: "package\n", want: "<nil>", wantErr: true},
+	}
+	for _, tc := range cases {
+		path := filepath.Join(
+			t.TempDir(),
+			"p.go",
+		)
+		writeFile(
+			t,
+			path,
+			tc.content,
+		)
+		expression, err := source.BuildConstraint(path)
+		assertConstraint(
+			t,
+			tc.name,
+			fmt.Sprint(expression),
+			err,
+			tc.want,
+			tc.wantErr,
+		)
+	}
+}
+
+func assertConstraint(
+	t *testing.T,
+	name string,
+	got string,
+	err error,
+	want string,
+	wantErr bool,
+) {
+	t.Helper()
+	isMismatch := got != want ||
+		(err != nil) != wantErr
+	if isMismatch {
+		t.Errorf(
+			"%s: BuildConstraint() = %q, %v",
+			name,
+			got,
+			err,
+		)
+	}
 }

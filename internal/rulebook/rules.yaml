@@ -1,0 +1,480 @@
+R01:
+    id: R01
+    level: L0
+    text: "One parameter per line, always: opening paren on the func line, every parameter on its own line, closing paren on its own line"
+    enforcement: analyzer
+    rationale: "A signature with one parameter per line diffs cleanly when parameters are added, removed or reordered, and reads the same way in every function regardless of length."
+    fix_strategy: "Break the parameter list so the opening paren ends the func line, each parameter sits on its own line with a trailing comma, and the closing paren starts its own line."
+    not_a_fix: "Bundling unrelated parameters into an ad hoc options struct or a variadic ...any so the list has one entry; keeping grouped names like (a, b int) on one line; reading inputs from package state or captured closure variables instead of taking them as parameters."
+R02:
+    id: R02
+    level: L0
+    text: "Maximum 2 indentation levels inside a function body"
+    enforcement: analyzer
+    rationale: "Code nested three levels deep forces the reader to hold several conditions in mind at once; the depth itself is the signal that a step deserves its own name."
+    fix_strategy: "Extract the inner block into a named function or method, filter collections with slices.DeleteFunc or slices.ContainsFunc, or invert conditions into guard clauses. Moving a closure into a local variable does not reduce its depth: it is measured where it is used."
+    not_a_fix: "Hoisting inner blocks into closures or helpers with meaningless names (inner, doStep, handle2) so depth drops while the function stays as long and does as much; wrapping a branch in a func literal; flattening with goto or labeled continue chains that keep the same tangled control flow."
+R03:
+    id: "R03"
+    level: "L1"
+    text: "Guard clauses first, no else, success return last; a switch with one case and a default, or a switch on a bool against true or false, is an else too"
+    enforcement: "analyzer"
+    rationale: "An else branch means the happy path and the exceptional path are nested at the same level instead of the exceptional path exiting early; harder to scan, one more indentation level to track."
+    fix_strategy: "Invert the condition and return/continue early; keep the function body flat."
+    not_a_fix: "Replacing else with a second if that tests the negated condition; turning the if/else into a switch (switch { case cond: ... default: ... }, switch cond { case true: ... }) or a map of funcs that keeps the same two nested branches; nesting the success path inside the if and returning the failure last."
+R04:
+    id: "R04"
+    level: "L1"
+    text: "Every function and func literal with results names them, in test files too: (queue Queue, err error), never (Queue, error) and never a name that says nothing (_, a single letter other than n, res, ret, rv, rval, retval, val, value, out, output, tmp, temp, data, result, results, ans, or one of these, err, ok or n with a number appended); named results replace a var in the body, and a return is never naked"
+    enforcement: "analyzer"
+    rationale: "A named result documents what a function hands back at the one place every caller reads, so the signature needs no comment; a var declared only to be returned duplicates what a named result already declares, and a naked return hides what is actually returned at the exit that matters most. Interface methods and func-typed fields and parameters are declarations, not implementations, so they keep plain types. A result called r, res, out or result is named in form only: the reader still learns nothing about what comes back. Such a word is accepted only where it is the type's own name (result FetchResult, output report.Output, results []FileResult), the function's own name (func (t text) value() (value string)), or value for a type parameter, any or an empty interface."
+    fix_strategy: "Name every result after what it holds (queue Queue, err error, policy func(attempt int) time.Duration, squared int, parsed Config), declare a returned value as a named result and drop the var, and always write the explicit return values even though the names are declared in the signature."
+    not_a_fix: "Naming results r, v, x, res, ret, val, out, tmp, data, result or _ so the list is named but says nothing, or numbering them (result2, err2); naming one result and leaving the rest to a blank identifier; renaming the function after the vague word (func result()) only to excuse the result name; turning the function into a func-typed package var or field so its results are not checked; swapping var x T for x := T{} so the value is still declared in the body only to be returned; declaring the named result and then shadowing it with := inside a block; copying a local into the named result at the end instead of using the result directly."
+R07:
+    id: "R07"
+    level: "L0"
+    text: "No comments, in any language and any file: Go, go.mod, shell, SQL, JS/TS, Rust, Python, Ruby, Makefile, Dockerfile, YAML and TOML; no inline comments, no doc comments, no TODOs, no license headers, no suppression comments, and no prose smuggled into strings bound to _, string constants or variables nothing reads (a TODO, FIXME, HACK or XXX marker, or a sentence of six or more words), unknown struct tag keys or directive arguments; no TODO, FIXME, HACK or XXX marker or escape-hatch note (hack, kludge, workaround, stopgap, band-aid, for now, fix later, remove once, until we) in log messages (log.*, slog.*, any Debug, Info, Warn or Log* method, t.Skip), in help, example, jsonschema, description, usage or doc tag values (nor a because there), and no sentence of six or more words in t.Log or t.Logf; and no .md, .txt or .rst notes file in a Go package directory other than the module root, docs/, doc/, testdata/ and example trees, unless the package embeds it with //go:embed"
+    enforcement: "analyzer"
+    rationale: "A comment is where code gets justified instead of fixed. Every comment you are about to write means the code is not clean yet: a vague name, a function doing too much, tangled logic. The code you leave must be enough for the next agent or human to understand what is happening. A good function is one that needs no comment at all. Moving the same sentence into a script, a migration, a workflow, a string or a struct tag does not change what it is."
+    fix_strategy: "Delete the comment, then make the code carry the meaning: rename the function, variable or type after what it does or holds; extract the step the comment described into a function whose name says it; replace a magic value with a named constant; split a function that needs explaining. Why a change was made goes in the commit message or PR description. Only machine-read directives stay, in their exact form: Go //go:build and // +build (before the package clause, paired), //go:embed, //go:generate (file top level, a real tool, not echo/true/false/:/printf), //go:linkname, //go:noinline and the other bare compiler directives with no arguments, //line, //export, //extern, a cgo preamble of preprocessor lines and C code only, and // Output: in Example tests; // indirect in go.mod; a shebang; # shellcheck key=value settings; # yaml-language-server: $schema=; Dockerfile parser directives (# syntax=, # escape=, # check=) at the top;; +goose and; +migrate markers and sqlc; name: annotations in SQL; Python coding and Ruby magic comments in the file header; #:schema on the first line of TOML; TypeScript /// <reference> and /*#__PURE__*/. Struct tags use only keys a library reads (json, yaml, db, validate, gorm, protobuf, ...)."
+    not_a_fix: "Deleting the comment and leaving the code as unclear as before; moving the explanation into a string literal (const _ = \"...\", _ = \"...\", const rationale = \"...\" or const todo = \"TODO: ...\" that nothing reads, var _ = rationale), a struct tag key no library reads (why:\"...\"), a directive argument (//go:noinline TODO ..., //go:generate echo ...), a C comment or #if 0 block in the cgo preamble, a log message (slog.Debug(\"TODO: ...\"), t.Log(\"this is a hack because ...\")), a help or jsonschema tag value, a sentence-shaped identifier (thisIsNeededBecause), a notes file beside the code (NOTES.md, design.txt or a README.md inside a package), or a fake directive (//go:note); moving it from Go into a script, migration, Makefile, Dockerfile or workflow; suppression comments (// @ts-expect-error, eslint-disable, # noqa, # type: ignore, //nolint); disabling the rule."
+R08:
+    id: R08
+    level: L1
+    text: "One type per file, named after the type; only container.go may hold its one type under another name. Aliases that re-export another package's type (type X = vocab.X, type P = vocab.Page[int]) and Err sentinel re-exports do not count, so one API file (for example vocabulary.go) may hold every re-export beside at most one real type. No types declared inside function bodies and no anonymous struct types outside _test.go files"
+    enforcement: analyzer
+    rationale: "A file with several types has no name-matched home, so neither agents nor humans can find or size one type's code. A type hidden in a function body or as an anonymous struct is a second type with no home at all. container.go is the one exception because it is the module's single, conventionally named wiring point. Test files may use anonymous structs for table-driven cases."
+    fix_strategy: "Split into one file per type, named after that type in snake_case. Lift local types and anonymous structs (JSON wire shapes, lookup tables) into named package-level types in their own files. A type that only exists to wire a module's internal packages lives in container.go."
+    not_a_fix: "Hiding the second type as an alias of a type in the same package or of a struct literal (aliases count unless they re-export another package's type), an anonymous struct in a var or composite literal, or a type declared inside a function; naming the file after one type while another type's helpers stay in it; renaming the file container.go to host an unrelated type; moving the code into a _test.go file to use anonymous structs."
+R11:
+    id: R11
+    level: L1
+    text: "A stateless type is a package-level function named after the package, not a struct (mocks excluded). An unexported empty struct is allowed only when every method implements an interface declared in the module (or a standard one such as io.Writer, sort.Interface, http.Handler, error, fmt.Stringer) and it is exposed only as that interface"
+    enforcement: analyzer
+    rationale: "An empty struct with methods carries no state, so the type adds a constructor, a receiver and an indirection that a plain function does not need. The one exception is an interface implementation such as a system clock: the interface is the seam, and the empty struct is the idiomatic Go way to satisfy it."
+    fix_strategy: "Delete the struct and expose the behavior as a package-level function named after the package (vault.Vault, deptree.Deptree). If the struct implements an interface its consumers depend on, keep it unexported and return it only as that interface."
+    not_a_fix: "Adding a dummy or unused field (a mutex nobody locks, _ struct{}, a name nobody reads) so the struct is no longer empty; renaming the file or type to look like a mock; replacing the struct with a non-struct named type such as type x int that carries the same methods; replacing the interface with a struct of function fields; declaring an interface nobody consumes only so the empty struct matches it."
+R12:
+    id: R12
+    level: L1
+    text: "NewXxx constructors only when there is real state to initialize, or when they return an interface implemented by an unexported empty struct"
+    enforcement: analyzer
+    rationale: "A constructor that returns an empty struct implies initialization that does not exist and invites callers to depend on a type that should not be there. Returning the interface hides the empty implementation, so callers depend only on the behavior."
+    fix_strategy: "Remove the constructor and the empty struct, and call the package-level function directly; or, for an interface implementation, return the interface instead of the struct."
+    not_a_fix: "Adding a meaningless field or a config value nobody reads so the constructor has something to set; renaming NewXxx to MakeXxx, CreateXxx or Default so the name check misses it; returning the empty struct from a package var instead; returning *T or T where the interface should be returned."
+R13:
+    id: R13
+    level: L0
+    text: "Public APIs expose interfaces: an exported struct with pointer-receiver methods, or with a value-receiver method that writes through one of its map, slice, channel or pointer fields (t.seen[k]++, t.items[i] = v, t.events <- v, *t.n = v, t.state.n = v, delete(t.seen, k), clear(t.seen)), is an implementation and stays unexported"
+    enforcement: analyzer
+    rationale: "An exported implementation struct couples every caller to its fields and construction; an interface describes only the behavior a caller needs, so the implementation can change freely behind it."
+    fix_strategy: "Unexport the struct, declare the interface its callers need, and return that interface from the constructor (in container.go when the struct lives below a module). Plain value types with value-receiver methods may stay exported."
+    not_a_fix: "Switching to value receivers while still mutating through pointer fields; returning an exported alias of the struct; an interface whose methods hand back the concrete struct; mirroring every field as getter and setter."
+R14:
+    id: "R14"
+    level: "L0"
+    text: "A public package or module directory exposes only its API: exported interfaces, the types and constants its signatures use, Err sentinels and error types whose Error, Unwrap, Is, As and String methods are a single return of a field, a literal, a concatenation or one fmt.Sprintf, fmt.Errorf or errors call; entry functions live in container.go and only delegate (calls into this module's internal packages, its own declarations, errors.New, errors.Join, fmt.Errorf, slices.Concat and other modules' constructors; plain assignments; returns; if err != nil { return } guards; no indexing and no tables of funcs or interfaces). In a package main directory only main.go holds code: no types, methods, other funcs, or package vars initialized by a call or func literal (var _ = func() { ... }()), and its func main delegates the same way, adding only os.Exit and fmt.Fprintln(os.Stderr, ...) for the error exit"
+    enforcement: "arch"
+    rationale: "A module's contract is its directory and its assembly is its container.go. Implementation in a public package, the root, a command directory, a String method or a container entry couples every caller to it, cannot be swapped, and turns the directory into a dumping ground no file cap or naming rule can keep in order. A container that reads the environment, picks an implementation from a map or guards on anything but an error is deciding behavior, not assembling it."
+    fix_strategy: "Move every method, unexported function, unexported type and package variable into a package under this directory's internal/, named for what it does. Keep here only the interface the outside world uses, the types and errors in its signatures, and container.go, whose exported functions construct the internal implementation and return the interface. If an entry function needs a loop, switch, branch, lookup table or configuration read, that logic belongs in the internal package it calls, and configuration arrives as entry parameters. Rendering logic in String or Error moves into an internal formatter the method does not need. In a command, main.go keeps only func main, which passes os.Args and the process streams into an entry function under cmd/<name>/internal/ and exits with its result. Run ap guide for the full module shape."
+    not_a_fix: "Exporting helpers so they look like API; turning methods into exported functions; moving the implementation into a public sibling package (models, store, engine), an example, a test-support package or a second file of package main; making a package look like test support by importing testing from a production file; hiding logic in func literals, exported vars, String methods, map lookups or nil checks on non-error values; renaming a value err so a branch on it passes as a guard; putting the implementation in container.go or main.go; moving the CLI logic of main.go into a package-level var _ = func() bool { ... }() initializer."
+R15:
+    id: R15
+    level: L1
+    text: "Nothing outside a module imports a package below that module's directory; outsiders import the module itself"
+    enforcement: arch
+    rationale: "A module's API is its directory. Reaching into its subpackages (M/models, M/options) from outside couples callers to its internals and bypasses its container, so the module can no longer change shape without breaking them."
+    fix_strategy: "Import M and use what its API exposes. If callers need a type that lives below M, move that type into M's own API."
+    not_a_fix: "Copying the type into the importer; re-exporting the deep package through a pass-through file; moving the importer inside M only so the import becomes local."
+R16:
+    id: R16
+    level: L1
+    text: "Siblings form one layer: a package may import a sibling (same parent directory, in any tree) only if that sibling imports no sibling with logic of its own. Importing a declaration-only sibling (types, constants, Err sentinels and single-return Error/String methods, such as a model or contracts package) does not make a package a non-foundation, exactly as declaration-only siblings do not count toward R47. Every in-module import is judged at the lowest common ancestor directory of importer and imported: both ends are lifted to the two child directories of that ancestor, so importing internal/store/order from internal/checkout is an edge from checkout to store, and anything below store importing a sibling package with logic makes store a non-foundation. Each lifted edge is reported once, at its first import by path and line, with how many imports in how many packages make it"
+    enforcement: arch
+    rationale: "Packages that share a parent are one layer. When siblings import siblings that import siblings, the directory hides a dependency chain nobody can see from the tree, and the parent's container.go stops being where the wiring is. Importing a cousin (a package below a sibling) instead of the sibling itself hides the same chain one level deeper. Code anywhere under an internal/ directory counts as that internal/ directory, so internal/a importing contracts is an edge from internal/ to contracts. A declaration-only sibling carries no behavior, so a shared helper that maps between model types stays a foundation; counting it would push agents to copy the helper into every consumer."
+    fix_strategy: "Declare the interface you need in the consuming package and let the parent's container.go pass the implementation in, or make the imported sibling a foundation by removing its imports of siblings with logic (a vocabulary package such as contracts must not import store). Foundation siblings, including ones that import only declaration-only siblings, may be imported directly. One finding can stand for many imports: fix the edge, not the import line."
+    not_a_fix: "Moving the import into a file named after the package or into the child's own container.go; renaming the imported package models or contracts; nesting one sibling under the other only to break the edge; importing a package below the sibling instead of the sibling; moving the import into a child package of the importer; duplicating the code; moving behavior into the declaration-only sibling so the helper stops importing anything else."
+R19:
+    id: R19
+    level: L1
+    text: "Nest internal/ at the lowest module that needs it; a package imported by exactly one other internal package does not stay exposed at a shallower level: when that importer is a module (it has internal/ children) or a public package, the package moves under the importer's own internal/; when the importer is a leaf internal package, the package is merged into the importer"
+    enforcement: arch
+    rationale: "A package sitting above its sole consumer's internal/ boundary is importable by anything else in the module even though nothing else uses it; the encapsulation only exists by accident, not by Go's own visibility enforcement, and the first stray import from elsewhere quietly turns an implementation detail into a load-bearing dependency. Nesting it under a leaf importer would give that importer a lone internal/ child, which R51 rejects, and would turn the importer into a module that must then be API-only, so for a leaf the package becomes part of the importer instead."
+    fix_strategy: "Read the finding: for a leaf importer, move the package's files into the importer's directory as same-package files (tests beside them, exported names unexported where only the importer used them) and delete the old directory; for a module or public importer, move the package under importer/internal/<package> and wire it from the importer's container.go."
+    not_a_fix: "Adding a token import from a second package only so the package counts as shared; moving it to a directory the rule does not walk; copying the package under its importer while the old exposed copy stays in place; nesting it under a leaf importer's internal/ and then adding a placeholder sibling to quiet R51."
+R21:
+    id: R21
+    level: L1
+    text: Package names are short, lowercase, singular nouns, no underscores
+    enforcement: analyzer
+    rationale: A package name is read at every call site (pkg.Func); inconsistent casing or underscores add friction everywhere that name is used.
+    fix_strategy: Rename the package to a short, lowercase, no-underscore noun.
+    not_a_fix: "Renaming the directory but keeping the old package clause, or the reverse; replacing underscores with camelCase or an unreadable abbreviation; aliasing the import at every call site instead of renaming the package."
+R22:
+    id: R22
+    level: L1
+    text: "No util/common/helpers/base/misc packages, and no escape-hatch names: legacy, compat, tmp, temp, temporary, wip, old, new, deprecated, unused, todo, junk, interim, stopgap, hack, kludge, workaround, shim, stub, patch, fixme, hotfix, quickfix, bandaid, bypass, shortcut, adhoc, scratch, draft, sandbox, playground, experimental, glue, data, generic and the like; a name opening or ending with util, utils, helper, helpers or any escape-hatch word as a whole word part (internalutil, legacyauth, oldstore, tempcache, authshim) counts as the same, while real words that only embed one (template, temporal, dispatch, jsonpatch, threshold, manifold, news, renew, overdraft) pass"
+    enforcement: analyzer
+    rationale: "A generically-named package becomes an unbounded dumping ground with no single responsibility, and its name tells a reader nothing about what's inside. Escape-hatch names such as legacy, compat, wip, shim, stopgap, sandbox or glue say why code was parked or how provisional it is, not what it does, so they collect everything nobody wanted to design."
+    fix_strategy: Name the package after what it actually does, and split it if it's doing more than one thing.
+    not_a_fix: "Renaming util to a synonym like shared, core, kit, lib, support, toolbox, glue or data while it stays a grab bag; gluing the banned word onto another word (internalutil, oldstore, tempcache, hotfixauth); swapping it for a synonym of provisional work (interim, stopgap, bandaid, kludge, scratch, draft, playground); splitting it alphabetically or by file count into packages that still have no single responsibility; dumping the helpers into the importer's top-level file instead."
+R23:
+    id: R23
+    level: L1
+    text: No naming stutter; the one allowed exception is a type or entry function named exactly after its package (vault.Vault, noelse.Noelse)
+    enforcement: analyzer
+    rationale: pkg.PkgThing repeats information the caller already has from the package qualifier; it's noise at every call site.
+    fix_strategy: Drop the repeated package name from the type name.
+    not_a_fix: "Abbreviating or misspelling the repeated word (vault.VltConfig, vault.VConfig) instead of dropping it; moving the type to another package only to change the qualifier; renaming the package to something meaningless so it no longer matches the type."
+R24:
+    id: "R24"
+    level: "L1"
+    text: "No init(), no mutable package-level state, and no package-level var _ = initializer that calls anything: a blank var whose value calls a function or runs a func literal executes at import time exactly like init; only interface assertions such as var _ I = (*T)(nil), var _ I = T{} and var _ I = &T{} stay, and an Err sentinel may be built by a call but never by a func literal. Outside package main and tests no package reads process configuration, called or taken as a value: os.Getenv, os.LookupEnv, os.Environ, os.ExpandEnv, syscall, unix and windows Getenv and Environ, the package-level flag, pflag and viper globals (flag.Parse, flag.String, viper.GetString; flag.NewFlagSet and viper.New instances stay), or env loaders (caarlos0/env, envconfig, go-envconfig, godotenv, cleanenv); configuration arrives as parameters"
+    enforcement: "lint"
+    rationale: "init() runs implicitly with no caller-visible trigger, and package-level mutable state is shared, hidden, and hard to reason about under concurrency or tests."
+    fix_strategy: "Move init logic into an explicit constructor; pass state through a struct field instead of a package var. Take configuration as a constructor parameter (the value, or a lookup func such as func(string) string) and let func main supply it, for example by passing os.Getenv down; parse flags with flag.NewFlagSet over the args main passes in."
+    not_a_fix: "Hiding the state in a package-level struct, map or sync.Once singleton; replacing init() with a var x = setup() initializer that runs the same hidden code at import time; keeping the state in a closure returned by a package func so it is shared but unseen; adding a // Code generated ... DO NOT EDIT. header, a go:generate directive or a generator config: generated files are still checked for package state; registering handlers or flags from var _ = func() bool { http.HandleFunc(...); return true }() or var _ = flag.String(...); building an Err sentinel from a func literal that runs other code first."
+R25:
+    id: R25
+    level: L1
+    text: "context.Context is always the first parameter and never stored: no struct field of type context.Context, and no context parameter or context.Background/TODO/With* result placed in a composite literal (whatever the field type: any, a small interface, a slice or map element), assigned to a field or index, sent on a channel, or taken as a method value (ctx.Err, ctx.Done, ctx.Value without a call)"
+    enforcement: analyzer
+    rationale: A context not positioned first breaks the one universal Go convention every reader expects; storing it in a struct hides its lifetime and invites using a stale or wrong context.
+    fix_strategy: Move ctx to the first parameter position; pass it through call chains explicitly instead of storing it.
+    not_a_fix: "Storing the context in a closure, a map, a channel or an embedded struct instead of passing it as the first parameter; replacing the caller's ctx with context.Background() or context.TODO() deeper in the chain; carrying ctx inside an options bag parameter."
+R26:
+    id: R26
+    level: L1
+    text: "Never ignore an error; wrap with %w and compare with errors.Is/As. An error variable that is assigned and then overwritten, or never read before the function returns, is ignored too. Rebuilding an error from its text (errors.New(err.Error()), errors.New(fmt.Sprintf(\"%v\", err)), fmt.Errorf with err or err.Error() under %s or %v) drops its chain. After an errors.Is or errors.As check the error must still reach a return, a wrap or another check on the path where it does not match. Logging an error through any logger (log, slog, fmt.Print*, fmt.Fprint* to os.Stderr, or a Print*, Log*, Error, Warn, Info, Debug or Trace method on any value) and carrying on drops it. This holds in every file whatever its build tags, and for calls whose error result is known without type checking: functions declared in the module and well-known standard library calls (strconv, os, io, encoding/json, fmt.Sscan and friends). Such a call compared with nil directly (if os.Remove(p) != nil { return }, ok := save() == nil, if save() == nil { ... } in production code) drops its error exactly like a bound err. A function, method or func literal in production code whose error parameter is unnamed, blank (_ error) or never read in its body is a no-op error sink and is reported"
+    enforcement: analyzer
+    rationale: "A silently discarded error is a silently discarded failure; the single most common way real bugs get masked in Go. Checking an error and then returning, continuing or substituting a fallback without using it hides the failure just as _ = does, and so does a dead store: an err overwritten by the next call or the next loop iteration, or a value, err := f() whose err nobody reads."
+    fix_strategy: "Return the error wrapped with context via %w, or hand it to a reporter; replacing it with a zero value or a bare sentinel still drops it. Check every assigned error with if err != nil right after the call; in a loop, check it inside the loop or accumulate with errors.Join(err, ...)."
+    not_a_fix: "Comparing the call with nil inline instead of binding err; injecting a no-op reporter (func Silence(_ error) {}, func(error) {}, a default ignoreBackgroundErrors) so the error reaches a sink that discards it; Wrappers like saveBestEffort or swallowPanic that check the error and drop it; checking err and then returning silently or returning nil; assigning to _ or to a variable nobody reads; reusing one err variable so each call overwrites the last; keeping only the last error of a loop; functions like ids.New() that return \"\" or a zero value on failure instead of an error; logging the error and carrying on as if the call succeeded; marking the file as generated: generated files are still checked for dropped errors; errors.New(err.Error()) or fmt.Errorf(\"%s\", err) in place of %w; if errors.Is(err, ErrX) { return 0 } with nothing handling every other error; logging through a struct field logger (w.config.Logger.Error(\"...\", \"err\", err)) instead of the log package and carrying on; moving the call into a file behind a //go:build tag or into a nested module so golangci-lint never type-checks it."
+R27:
+    id: R27
+    level: L1
+    text: "No panic, log.Fatal*, log.Panic*, os.Exit, syscall.Exit, unix.Exit or runtime.Goexit outside package main, called directly or used as a value, and no Fatal* or Panic* method on a logger value (log.New, log.Default(), or any variable, parameter or field typed as a *Logger), generated files included"
+    enforcement: analyzer
+    rationale: "A library that panics or exits takes the decision to crash away from its caller; errors are values the caller can handle, log or wrap. Real generator output (protoc, sqlc, stringer, mockery) does not panic, so a generated header is no reason to stop looking."
+    fix_strategy: "Return an error wrapped with context via %w instead of panicking or exiting, and let main decide whether startup failure is fatal."
+    not_a_fix: "Replacing panic with log.Fatal, os.Exit or runtime.Goexit inside a library; aliasing the log or os import; calling a must-style helper in another package that panics on your behalf; calling Fatal on a logger value; returning a zero value and swallowing the failure instead of returning an error; calling logger.Fatalf on a *log.Logger or log.Default().Panicln; binding terminate := os.Exit and calling terminate(1); syscall.Exit or unix.Exit in place of os.Exit; adding a // Code generated ... DO NOT EDIT. header: generated files are still checked for panics."
+R28:
+    id: R28
+    level: L1
+    text: "Keep interfaces small (1-3 methods counted after flattening embedded interfaces of the module), defined in the consuming package. A struct that embeds interfaces of the module is an interface surface too: its methods promoted from embedded interfaces (directly or through embedded structs of the module) plus its own exported methods count against the same cap, and so do its exported func-typed fields (func literals or func types of the module), so a struct of four exported func fields is a four-method interface built by hand. _test.go files and mock files are exempt"
+    enforcement: analyzer
+    rationale: "A large interface forces every implementor and every fake to satisfy methods most callers never use, and couples far more callers to far more surface than necessary. Embedding small interfaces into a large one keeps the whole surface, and so does embedding them into a struct that a constructor returns: every caller of New gets the whole god object. A struct whose exported fields are funcs is the same surface assembled by hand: every holder can call or replace every operation, and nothing ties the funcs to one implementation."
+    fix_strategy: "Split the interface along how it's actually consumed; define each smaller interface where it's used and have each consumer depend on the small one it calls. When a module assembles several roles, return each small interface from its own constructor instead of one struct that embeds them all. Replace a struct of exported func fields with small interfaces implemented by methods on unexported types, each returned by its own constructor."
+    not_a_fix: "Splitting the interface into arbitrary pieces of 3 or fewer methods (DispatcherParkRecovery) that are not concepts any consumer actually asks for; embedding the pieces back into one big interface that every caller still takes; embedding the small interfaces in a struct to rebuild the same surface; turning methods into exported func fields of a struct filled from package funcs or method values; unexporting the func fields while exporting setters for them; leaving the definition in the producer package under a new name."
+R32:
+    id: "R32"
+    level: "L0"
+    text: "No boolean flag parameters that silently branch a function's behavior, including variadic ...bool and same-package named types whose underlying type is bool; no bool field of a same-package struct parameter built at the call (g(operand{negate: true})) that the function branches on; no string or int parameter (beside other parameters) whose only uses are if or switch comparisons against one literal or constant"
+    enforcement: "analyzer"
+    rationale: "A boolean parameter means the function secretly has two behaviors selected by the caller; this is a fork in behavior disguised as data, and the call site can't tell what true/false means without opening the function. type Express bool is the same flag with a new name."
+    fix_strategy: "Split into two explicitly named functions, or replace the bool with a typed enum (a named int or string type with named constants) describing the real choice."
+    not_a_fix: "Replacing the bool with a bool alias or a named type whose underlying type is bool (type Express bool), a small request or options struct built at the call whose bool field the callee branches on, a 0/1 int or a mode string compared against one value (if sign == \"-\") that still means true or false; hiding the flag in a variadic ...bool or a functional option; reading the flag from a package var instead of a parameter; declaring the bool type in another package."
+R33:
+    id: "R33"
+    level: "L0"
+    text: "Command-Query Separation: a function either mutates state or returns a value, never both. Mutation includes writing through a pointer receiver or parameter, or through a pointer-typed field even of a value receiver or parameter (s.tally.hits++), calling a mutating stdlib method on a receiver or parameter field (atomic Add/Store/Swap/CompareAndSwap/And/Or, sync.Map Store/Delete/LoadOrStore/Swap, strings.Builder and bytes.Buffer Write*/Reset/Grow, container/list mutators), sorting, clearing or copying into it (slices.Sort, sort.*, maps.Copy, clear, copy), calling a method without results on a receiver field or a parameter whose interface is declared in the module (s.ledger.Record(v)), calling a func-typed field without results (s.record(v)), or handing it to a same-package helper that does, including a method of a field's own type. Lock/Unlock/RLock/RUnlock, cancel funcs, calls to an injected error reporter (report, onError, reportError, notifyError, handleError) and calls on loggers (a field or parameter named log or *logger, or typed *Logger) are not mutations. A chainable method returning its own receiver, a function returning only a value it created and stored, or a field of it (such as the id of what it registered, built by a new*, build*, make*, create* or prepare* call), a function named Try*, Allow*, Acquire*, Claim*, Reserve*, Take*, Consume* or CompareAndSwap* whose only non-error result is one bool reporting whether it took effect, and a function handing back a func result named cancel, release, stop, unlock, done, undo, cleanup or rollback that releases what it did (Reserve returning cancel) are commands. Methods whose name and exact signature implement a standard interface that must mutate and report (io.Reader Read, io.Writer Write, ReadByte, ReadRune, WriteByte, WriteString, Seek, ReadFrom, WriteTo, heap.Interface Pop and Push, flag.Value Set, and Next() bool or Scan() bool iterators) are exempt"
+    enforcement: "analyzer"
+    rationale: "Mixing \"tell me something\" and \"change something\" in one call makes call sites unpredictable and hard to reason about."
+    fix_strategy: "Split into a Compute/Get query function (no mutation) and a separate Set/Apply/Update command function (no return value beyond error)."
+    not_a_fix: "Moving the mutation into a helper so the function no longer looks like it mutates while it still mutates and returns; hiding the write behind an atomic, sync.Map, strings.Builder or bytes.Buffer field method call, or a method on a field's own type; handing the result back through an out-parameter pointer or callback; returning the receiver from a method only so it passes as chainable; generating a throwaway value and passing it into the write only so the function may return it; hiding the write behind an interface field, an interface parameter or a func-typed field (s.ledger.Record(v), s.record(v)); writing through a pointer field of a value receiver; adding a bool or func result only so the function passes as a command."
+R34:
+    id: R34
+    level: L0
+    text: 'No hidden side effects: a function''s name must reflect everything observable it does'
+    enforcement: analyzer
+    rationale: A reader trusts a Get/Find/Compute-prefixed name to be cheap and side-effect-free; violating that is a common source of bugs (accidental writes, accidental caching).
+    fix_strategy: Rename to reflect the real behavior (Fetch/Load/Sync/Save) or remove the side effect from the function entirely.
+    not_a_fix: "Renaming to a vague verb (Handle, Process, Do) that claims nothing instead of naming the effect; moving the side effect into a deferred call, a goroutine or a helper the getter calls; caching through a package var so the write is invisible to the check."
+R41:
+    id: R41
+    level: L3
+    text: "No real infrastructure in unit tests: every call into net (Dial*, Listen*, Lookup*, Resolve*, net.Dialer and net.Resolver methods, net.DefaultResolver), every net/http client call (http.Get, Head, Post, PostForm, http.DefaultClient, http.DefaultTransport and any *http.Client value's Do, Get, Head, Post or PostForm), database/sql Open and OpenDB, crypto/tls Dial, and well-known drivers (pgx, pgxpool, go-redis, grpc.Dial/DialContext/NewClient, mongo, amqp, nats, kafka-go, redigo, sqlx, gorm, clickhouse) is reported unless its target is owned by the test: derived from an httptest.Server (srv.URL, srv.Client()), a listener opened in the test on an ephemeral port (net.Listen(\"tcp\", \"127.0.0.1:0\") then its Addr()), the Addr() of a listener the test itself created, bufconn, miniredis, or a path under t.TempDir(), os.CreateTemp or os.MkdirTemp, directly or through a test helper that builds one. A string literal never makes a target owned, localhost and 127.0.0.1 included. Integration-tagged files are not unit tests and stay excluded. An in-memory database DSN (:memory:, mode=memory) is owned by the test and is not live."
+    enforcement: script
+    rationale: "A unit test that opens a real socket or DB connection is slow, flaky, and stops being a unit test. Pointing the client at localhost only moves the dependency onto whatever happens to listen there; only a server the test starts itself is under the test's control."
+    fix_strategy: "Inject an in-memory fake through the same interface the real implementation satisfies, or start the dependency inside the test (httptest.NewServer, net.Listen on 127.0.0.1:0, bufconn, miniredis) and aim the call at its URL, Client() or Addr(); move tests that need the real thing to an integration-tagged file."
+    not_a_fix: "Adding an integration build tag or file suffix while the test still runs as a unit test; pointing the real client at localhost, 127.0.0.1 or a container the test does not start; wrapping the host in a variable or a helper that returns a literal; deleting the test instead of injecting a fake."
+R42:
+    id: R42
+    level: L3
+    text: "Every non-test, non-mock source file that declares a function or method has exactly one corresponding _test.go file; a file of declarations only (types, constants, re-export aliases and Err sentinels) needs none. Every Test and Fuzz function can fail: it names its *testing.T (or *testing.F) and reaches t.Error, t.Errorf, t.Fatal, t.Fatalf, t.Fail or t.FailNow, directly, inside a t.Run or f.Fuzz closure, or through a helper in the module that receives t (or stores it in a field) and asserts in turn, or through a testify, gotest.tools, is, quicktest, gomega, gomock or goleak call that receives t. A test that only calls the code, logs, skips, or uses t for Helper, Parallel, Cleanup or TempDir proves nothing. Examples and benchmarks are exempt"
+    enforcement: script
+    rationale: "A source file with no test file has unverified behavior by construction, and a test that can never fail turns coverage into a number that measures execution, not verification; this is the floor, not a strong guarantee of quality."
+    fix_strategy: "Add a _test.go file covering at least the exported surface of the source file, and in every test compare the result with the expected value and report a mismatch with t.Errorf or t.Fatalf (or a helper that receives t and does)."
+    not_a_fix: "Adding an empty _test.go or a test that asserts nothing; naming the parameter _ or calling only t.Log, t.Skip or t.Helper; asserting on a fresh &testing.T{} instead of the test's own t; relying on a panic to fail the test; renaming the source file to look like a mock or fake so it is excluded; deleting a test or an assertion to get a refactor through."
+R43:
+    id: R43
+    level: L3
+    text: "No free test files: every _test.go file has a matching source file beside it (x_bench_test.go and x_integration_test.go match x.go)"
+    enforcement: arch
+    rationale: "Tests grouped by feature or into catch-all files have no single home, so nobody can tell which source file is covered by what."
+    fix_strategy: "Move each test into the _test.go file named after the source file it exercises, then delete the free test file."
+    not_a_fix: "Creating an empty or stub source file named after the free test file; renaming the test file after a source file it does not exercise; deleting the tests instead of moving them."
+R44:
+    id: R44
+    level: L3
+    text: "Every Go file stays at or under 500 lines, _test.go files included"
+    enforcement: script
+    rationale: "A file this long is a sign the abstraction is wrong, not that it needs a bigger limit. A test file over the cap means its source file covers more than one responsibility, because tests pair 1:1 with the file they exercise."
+    fix_strategy: "Split by responsibility, not by line count: split the source file and move each group of tests into the x_test.go of the file it exercises; table fixtures that belong to another package's behavior move to that package's tests."
+    not_a_fix: "Splitting by line count into part1/part2 or x_extra.go files with no responsibility boundary; joining lines or deleting blank lines and doc comments to squeeze under the cap; moving code or test fixtures into a file the check excludes, such as testdata or a generated file."
+R46:
+    id: R46
+    level: L0
+    text: "A directory, the project root included, holds at most 8 non-test source files"
+    enforcement: script
+    rationale: "A directory with too many files is a package doing too much; this is the directory-level analog of a per-file line cap. The root is no exception: a crowded root is the most visible mess in a library."
+    fix_strategy: "Split into subpackages by responsibility, under internal/, never just to get under the count."
+    not_a_fix: "Moving files into arbitrary subdirectories (part1, more, extra) to get under the count; splitting one concept into look-alike packages (dispatch and dispatcher, mocks and mockbuses); merging unrelated files into one larger file; inventing packages that have no responsibility of their own."
+R47:
+    id: R47
+    level: L0
+    text: "A package whose subtree imports 2 or more of its siblings (packages with logic, not declaration-only vocabulary) is doing its parent's wiring; only the parent's container.go wires siblings together. Imports from the package's own children count, and a directory without Go files is not a sibling of its own: its packages are separate siblings"
+    enforcement: arch
+    rationale: "Wiring siblings together is composition, and composition belongs in exactly one findable place: the parent's container.go. A child importing several siblings, directly or through its own children, is a hidden composition root, usually behind a pass-through parent. A folder that only groups packages has no API, so reaching two packages inside it is wiring two collaborators."
+    fix_strategy: "Move the construction into the parent's container.go. Give the child a constructor that takes interfaces the child declares, and have container.go pass the siblings' implementations in, down to the grandchildren that use them."
+    not_a_fix: "Renaming the child's file container.go; splitting the child so each piece imports one sibling; moving each sibling import into a different child package; grouping the siblings under a folder without Go files; routing the imports through a vocabulary package."
+R48:
+    id: R48
+    level: L0
+    text: "A package with internal/ children has a container.go, and only container.go imports that package's internal/ children; the one exception is an API file that imports a declaration-only internal package solely to re-export its types, constants and sentinels (type X = vocab.X, const Y = vocab.Y, var ErrZ = vocab.ErrZ)"
+    enforcement: arch
+    rationale: "container.go is where a human or agent looks to see how a module is assembled. If another file imports the internals, or there is no container, the assembly is scattered and cannot be found. Internal packages cannot import their module root, so shared vocabulary lives in a declaration-only internal package; re-exporting it through aliases and sentinel bindings assembles nothing and keeps one named type or one error value on both sides of the boundary, so errors.Is works for callers of the root."
+    fix_strategy: "Create container.go in the module directory, construct the internal packages there, and keep every other file in the directory to API declarations. When the API and its internals need the same named types or sentinel errors, move them into a declaration-only package under internal/ (types, constants and Err sentinels only), import it from the internals, and re-export it from an API file with type aliases, constants and var ErrX = vocab.ErrX bindings."
+    not_a_fix: "An empty container.go beside files that still import internals; a container.go that forwards to a child doing the real wiring; moving internals up into the module directory to avoid importing them; using the vocabulary import outside alias, const and Err sentinel declarations (struct fields, other vars, functions, wrapping a sentinel with fmt.Errorf); declaring a type Error string in the root only to restate sentinels; adding behavior to the vocabulary package once it is aliased."
+R50:
+    id: R50
+    level: L0
+    text: A directory literally named internal may contain loose .go files only if they are declaration-only; any file with real behavior must live in its own named subdirectory
+    enforcement: arch
+    rationale: internal/ is the visibility-boundary marker, not a package identity; if real implementation hides directly inside it, there is no name describing what that code does, and nothing stops a second, third, unrelated concern from being dropped in beside it as loose peers. Every behaviorful piece of code needs an actual name (a subdirectory), even when it is currently the only thing there.
+    fix_strategy: Move the file into its own subdirectory named after what it does (e.g. internal/golangci.go becomes internal/golangci/golangci.go), even if it is the only file there today.
+    not_a_fix: "Moving the behavior elsewhere while leaving a declaration-only shell that still names nothing; naming the subdirectory generically (impl, core, logic) instead of after what it does; renaming the internal directory so the rule stops applying."
+R51:
+    id: R51
+    level: L0
+    text: "A directory literally named internal with exactly one child package (no siblings), under a package that is itself internal, has nothing to hide that child from; merge its contents into the grandparent package, eliminating the internal/ layer entirely. A public package or the module root keeps its internal/ even with one child, because its directory holds only API"
+    enforcement: arch
+    rationale: "internal/ exists to restrict visibility among siblings. A sole child has no sibling to be restricted from, and its real consumer (the package one level up, already the only thing that could ever reach it) sits right next to it; the boundary is pure indirection with nothing on the other side. A public package is different: R14 keeps implementation out of its directory, so its single internal child is the only place the implementation can live."
+    fix_strategy: "Move the child's files up to the grandparent's directory as same-package companion files (or merge into its container file directly), then remove the now-empty internal/ directory."
+    not_a_fix: "Adding an empty or placeholder sibling package so internal/ has two children; renaming internal/ to another name so the rule stops applying while the indirection stays."
+R52:
+    id: R52
+    level: L0
+    text: "A call with two or more arguments puts every argument on its own line, and a composite literal with two or more elements puts every element on its own line; only a one-line literal of up to 3 plain identifiers or basic literals ([]string{\"a\", \"b\"}, Point{X: 1, Y: 2}) and a one-line table-driven test row in a _test.go file may stay inline"
+    enforcement: analyzer
+    rationale: "One argument or element per line makes every input of a call and every field of a value visible at a glance and keeps diffs to one line per changed entry, the same way R01 does for signatures. A literal packed onto fewer lines hides how much a function assembles and lets it slip under the function length budget without getting any simpler."
+    fix_strategy: "Run ap fix. It breaks after the opening paren or brace, puts each argument or element on its own line with a trailing comma, and puts the closing paren or brace on its own line; calls with zero or one argument and literals with zero or one element stay inline. If the function then exceeds the length budget, split what it builds into named steps or a dedicated constructor in the package that owns the type."
+    not_a_fix: "Packing struct fields or slice elements onto fewer lines to fit the function length budget; collapsing the arguments into a temporary struct literal, slice or variadic spread so the call has one argument; wrapping the call in a helper with fewer parameters that only forwards to it; moving a literal into a _test.go table row or a package var to escape the check."
+R53:
+    id: R53
+    level: L0
+    text: "An if condition joining several conditions with && or || puts each condition on its own line"
+    enforcement: analyzer
+    rationale: "A compound condition on one line hides how many separate facts the branch depends on; one condition per line makes each one readable and reviewable on its own."
+    fix_strategy: "End each line with the && or || operator and start the next condition on a new line, including conditions inside parentheses, or extract the whole condition into a named boolean (rule 5)."
+    not_a_fix: "Splitting into nested ifs that add depth instead of naming the condition; extracting it into a meaningless boolean (ok2, cond, check) or a helper named after its body; moving the compound expression into a switch true case."
+R54:
+    id: R54
+    level: L0
+    text: "A return statement with two or more values puts every value after the first on its own line"
+    enforcement: analyzer
+    rationale: "One value per line makes each returned value visible at the exit of the function, the same way R52 does for call arguments."
+    fix_strategy: "Keep the first value on the return line (Go ends a bare return at the line break), end it with a comma, and put each following value on its own line."
+    not_a_fix: "Packing the values into an ad hoc struct or slice only to return one value; dropping a result such as the error so a single value remains."
+R55:
+    id: R55
+    level: L0
+    text: "Statements form paragraphs: a blank line follows every closed block, a check stays attached to the statement it checks, and no block starts or ends with a blank line"
+    enforcement: analyzer
+    rationale: "Each step of a function (a statement plus the guard that checks it) reads as one paragraph, and the blank line after a closing brace marks where the next step begins. Fixed positions keep the layout mechanical instead of a matter of taste."
+    fix_strategy: "Add one blank line after the closing brace of every if, for, switch, select or bare block that is not the last statement of its block; remove the blank line between an assignment and the if that checks the value it assigned; remove blank lines right after an opening brace or right before a closing one."
+    not_a_fix: "Reordering statements or moving a block to the end of its function only so no blank line is required; wrapping a step in a func literal or bare block to hide its boundary; adding the blank line but leaving unrelated statements glued into one paragraph."
+R56:
+    id: R56
+    level: L0
+    text: "Functions, methods, types and named closures, exported or not, carry a name that says what they do; no name made only of content-free words, opened by a content-free prefix, carrying an escape-hatch word (hackSquare, legacyFactor, tempWorkaround, authShim, bypassCheck; also package-level vars and consts) or told apart by a trailing number (HandleData1, match2) unless the number belongs to a domain term (Base64, SHA256, Int64, OAuth2, IPv6, X509), a version or percentile (ParseV2, latencyP99), an HTTP status or a benchmark size"
+    enforcement: analyzer
+    rationale: "Extracting a block into a helper only helps when the helper's name explains the block. runHandler, makeCallback, wrap, implSendCreate, DoWork or HandleData2 move code without naming it, and hackSquare, legacyFactor or tempWorkaround say how provisional code is instead of what it does, so the reader still has to open the body, and the line, depth and paragraph limits are met in form while the readability they protect is lost. Exporting the name changes nothing about that."
+    fix_strategy: "Rename after the specific behavior or value: what the function decides, returns or causes, or the role the closure plays in its caller (recordDelivery, failAfterFirstAttempt). When several functions or closures differ only by a number, name what each one does differently. Escape-hatch words (legacy, compat, tmp, temp, temporary, wip, todo, junk, interim, stopgap, hack, kludge, workaround, shim, stub, fixme, hotfix, quickfix, bandaid, bypass, adhoc) go: name the behavior the code has now. Left alone: _test.go and mock files for escape-hatch words (stubClock is a test double), old/new/unused/deprecated/patch/draft/sandbox (before and after values, constructors, dead-code analysis, HTTP PATCH and domain terms), main, init, a name equal to its package name (wrap.Wrap), a lone role word such as handler or run, and methods whose names standard library interfaces force (Error, String, Read, Write, Close, ServeHTTP, Len, Less, Swap, Unwrap, Is, As, Do, Value, Helper and similar)."
+    not_a_fix: "Renaming to another content-free word; swapping the number for a letter or a synonym (handlerB, otherHandler, deliveryA1); exporting the name to skip the check; gluing a domain term onto the name (handleDataBase64) only to make the number look meaningful; inlining the block back as an unnamed closure argument; swapping an escape-hatch word for a synonym (provisionalSquare, interimFactor) or gluing it into one lowercase word (tempfixFactor)."
+R57:
+    id: R57
+    level: L1
+    text: "Vocabulary packages (models, model, contracts, contract, types, dto, ports, api, options, entities, schema), and any internal package an API file re-exports through type aliases whose only methods are Error, Unwrap, Is, As and String, hold declarations only: types, constants and errors, no functions or methods beyond Error, Unwrap, Is, As and String, and those methods are a single return of a field, a literal, a concatenation or one fmt.Sprintf, fmt.Errorf or errors call"
+    enforcement: arch
+    rationale: "A package named for vocabulary, or re-exported as the module's vocabulary, is imported freely by many packages and reaches callers through the API. Behavior hidden there, including a String or Error method that computes, spreads into every importer without the layering, tests and container behavior needs."
+    fix_strategy: "Move each function or method, or the logic inside an Error or String method, into the package whose behavior it is, under internal/, and keep the vocabulary package to declarations with single-return rendering methods."
+    not_a_fix: "Renaming the package to dodge the list; turning methods into func-typed fields or exported vars holding closures; moving the behavior into init; hiding computation in String or Error because those names are allowed."
+R58:
+    id: R58
+    level: L1
+    text: "Sibling packages do not split one concept: no two sibling package names share 80% or more of the shorter name as a common prefix (dispatch and dispatcher, mock and mockbuses, store and storage, parse and parsing), and no two reduce to the same stem once inflections (-age, -ing, -er, -or, -ion, -ions, -ment, -s, -es, -e) and version markers (old, new, legacy, next, prev, v2, 2) are stripped (oldstore and store)"
+    enforcement: arch
+    rationale: "Look-alike sibling names mean one responsibility was cut in two, usually to get under a file cap, and readers cannot tell which half to open."
+    fix_strategy: "Merge the two packages, or rename each after the distinct thing it provides."
+    not_a_fix: "Renaming one with a synonym that hides the split while the split stays (store and persistence); renaming one to an inflected form of the other; marking one as old, new or v2 while both stay in use; nesting one inside the other unchanged."
+R59:
+    id: R59
+    level: L1
+    text: "Package names are unique within a module, package main excepted"
+    enforcement: arch
+    rationale: "Two packages named models or core force aliases at every import site (esmodels, procmodels) and make the name say nothing about what the package provides."
+    fix_strategy: "Rename each package after the specific thing it provides."
+    not_a_fix: "Adding a suffix or number (models2, coremodels); keeping the names and aliasing the imports."
+R60:
+    id: R60
+    level: L1
+    text: "An internal interface is used by production code, not only embedded: no interface that is only ever embedded in other interfaces or referenced only from _test.go files, and no interface that only re-embeds one other"
+    enforcement: analyzer
+    rationale: "Splitting an interface into role interfaces nothing depends on games the small-interface rule: the method set is unchanged, only scattered across names readers must chase. A use that exists only in a test proves nothing in production narrows to the role."
+    fix_strategy: "Inline the embedded interface's methods into the interface that uses it, or depend on the small interface where it really narrows what a consumer needs. Use a re-embedded interface directly."
+    not_a_fix: "Adding a dummy parameter or variable of the role interface type only to count as a use; referencing the role interface from a test, or embedding it in a test fake, so it counts as used."
+R61:
+    id: R61
+    level: L1
+    text: "Production code never imports an example package"
+    enforcement: arch
+    rationale: "Example trees are exempt from the API-only shape because nothing depends on them. Importing one from library code turns that exemption into a hiding place for implementation."
+    fix_strategy: "Move what the library needs out of the example tree into the module's internal/."
+    not_a_fix: "Renaming the example directory; copying the example package into the library unchanged."
+R62:
+    id: R62
+    level: L0
+    text: "Every Go file is gofmt-formatted"
+    enforcement: analyzer
+    rationale: "One canonical layout means diffs show only real changes and no agent spends a review arguing about whitespace. AP's own rewrites always gofmt, so an unformatted file was edited by hand outside the tools."
+    fix_strategy: "Run ap fix . (or gofmt -w) and commit the result."
+    not_a_fix: "Excluding the file from the check, or adding a build tag so the file is skipped."
+R66:
+    id: R66
+    level: L1
+    text: "Methods live in the file named after their receiver type (or container.go), and no file has a numbered name (part1.go, handler_2.go)"
+    enforcement: analyzer
+    rationale: "Splitting one type's methods over files with unrelated or numbered names scatters the type, hides its true size from the one-type-per-file and line limits, and leaves readers no way to find a method from its type."
+    fix_strategy: "Move every method into the file named after its receiver in snake_case (OrderItem -> order_item.go). If that file grows past the line limit, the type does too much: split the type, not the file. Platform suffixes (_linux, _amd64) are allowed."
+    not_a_fix: "Renaming part1.go and part2.go to words that still describe parts (cube_extra.go, cube_more.go); naming a file after a new receiver type that only exists to hold the moved methods; moving methods into container.go when they are not wiring; turning methods into package functions that take the type as their first parameter only to escape the rule."
+R63:
+    id: R63
+    level: L0
+    text: "Production code never imports a mock or fake package (a directory named mock, mocks, fake or fakes, or a mock_x/x_mock/fake_x/x_fake package) and never uses declarations from a mock-named file (mock.go, fake.go, mock_x.go, x_mock.go, fake_x.go, x_fake.go); mocks exist for tests only, and a mock file or mock directory that production code references is checked as production code"
+    enforcement: arch
+    rationale: "Mock and fake files are exempt from the shape, test and coverage rules because they exist only to stand in for real dependencies in tests. Wiring one into production code, by import or by calling a mock-named file of the same package, smuggles untested implementation past every rule and ships a stand-in as the real thing. The exemption therefore holds only while nothing but _test.go files, test-support files that import testing, and other test-only mocks reference the mock's declarations."
+    fix_strategy: "Write the real implementation in a file and package named for what it does, with its own tests, and wire that from container.go. Reference the mock or fake only from _test.go files or a test-support package that imports testing."
+    not_a_fix: "Renaming the fakes directory or the fake.go file so it no longer looks like a mock while it still holds the stand-in; copying the fake into a production package unchanged; importing testing in the production file so it looks like test support; reaching the mock through another mock file that production calls."
+R64:
+    id: R64
+    level: L0
+    text: "Exported entry functions in container.go return interfaces or types declared in the module's own package, basic types or error; never a type from one of its internal packages, a pointer into another package, a func or a struct literal"
+    enforcement: arch
+    rationale: "An entry function's result is what every caller depends on. Returning a concrete internal struct makes the implementation part of the contract: callers reach its fields and methods, the internal package can no longer change, and the interface the module claims to expose is bypassed."
+    fix_strategy: "Declare in the module directory the interface callers need and return the internal implementation as that interface. If callers need plain data shared with the internals, move it to a declaration-only internal package and re-export it with a type alias in the module directory, then return the alias."
+    not_a_fix: "Returning any or interface{} and making callers assert the concrete type; aliasing an internal struct that has behavior; returning a func or a struct of funcs that exposes the same implementation; moving the struct into the module directory with its methods."
+R69:
+    id: R69
+    level: L1
+    text: "No dead declarations: every package-level or local const and var is read somewhere in its package (an exported one in an internal package, somewhere in the module); a binding to _ is not a read. Unused unexported funcs, types, fields and methods reported by the unused linter (staticcheck U1000) count too. Iota enumerations and exported declarations of public packages are exempt"
+    enforcement: analyzer
+    rationale: "A declaration nothing reads costs every reader the time to find out it does nothing, survives refactors that should have removed it, and is the easiest place to park a sentence or a TODO where a comment rule does not look. Deleting it loses nothing the program does."
+    fix_strategy: "Delete the declaration. If it was meant to be used, use it in the code that needs it in the same change. If it carried an explanation, make the code say it through names and structure, and put the why in the commit message."
+    not_a_fix: "Reading it once through _ = name, var _ = name, len(name) or a no-op branch; exporting it so the check skips it; moving it into a test file; turning it into a struct field nothing reads; disabling the linter."
+R70:
+    id: R70
+    level: L0
+    text: "Everything AP gates is actually checked: one repository root holds one Go module (a go.mod below the root, outside vendor, testdata, dot or underscore directories and git-ignored paths, is reported unless the root go.work lists it, and each listed module is then checked as its own root), and every non-test file compiles under at least one of the build tag sets AP lints with (at most 8 golangci-lint runs per module, one per tag set needed to select every file; GOOS and GOARCH constraints, ignore and tools files are left to the host)"
+    enforcement: analyzer
+    rationale: "go build ./... and golangci-lint stop at a nested go.mod and only type-check the files the active build tags select, so code behind a second module or a //go:build tag is never linted while its imports look external. A module boundary or a build tag then works as a switch that turns the gate off for whatever sits behind it."
+    fix_strategy: "Merge the nested module into the root module (its packages move under internal/ and the replace directive goes), move it to its own repository, or add a go.work at the root that uses it so AP checks it as its own module. For build tags, make every tag combination the module uses compile, and keep the number of distinct tag sets small: prefer one file per variant behind a single tag over tag matrices."
+    not_a_fix: "Hiding the nested module in a testdata, vendor, dot or underscore directory or a git-ignored path while the root still imports it through a replace directive; listing it in a go.work that lives below the root; moving the code behind more build tags until the matrix passes the cap; leaving a tagged variant that does not compile so golangci-lint gives up on it."
+PROXY-COMPLEXITY:
+    id: PROXY-COMPLEXITY
+    level: L0
+    text: Function exceeds complexity/length/nesting budget (proxy for SRP / does-one-thing)
+    enforcement: lint
+    rationale: A function under complexity, length and nesting budgets is structurally incapable of doing many unrelated things.
+    fix_strategy: Extract named helper functions per branch/step; replace nested conditionals with early returns.
+    not_a_fix: "Hoisting branches into closures or helpers with meaningless names (step1, handleRest) so each piece passes while the logic is as tangled as before; replacing conditionals with a map of funcs that keeps every path; adding a nolint comment or excluding the file in lint config."
+PROXY-DUPLICATION:
+    id: PROXY-DUPLICATION
+    level: L0
+    text: Code block duplicated 3+ times above a token threshold
+    enforcement: lint
+    rationale: Two occurrences can be coincidental; three is a pattern, and the point past which drift between copies becomes a real risk.
+    fix_strategy: Extract the duplicated block into a shared helper, parameterizing the differences.
+    not_a_fix: "Renaming variables or reordering statements in each copy until the token match breaks; extracting a helper with a mode parameter that branches into every original copy; moving a copy into a file the linter skips."
+PROXY-GLOBAL-STATE:
+    id: PROXY-GLOBAL-STATE
+    level: L1
+    text: Mutable package-level variable
+    enforcement: lint
+    rationale: Package-level mutable state is implicit, shared, and hard to reason about under concurrency or testing.
+    fix_strategy: Pass the state explicitly through a constructor/struct field instead.
+    not_a_fix: "Wrapping the variable in a package-level struct, sync.Map or getter and setter pair; keeping a package-level pointer to a value that is still mutated; moving it into a closure returned by a package func so it is shared but unseen."
+PROXY-MAGIC-NUMBER:
+    id: PROXY-MAGIC-NUMBER
+    level: L0
+    text: Unnamed numeric/string literal used outside a const declaration
+    enforcement: lint
+    rationale: Unnamed literals hide intent and make the meaning of a threshold invisible at the call site.
+    fix_strategy: Hoist the literal into a named const with a descriptive identifier.
+    not_a_fix: "Naming the const after its value (two, ten, sixty) instead of its meaning; parsing the number from a string or building it from smaller literals; moving it into a struct default or config map entry with no name of its own."
+TS-MODERN-SYNTAX:
+    id: TS-MODERN-SYNTAX
+    level: L1
+    text: 'Use modern, safe syntax: no var, prefer const, strict equality'
+    enforcement: lint
+    rationale: var's function-scoping and == 's type coercion are both long-documented sources of subtle bugs that let/const and === eliminate entirely.
+    fix_strategy: Replace var with let/const, and == / != with === / !==.
+    not_a_fix: "Disabling the ESLint rule inline or in config; replacing == with a helper that still compares loosely inside; turning every var into let when the value is never reassigned and should be const."
+TS-NO-DEBUG-OUTPUT:
+    id: TS-NO-DEBUG-OUTPUT
+    level: L0
+    text: No console.log/debug output left in source
+    enforcement: lint
+    rationale: Debug output left behind is dead signal in production logs and usually a sign a real logger call was never added.
+    fix_strategy: Remove it, or replace with the project's real logging mechanism.
+    not_a_fix: "Aliasing console (const log = console.log) or calling console['log'] so the rule misses it; switching to process.stdout.write or alert as ad hoc debug output; wrapping it in an if (DEBUG) block instead of using the real logger."
+TS-NO-ELSE:
+    id: TS-NO-ELSE
+    level: L0
+    text: Guard clauses first, no else, success return last (TypeScript)
+    enforcement: lint
+    rationale: An else branch nests the happy path and exceptional path at the same level instead of exiting early.
+    fix_strategy: Invert the condition and return early; keep the function body flat.
+    not_a_fix: "Replacing else with a second if on the negated condition; using a ternary chain or an IIFE that keeps both branches nested at the same level; disabling the rule inline."
+TS-NO-PARAM-REASSIGN:
+    id: TS-NO-PARAM-REASSIGN
+    level: L0
+    text: A function must not reassign or mutate its own parameters
+    enforcement: lint
+    rationale: Mutating a parameter hides a side effect from the caller, who passed a value expecting it to remain theirs.
+    fix_strategy: Copy into a local variable before modifying, or return a new value instead of mutating in place.
+    not_a_fix: "Aliasing the parameter (const p = param) and mutating through the alias; shallow-copying an object and then mutating its nested members, which still belong to the caller; calling a helper that mutates the parameter on your behalf."
+TS-ONE-TYPE-PER-FILE:
+    id: TS-ONE-TYPE-PER-FILE
+    level: L1
+    text: One class per file, named after it
+    enforcement: lint
+    rationale: A file with multiple classes has no single, name-matched home, making it harder to find or size any one class's code.
+    fix_strategy: Split into one file per class, named after that class.
+    not_a_fix: "Turning the extra class into a class expression assigned to a const or a factory returning an object literal with the same methods; disabling max-classes-per-file for the file; moving the second class into an unrelated barrel file."
+TS-PROXY-COMPLEXITY:
+    id: TS-PROXY-COMPLEXITY
+    level: L1
+    text: Function exceeds complexity/length/nesting/param-count budget (TypeScript)
+    enforcement: lint
+    rationale: A function under these budgets is structurally incapable of doing many unrelated things; same proxy principle as the Go manifest, applied via ESLint core rules.
+    fix_strategy: Extract named helper functions per branch/step; replace nested conditionals with early returns.
+    not_a_fix: "Hoisting branches into nested arrow functions or helpers with meaningless names so each passes while the logic is as tangled as before; packing many parameters into one untyped options object; replacing conditionals with a lookup table of callbacks that keeps every path; disabling the rule inline or in config."
+TS-PROXY-MAGIC-NUMBER:
+    id: TS-PROXY-MAGIC-NUMBER
+    level: L1
+    text: Unnamed numeric literal used outside a const declaration (TypeScript)
+    enforcement: lint
+    rationale: Unnamed literals hide intent and make the meaning of a threshold invisible at the call site.
+    fix_strategy: Hoist the literal into a named const with a descriptive identifier.
+    not_a_fix: "Naming the const after its value (TWO, TEN, ONE_THOUSAND) instead of its meaning; moving the number into an object literal or a string parsed at runtime; adding it to the rule's ignore list or disabling the rule inline."

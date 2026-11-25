@@ -9,11 +9,18 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
-func TestWalkerSkipsVendoredTrees(
+func TestWalkerSkipsVendoredTreesOnlyAtTheRoot(
 	t *testing.T,
 ) {
 	root := t.TempDir()
-	for _, path := range []string{"a/a.go", "vendor/v/v.go", ".git/g.go", "node_modules/n/n.go"} {
+	for _, path := range []string{
+		"a/a.go",
+		"vendor/v/v.go",
+		".git/g.go",
+		"node_modules/n/n.go",
+		"a/vendor/v.go",
+		"a/node_modules/n.go",
+	} {
 		writeFile(
 			t,
 			filepath.Join(
@@ -32,10 +39,21 @@ func TestWalkerSkipsVendoredTrees(
 		)
 	}
 
-	want := []string{root, filepath.Join(
+	want := []string{
 		root,
-		"a",
-	)}
+		filepath.Join(
+			root,
+			"a",
+		),
+		filepath.Join(
+			root,
+			"a/node_modules",
+		),
+		filepath.Join(
+			root,
+			"a/vendor",
+		),
+	}
 	if !slices.Equal(
 		directories,
 		want,
@@ -76,6 +94,230 @@ func writeFile(
 			"write %s: %v",
 			path,
 			err,
+		)
+	}
+}
+
+func TestHasSource(
+	t *testing.T,
+) {
+	root := t.TempDir()
+	writeFile(
+		t,
+		filepath.Join(
+			root,
+			"src/a.go",
+		),
+		"package a\n",
+	)
+	writeFile(
+		t,
+		filepath.Join(
+			root,
+			"tests/a_test.go",
+		),
+		"package a\n",
+	)
+	cases := map[string]bool{"src": true, "tests": false}
+	for dir, want := range cases {
+		hasSource, err := source.HasSource(filepath.Join(
+			root,
+			dir,
+		))
+		assertBoolResult(
+			t,
+			"HasSource("+dir+")",
+			hasSource,
+			err,
+			want,
+		)
+	}
+
+	_, err := source.HasSource(filepath.Join(
+		root,
+		"missing",
+	))
+	if err == nil {
+		t.Error("HasSource(missing) error = nil, want a read error")
+	}
+}
+
+func TestEntries(
+	t *testing.T,
+) {
+	root := t.TempDir()
+	writeFile(
+		t,
+		filepath.Join(
+			root,
+			"a.go",
+		),
+		"package a\n",
+	)
+	writeFile(
+		t,
+		filepath.Join(
+			root,
+			"a_test.go",
+		),
+		"package a\n",
+	)
+	writeFile(
+		t,
+		filepath.Join(
+			root,
+			"child/b.go",
+		),
+		"package b\n",
+	)
+	paths, err := source.Entries(root)
+	if err != nil {
+		t.Fatalf(
+			"Entries() error = %v",
+			err,
+		)
+	}
+
+	if !slices.Equal(
+		paths,
+		[]string{filepath.Join(
+			root,
+			"a.go",
+		)},
+	) {
+		t.Errorf(
+			"Entries() = %v, want only a.go",
+			paths,
+		)
+	}
+}
+
+func TestWalkerSkipsNestedModules(
+	t *testing.T,
+) {
+	root := t.TempDir()
+	for path, content := range map[string]string{
+		"go.mod":            "module m\n",
+		"a/a.go":            "package a\n",
+		"internal/r/go.mod": "module r\n",
+		"internal/r/r.go":   "package r\n",
+		"internal/r/s/s.go": "package s\n",
+	} {
+		writeFile(
+			t,
+			filepath.Join(
+				root,
+				path,
+			),
+			content,
+		)
+	}
+
+	paths, err := source.Paths(root)
+	want := []string{filepath.Join(
+		root,
+		"a/a.go",
+	)}
+	isMismatch := err != nil || !slices.Equal(
+		paths,
+		want,
+	)
+	if isMismatch {
+		t.Errorf(
+			"Paths() = %v, %v, want %v",
+			paths,
+			err,
+			want,
+		)
+	}
+}
+
+func TestWalkersRejectMissingRoot(
+	t *testing.T,
+) {
+	missing := filepath.Join(
+		t.TempDir(),
+		"missing",
+	)
+	walkers := []func(string) error{
+		sourceError,
+		testsError,
+		pathsError,
+		directoriesError,
+	}
+	for _, walker := range walkers {
+		assertWalkError(
+			t,
+			walker,
+			missing,
+		)
+	}
+}
+
+func assertWalkError(
+	t *testing.T,
+	walker func(string) error,
+	root string,
+) {
+	t.Helper()
+	err := walker(root)
+	if err == nil {
+		t.Errorf(
+			"walking %s: error = nil, want one",
+			root,
+		)
+	}
+}
+
+func sourceError(
+	root string,
+) (err error) {
+	_, err = source.Source(root)
+	return err
+}
+
+func testsError(
+	root string,
+) (err error) {
+	_, err = source.Tests(root)
+	return err
+}
+
+func pathsError(
+	root string,
+) (err error) {
+	_, err = source.Paths(root)
+	return err
+}
+
+func directoriesError(
+	root string,
+) (err error) {
+	_, err = source.Directories(root)
+	return err
+}
+
+func TestWalkersRejectUnreadableFiles(
+	t *testing.T,
+) {
+	walkers := map[string]func(string) error{"broken.go": sourceError, "broken_test.go": testsError}
+	for name, walker := range walkers {
+		root := t.TempDir()
+		symlink(
+			t,
+			filepath.Join(
+				root,
+				"missing.go",
+			),
+			filepath.Join(
+				root,
+				name,
+			),
+		)
+		assertWalkError(
+			t,
+			walker,
+			root,
 		)
 	}
 }

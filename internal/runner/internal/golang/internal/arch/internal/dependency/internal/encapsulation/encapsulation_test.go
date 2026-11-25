@@ -1,0 +1,319 @@
+package encapsulation_test
+
+import (
+	"os"
+	"path/filepath"
+	"slices"
+	"testing"
+
+	"github.com/rabbytesoftware/agent-protection/internal/report"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/dependency/internal/encapsulation"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
+)
+
+func TestEncapsulation(
+	t *testing.T,
+) {
+	cases := []struct {
+		name  string
+		files map[string]string
+		want  []string
+	}{
+		{
+			name: "package visible to the whole module with one importer is reported",
+			files: map[string]string{
+				"internal/checks/pipeline.go": "package checks\n\nimport \"example.com/m/internal/goast\"\n\nvar _ = goast.X\n",
+				"internal/goast/g.go":         "package goast\n\nfunc X() {}\n",
+			},
+			want: []string{"R19 internal/goast"},
+		},
+		{
+			name: "package nested under its importer's internal passes",
+			files: map[string]string{
+				"internal/checks/pipeline.go":         "package checks\n\nimport \"example.com/m/internal/checks/internal/goast\"\n\nvar _ = goast.X\n",
+				"internal/checks/internal/goast/g.go": "package goast\n\nfunc X() {}\n",
+			},
+			want: nil,
+		},
+		{
+			name: "package under the module root's internal imported only by the root passes",
+			files: map[string]string{
+				"lib.go":            "package lib\n\nimport \"example.com/m/internal/bus\"\n\nvar _ = bus.X\n",
+				"internal/bus/b.go": "package bus\n\nfunc X() {}\n",
+			},
+			want: nil,
+		},
+		{
+			name: "package under another directory's internal imported only by a deeper package is reported",
+			files: map[string]string{
+				"x/sub/s.go":        "package sub\n\nimport \"example.com/m/x/internal/y\"\n\nvar _ = y.X\n",
+				"x/internal/y/y.go": "package y\n\nfunc X() {}\n",
+			},
+			want: []string{"R19 x/internal/y"},
+		},
+		{
+			name: "package with two importers passes",
+			files: map[string]string{
+				"internal/a/a.go":      "package a\n\nimport \"example.com/m/internal/shared\"\n\nvar _ = shared.X\n",
+				"internal/b/b.go":      "package b\n\nimport \"example.com/m/internal/shared\"\n\nvar _ = shared.X\n",
+				"internal/shared/s.go": "package shared\n\nfunc X() {}\n",
+			},
+			want: nil,
+		},
+		{
+			name: "package imported only by package main passes",
+			files: map[string]string{
+				"cmd/app/main.go":      "package main\n\nimport \"example.com/m/internal/runner\"\n\nfunc main() {\n\trunner.Run()\n}\n",
+				"internal/runner/r.go": "package runner\n\nfunc Run() {}\n",
+			},
+			want: nil,
+		},
+		{
+			name: "a package named like shared support with one importer is reported",
+			files: map[string]string{
+				"internal/a/a.go":      "package a\n\nimport \"example.com/m/internal/report\"\n\nvar _ = report.X\n",
+				"internal/report/r.go": "package report\n\nfunc X() {}\n",
+			},
+			want: []string{"R19 internal/report"},
+		},
+		{
+			name: "package two internal boundaries deep imported only by a sibling is reported",
+			files: map[string]string{
+				"internal/svc/svc.go":                "package svc\n\nimport \"example.com/m/internal/svc/internal/api\"\n\nvar _ = api.X\n",
+				"internal/svc/internal/api/api.go":   "package api\n\nimport \"example.com/m/internal/svc/internal/repo\"\n\nvar X = repo.X\n",
+				"internal/svc/internal/repo/repo.go": "package repo\n\nfunc X() {}\n",
+			},
+			want: []string{"R19 internal/svc/internal/repo"},
+		},
+		{
+			name: "package deep inside an internal tree imported only by the module above it passes",
+			files: map[string]string{
+				"internal/svc/svc.go":                    "package svc\n\nimport \"example.com/m/internal/svc/internal/store/sql\"\n\nvar _ = sql.X\n",
+				"internal/svc/internal/store/sql/sql.go": "package sql\n\nfunc X() {}\n",
+			},
+			want: nil,
+		},
+		{
+			name: "blank imports do not count as importers",
+			files: map[string]string{
+				"internal/metrics/metrics.go": "package metrics\n\nimport (\n\t_ \"example.com/m/internal/cache\"\n\t\"example.com/m/internal/svc\"\n)\n\nvar _ = svc.X\n",
+				"internal/tracing/tracing.go": "package tracing\n\nimport (\n\t\"example.com/m/internal/cache\"\n\t_ \"example.com/m/internal/svc\"\n)\n\nvar _ = cache.X\n",
+				"internal/cache/cache.go":     "package cache\n\nfunc X() {}\n",
+				"internal/svc/svc.go":         "package svc\n\nfunc X() {}\n",
+			},
+			want: []string{"R19 internal/cache", "R19 internal/svc"},
+		},
+	}
+	for _, tc := range cases {
+		assertFindings(
+			t,
+			tc.name,
+			checked(
+				t,
+				tc.files,
+			),
+			tc.want,
+		)
+	}
+}
+
+func checked(
+	t *testing.T,
+	files map[string]string,
+) (findings []report.Finding) {
+	t.Helper()
+	root := module(
+		t,
+		files,
+	)
+	parsed, err := source.Source(root)
+	if err != nil {
+		t.Fatalf(
+			"parse fixture module: %v",
+			err,
+		)
+	}
+
+	findings, err = encapsulation.Encapsulation(
+		root,
+		parsed,
+	)
+	if err != nil {
+		t.Fatalf(
+			"Encapsulation() error = %v",
+			err,
+		)
+	}
+
+	return findings
+}
+
+func module(
+	t *testing.T,
+	files map[string]string,
+) (root string) {
+	t.Helper()
+	root = t.TempDir()
+	write(
+		t,
+		filepath.Join(
+			root,
+			"go.mod",
+		),
+		"module example.com/m\n\ngo 1.24\n",
+	)
+	for name, content := range files {
+		write(
+			t,
+			filepath.Join(
+				root,
+				name,
+			),
+			content,
+		)
+	}
+
+	return root
+}
+
+func write(
+	t *testing.T,
+	path string,
+	content string,
+) {
+	t.Helper()
+	err := os.MkdirAll(
+		filepath.Dir(path),
+		0o755,
+	)
+	if err != nil {
+		t.Fatalf(
+			"mkdir %s: %v",
+			path,
+			err,
+		)
+	}
+
+	err = os.WriteFile(
+		path,
+		[]byte(content),
+		0o600,
+	)
+	if err != nil {
+		t.Fatalf(
+			"write %s: %v",
+			path,
+			err,
+		)
+	}
+}
+
+func assertFindings(
+	t *testing.T,
+	name string,
+	findings []report.Finding,
+	want []string,
+) {
+	t.Helper()
+	got := []string{}
+	for _, finding := range findings {
+		got = append(
+			got,
+			finding.Rule+" "+finding.Location,
+		)
+	}
+
+	if !slices.Equal(
+		got,
+		want,
+	) {
+		t.Errorf(
+			"%s: findings = %v, want %v",
+			name,
+			got,
+			want,
+		)
+	}
+}
+
+func TestEncapsulationSnippets(
+	t *testing.T,
+) {
+	cases := []struct {
+		name  string
+		files map[string]string
+		want  string
+	}{
+		{
+			name: "leaf importer is told to absorb the package",
+			files: map[string]string{
+				"internal/square/square.go":     "package square\n\nimport \"example.com/m/internal/rounding\"\n\nvar _ = rounding.X\n",
+				"internal/rounding/rounding.go": "package rounding\n\nfunc X() {}\n",
+			},
+			want: "imported only by internal/square, a package without internal/ children, but visible to the whole module: merge its files into internal/square (same package, tests beside them) and delete it; nesting it under internal/square/internal/ would leave a lone internal/ child (R51) and turn the importer into a module",
+		},
+		{
+			name: "module importer is told to nest the package under its internal/",
+			files: map[string]string{
+				"internal/square/container.go":        "package square\n\nimport \"example.com/m/internal/rounding\"\n\nvar _ = rounding.X\n",
+				"internal/square/internal/power/p.go": "package power\n\nfunc P() {}\n",
+				"internal/square/internal/scale/s.go": "package scale\n\nfunc S() {}\n",
+				"internal/rounding/rounding.go":       "package rounding\n\nfunc X() {}\n",
+			},
+			want: "imported only by internal/square but visible to the whole module: move it under internal/square/internal/",
+		},
+		{
+			name: "public importer is told to nest the package under its internal/",
+			files: map[string]string{
+				"x/sub/s.go":        "package sub\n\nimport \"example.com/m/x/internal/y\"\n\nvar _ = y.X\n",
+				"x/internal/y/y.go": "package y\n\nfunc X() {}\n",
+			},
+			want: "imported only by x/sub but visible to the whole module: move it under x/sub/internal/",
+		},
+	}
+	for _, tc := range cases {
+		assertSnippet(
+			t,
+			tc.name,
+			checked(
+				t,
+				tc.files,
+			),
+			tc.want,
+		)
+	}
+}
+
+func assertSnippet(
+	t *testing.T,
+	name string,
+	findings []report.Finding,
+	want string,
+) {
+	t.Helper()
+	isMatch := len(findings) == 1 && findings[0].Snippet == want
+	if !isMatch {
+		t.Errorf(
+			"%s: findings = %v, want one with snippet %q",
+			name,
+			findings,
+			want,
+		)
+	}
+}
+
+func TestEncapsulationRejectsMissingRoot(
+	t *testing.T,
+) {
+	missing := filepath.Join(
+		t.TempDir(),
+		"missing",
+	)
+	_, err := encapsulation.Encapsulation(
+		missing,
+		nil,
+	)
+	if err == nil {
+		t.Error("Encapsulation() error = nil, want one for a missing root")
+	}
+}

@@ -26,7 +26,12 @@ func TestClippy(
 				"'src/a.rs:4:5: warning: used `expect()` on an `Option` value' " +
 				"'src/b.rs:7:1: warning: used `unwrap_err()` on a `Result` value' " +
 				"'src/b.rs:9:1: warning: `panic` should not be present in production code'",
-			want: []string{"src/a.rs:3", "src/a.rs:4", "src/b.rs:7", "src/b.rs:9"},
+			want: []string{
+				"src/a.rs:3",
+				"src/a.rs:4",
+				"src/b.rs:7",
+				"src/b.rs:9",
+			},
 		},
 		{
 			name:   "unrelated warnings and test paths are skipped",

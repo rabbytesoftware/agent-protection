@@ -3,6 +3,7 @@ package source
 import (
 	"errors"
 	"fmt"
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"os"
@@ -12,14 +13,14 @@ import (
 )
 
 const (
-	goExtension             = ".go"
-	testSuffix              = "_test.go"
-	generatedHeaderMaxBytes = 500
+	goExtension       = ".go"
+	testSuffix        = "_test.go"
+	integrationTag    = "integration"
+	generatedMarker   = `^// Code generated .* DO NOT EDIT\.$`
+	maxEnumeratedTags = 12
+	buildDirective    = "//go:build"
 )
 
-// Source parses every non-test, non-generated .go file under root,
-// skipping vendor/, .git/ and node_modules/ trees. It fails when a file
-// cannot be read or parsed.
 func Source(
 	root string,
 ) (files []File, err error) {
@@ -29,27 +30,15 @@ func Source(
 			err
 	}
 
-	paths, err := selected(
+	return parseAll(
+		root,
 		slices.DeleteFunc(
 			found.files,
 			IsTest,
 		),
-		handWrittenPath,
-	)
-	if err != nil {
-		return nil,
-			err
-	}
-
-	return parseAll(
-		root,
-		paths,
 	)
 }
 
-// Tests parses every non-generated _test.go file under root that is not
-// guarded by an integration build tag. It fails when a file cannot be
-// read or parsed.
 func Tests(
 	root string,
 ) (files []File, err error) {
@@ -77,8 +66,6 @@ func Tests(
 	)
 }
 
-// Paths returns every non-test .go file path under root, generated files
-// included, for checks that reason about file layout rather than code.
 func Paths(
 	root string,
 ) (paths []string, err error) {
@@ -95,8 +82,6 @@ func Paths(
 		nil
 }
 
-// Directories returns every directory under root, root included, skipping
-// vendor/, .git/ and node_modules/ trees.
 func Directories(
 	root string,
 ) (directories []string, err error) {
@@ -110,8 +95,6 @@ func Directories(
 		nil
 }
 
-// RelPath returns path relative to root. It fails when path cannot be
-// made relative to root, such as a relative path under an absolute root.
 func RelPath(
 	root string,
 	path string,
@@ -133,8 +116,6 @@ func RelPath(
 		nil
 }
 
-// Parse parses content as the Go file at path, which findings report
-// relative to root.
 func Parse(
 	root string,
 	path string,
@@ -165,11 +146,16 @@ func Parse(
 			err
 	}
 
-	return File{Path: path, Rel: rel, FileSet: fileSet, Syntax: syntax, Content: content},
+	return File{
+			Path:    path,
+			Rel:     rel,
+			FileSet: fileSet,
+			Syntax:  syntax,
+			Content: content,
+		},
 		nil
 }
 
-// IsTest reports whether path names a _test.go file.
 func IsTest(
 	path string,
 ) (isTest bool) {
@@ -179,42 +165,80 @@ func IsTest(
 	)
 }
 
-// IsGenerated reports whether the first bytes of the file at path carry a
-// "Code generated" or "DO NOT EDIT" marker. It fails when the file cannot
-// be read.
 func IsGenerated(
 	path string,
 ) (isGenerated bool, err error) {
-	content, err := readFile(path)
+	comments, err := headerComments(path)
+	return isProvenGenerated(
+			path,
+			comments,
+		),
+		err
+}
+
+func isProvenGenerated(
+	path string,
+	comments []*ast.Comment,
+) (proven bool) {
+	return isProven(
+		path,
+		generatorOf(comments),
+	)
+}
+
+func headerComments(
+	path string,
+) (comments []*ast.Comment, err error) {
+	syntax, err := parser.ParseFile(
+		token.NewFileSet(),
+		path,
+		nil,
+		parser.PackageClauseOnly|parser.ParseComments,
+	)
 	if err != nil {
-		return false,
-			err
+		return nil,
+			fmt.Errorf(
+				"read header of %s: %w",
+				path,
+				err,
+			)
 	}
 
-	return isGeneratedContent(content),
+	return leadingComments(syntax),
 		nil
 }
 
-func isGeneratedContent(
-	content []byte,
-) (isGenerated bool) {
-	header := string(content[:min(
-		len(content),
-		generatedHeaderMaxBytes,
-	)])
-	return strings.Contains(
-		header,
-		"Code generated",
-	) || strings.Contains(
-		header,
-		"DO NOT EDIT",
-	)
+func leadingComments(
+	syntax *ast.File,
+) (comments []*ast.Comment) {
+	for _, group := range syntax.Comments {
+		comments = append(
+			comments,
+			commentsBefore(
+				group,
+				syntax.Package,
+			)...,
+		)
+	}
+
+	return comments
+}
+
+func commentsBefore(
+	group *ast.CommentGroup,
+	position token.Pos,
+) (comments []*ast.Comment) {
+	if group.End() >= position {
+		return nil
+	}
+
+	return group.List
 }
 
 func walk(
 	root string,
 ) (found *walker, err error) {
-	found = &walker{}
+	found = &walker{root: filepath.Clean(root)}
 	err = filepath.WalkDir(
 		root,
 		found.visit,
@@ -276,11 +300,22 @@ func parse(
 			)
 	}
 
-	return Parse(
+	file, err = Parse(
 		root,
 		path,
 		content,
 	)
+	if err != nil {
+		return File{},
+			err
+	}
+
+	file.IsGenerated = isProvenGenerated(
+		path,
+		leadingComments(file.Syntax),
+	)
+	return file,
+		nil
 }
 
 func selected(
@@ -310,41 +345,38 @@ func selected(
 		nil
 }
 
-func handWrittenPath(
-	path string,
-) (kept []string, err error) {
-	generated, err := IsGenerated(path)
-	if err != nil {
-		return nil,
-			err
-	}
-
-	if generated {
-		return nil,
-			nil
-	}
-
-	return []string{path},
-		nil
-}
-
 func unitTestPath(
 	path string,
 ) (kept []string, err error) {
-	content, err := readFile(path)
+	comments, err := headerComments(path)
 	if err != nil {
 		return nil,
 			err
 	}
 
-	isExcluded := isGeneratedContent(content) || hasIntegrationTag(content)
-	if isExcluded {
+	tagged, err := hasIntegrationTag(comments)
+	if tagged {
 		return nil,
-			nil
+			err
 	}
 
 	return []string{path},
-		nil
+		err
+}
+
+func HandWritten(
+	files []File,
+) (kept []File) {
+	return slices.DeleteFunc(
+		slices.Clone(files),
+		isGeneratedFile,
+	)
+}
+
+func isGeneratedFile(
+	file File,
+) (generated bool) {
+	return file.IsGenerated
 }
 
 func isNotTest(
@@ -353,31 +385,30 @@ func isNotTest(
 	return !IsTest(path)
 }
 
-func hasIntegrationTag(
-	content []byte,
-) (tagged bool) {
-	return strings.Contains(
-		string(content),
-		"//go:build",
-	) && strings.Contains(
-		string(content),
-		"integration",
-	)
-}
-
-func readFile(
-	path string,
-) (content []byte, err error) {
-	content, err = os.ReadFile(path)
+func Load(
+	root string,
+) (files []File, tests []File, err error) {
+	files, err = Source(root)
 	if err != nil {
 		return nil,
+			nil,
 			fmt.Errorf(
-				"read %s: %w",
-				path,
+				"load go sources: %w",
 				err,
 			)
 	}
 
-	return content,
+	tests, err = Tests(root)
+	if err != nil {
+		return nil,
+			nil,
+			fmt.Errorf(
+				"load go tests: %w",
+				err,
+			)
+	}
+
+	return files,
+		tests,
 		nil
 }

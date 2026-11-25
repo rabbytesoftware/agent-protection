@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# coverage.sh [minimum-percent]
-# Runs every Go test with coverage and fails when total statement coverage is
-# below the minimum (95 by default, Rabbyte's standard). Struct-only and
-# declaration-only files have no statements, so they never count; mock and
-# fake files are excluded by name.
 set -euo pipefail
 
 MINIMUM="${1:-95}"

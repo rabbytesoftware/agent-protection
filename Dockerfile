@@ -1,6 +1,3 @@
-# Agent Protection -- local-use image, no Go/Rust/Node toolchain required.
-# CI uses the composite Action (binary download) instead; this image exists
-# for contributors running `ap check .` locally without installing anything.
 FROM golang:1.24-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./

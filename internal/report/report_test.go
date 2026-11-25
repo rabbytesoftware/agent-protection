@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
+	"github.com/rabbytesoftware/agent-protection/internal/rulebook"
 )
 
 func TestReport(
@@ -18,14 +19,21 @@ func TestReport(
 		wantDocs      []string
 	}{
 		{
-			name:          "sorts by rule then location",
-			findings:      []report.Finding{{Rule: "R33", Location: "b.go:1"}, {Rule: "R32", Location: "z.go:1"}, {Rule: "R32", Location: "a.go:1"}},
+			name: "sorts by rule then location",
+			findings: []report.Finding{
+				{Rule: "R33", Location: "b.go:1"},
+				{Rule: "R32", Location: "z.go:1"},
+				{Rule: "R32", Location: "a.go:1"},
+			},
 			wantLocations: []string{"a.go:1", "z.go:1", "b.go:1"},
 			wantDocs:      []string{"R32", "R33"},
 		},
 		{
-			name:          "documents each distinct rule once",
-			findings:      []report.Finding{{Rule: "R32", Location: "a.go:1"}, {Rule: "R32", Location: "b.go:2"}},
+			name: "documents each distinct rule once",
+			findings: []report.Finding{
+				{Rule: "R32", Location: "a.go:1"},
+				{Rule: "R32", Location: "b.go:2"},
+			},
 			wantLocations: []string{"a.go:1", "b.go:2"},
 			wantDocs:      []string{"R32"},
 		},
@@ -55,14 +63,19 @@ func assertReport(
 	wantDocs []string,
 ) {
 	t.Helper()
-	output, err := report.Report(findings)
+	registry, err := rulebook.Docs()
 	if err != nil {
 		t.Fatalf(
-			"%s: Report() error = %v",
+			"%s: Docs() error = %v",
 			name,
 			err,
 		)
 	}
+
+	output := report.Report(
+		findings,
+		registry,
+	)
 
 	gotLocations := locations(output.Findings)
 	if !slices.Equal(
@@ -93,13 +106,13 @@ func assertReport(
 
 func locations(
 	findings []report.Finding,
-) (result []string) {
+) (listed []string) {
 	for _, finding := range findings {
-		result = append(
-			result,
+		listed = append(
+			listed,
 			finding.Location,
 		)
 	}
 
-	return result
+	return listed
 }

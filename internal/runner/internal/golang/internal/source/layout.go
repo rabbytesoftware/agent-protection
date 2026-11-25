@@ -1,26 +1,27 @@
 package source
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
+	"go/build/constraint"
 	"go/parser"
 	"go/token"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"unicode"
 )
 
 const (
 	internalDirectory = "internal"
 	moduleDirective   = "module "
+	containerFile     = "container.go"
+	mainFile          = "main.go"
+	mainPackage       = "main"
 )
 
-// CompositionRootThreshold is the number of distinct sibling packages a
-// file must import before it acts as a composition root.
-const CompositionRootThreshold = 2
-
-// ModulePath reads the module path declared by root's go.mod.
 func ModulePath(
 	root string,
 ) (modulePath string, err error) {
@@ -62,10 +63,6 @@ func ModulePath(
 		nil
 }
 
-// IsDeclarationOnly reports whether the Go file at path declares no
-// functions or methods, meaning it holds only types, constants and
-// variables and has no behavior of its own. It fails when the file cannot
-// be parsed.
 func IsDeclarationOnly(
 	path string,
 ) (declarationOnly bool, err error) {
@@ -91,8 +88,6 @@ func IsDeclarationOnly(
 		nil
 }
 
-// IsInternalTree reports whether dir is an internal/ directory or sits
-// anywhere beneath one.
 func IsInternalTree(
 	dir string,
 ) (inside bool) {
@@ -105,107 +100,65 @@ func IsInternalTree(
 	)
 }
 
-// IsInternalDirectory reports whether dir is itself named internal.
 func IsInternalDirectory(
 	dir string,
 ) (isInternal bool) {
 	return filepath.Base(dir) == internalDirectory
 }
 
-// IsSharedSupport reports whether dir is a shared vocabulary package
-// (errors, models, dto, types, contracts, rules, report) that any package
-// may import regardless of layering.
-func IsSharedSupport(
-	dir string,
-) (shared bool) {
-	return slices.Contains(
-		sharedSupportNames(),
-		filepath.Base(dir),
-	)
-}
-
-// IsMock reports whether rel, a path relative to the checked root, is a
-// test double: its file name or one of its directories mentions mock or
-// fake. Mocks exist only to stand in for real code in tests, so they have
-// no tests of their own and keep the shape the interface they fake needs.
 func IsMock(
 	rel string,
 ) (isMock bool) {
+	segments := strings.Split(
+		filepath.ToSlash(rel),
+		"/",
+	)
+	last := len(segments) - 1
+	return slices.ContainsFunc(
+		segments[:last],
+		isMockDirectory,
+	) || isMockFileName(strings.TrimSuffix(
+		segments[last],
+		goExtension,
+	))
+}
+
+func IsExample(
+	rel string,
+) (isExample bool) {
 	return slices.ContainsFunc(
 		strings.Split(
 			filepath.ToSlash(rel),
 			"/",
 		),
-		mentionsMock,
+		isExampleDirectory,
 	)
 }
 
-// IsCompositionRoot reports whether the file at path is conventionally
-// named as a composition root: container.go, wire.go, main.go, new.go, or
-// the file named after its own package.
+func IsModule(
+	dir string,
+	sourceDirectories []string,
+) (isModule bool) {
+	prefix := filepath.Join(
+		dir,
+		internalDirectory,
+	) + string(filepath.Separator)
+	for _, sourceDirectory := range sourceDirectories {
+		isModule = isModule || strings.HasPrefix(
+			sourceDirectory,
+			prefix,
+		)
+	}
+
+	return isModule
+}
+
 func IsCompositionRoot(
 	path string,
 	packageName string,
 ) (isRoot bool) {
 	base := filepath.Base(path)
-	return slices.Contains(
-		compositionRootNames(),
-		base,
-	) || base == packageName+goExtension
-}
-
-// HasSource reports whether dir directly contains at least one non-test
-// .go file. It fails when dir cannot be read.
-func HasSource(
-	dir string,
-) (hasSource bool, err error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return false,
-			fmt.Errorf(
-				"read %s: %w",
-				dir,
-				err,
-			)
-	}
-
-	return slices.ContainsFunc(
-			entries,
-			isSourceEntry,
-		),
-		nil
-}
-
-// Entries returns the paths of the non-test .go files directly
-// inside dir.
-func Entries(
-	dir string,
-) (paths []string, err error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil,
-			fmt.Errorf(
-				"read %s: %w",
-				dir,
-				err,
-			)
-	}
-
-	for _, entry := range slices.DeleteFunc(
-		entries,
-		isNotSourceEntry,
-	) {
-		paths = append(
-			paths,
-			filepath.Join(
-				dir,
-				entry.Name(),
-			),
-		)
-	}
-
-	return paths,
-		nil
+	return base == containerFile || base == mainFile && packageName == mainPackage
 }
 
 func isModuleDirective(
@@ -224,35 +177,204 @@ func isFuncDecl(
 	return isFunc
 }
 
-func isSourceEntry(
-	entry os.DirEntry,
-) (isSource bool) {
-	return !entry.IsDir() && filepath.Ext(entry.Name()) == goExtension && !IsTest(entry.Name())
-}
-
-func isNotSourceEntry(
-	entry os.DirEntry,
-) (excluded bool) {
-	return !isSourceEntry(entry)
-}
-
-func mentionsMock(
+func isMockDirectory(
 	segment string,
-) (mentions bool) {
-	lower := strings.ToLower(segment)
-	return strings.Contains(
-		lower,
-		"mock",
-	) || strings.Contains(
-		lower,
-		"fake",
+) (matches bool) {
+	return slices.Contains(
+		[]string{
+			"mock",
+			"mocks",
+			"fake",
+			"fakes",
+		},
+		segment,
 	)
 }
 
-func sharedSupportNames() (names []string) {
-	return []string{"errors", "models", "dto", "types", "contracts", "rules", "report"}
+func isExampleDirectory(
+	segment string,
+) (matches bool) {
+	return slices.Contains(
+		[]string{"example", "examples", "_examples"},
+		segment,
+	)
 }
 
-func compositionRootNames() (names []string) {
-	return []string{"container.go", "wire.go", "main.go", "new.go"}
+func isMockFileName(
+	stem string,
+) (matches bool) {
+	return isMockDirectory(stem) ||
+		strings.HasPrefix(
+			stem,
+			"mock_",
+		) ||
+		strings.HasPrefix(
+			stem,
+			"fake_",
+		) ||
+		strings.HasSuffix(
+			stem,
+			"_mock",
+		) ||
+		strings.HasSuffix(
+			stem,
+			"_fake",
+		)
+}
+
+func hasIntegrationTag(
+	comments []*ast.Comment,
+) (tagged bool, err error) {
+	failures := []error{}
+	for _, comment := range slices.DeleteFunc(
+		slices.Clone(comments),
+		isNotGoBuild,
+	) {
+		integrationOnly, parseErr := isIntegrationOnly(comment.Text)
+		tagged = tagged || integrationOnly
+		failures = append(
+			failures,
+			parseErr,
+		)
+	}
+
+	return tagged,
+		errors.Join(failures...)
+}
+
+func isNotGoBuild(
+	comment *ast.Comment,
+) (excluded bool) {
+	return !isGoBuild(comment)
+}
+
+func isIntegrationOnly(
+	line string,
+) (integrationOnly bool, err error) {
+	expression, err := constraint.Parse(line)
+	if err != nil {
+		return false,
+			fmt.Errorf(
+				"parse build constraint %q: %w",
+				line,
+				err,
+			)
+	}
+
+	others := slices.DeleteFunc(
+		constraintTags(line),
+		isIntegrationTag,
+	)
+	isEnumerable := len(others) <= maxEnumeratedTags
+	return isEnumerable && isSatisfiable(
+			expression,
+			others,
+			[]string{integrationTag},
+		) && !isSatisfiable(
+			expression,
+			others,
+			nil,
+		),
+		nil
+}
+
+func isSatisfiable(
+	expression constraint.Expr,
+	undecided []string,
+	enabled []string,
+) (satisfiable bool) {
+	if len(undecided) == 0 {
+		return expression.Eval(tagSetter(enabled))
+	}
+
+	return isSatisfiable(
+		expression,
+		undecided[1:],
+		slices.Concat(
+			enabled,
+			undecided[:1],
+		),
+	) || isSatisfiable(
+		expression,
+		undecided[1:],
+		enabled,
+	)
+}
+
+func tagSetter(
+	enabled []string,
+) (isSet func(string) bool) {
+	return func(
+		tag string,
+	) (set bool) {
+		return slices.Contains(
+			enabled,
+			tag,
+		)
+	}
+}
+
+func constraintTags(
+	line string,
+) (tags []string) {
+	tags = strings.FieldsFunc(
+		strings.TrimPrefix(
+			line,
+			buildDirective,
+		),
+		isNotTagRune,
+	)
+	slices.Sort(tags)
+	return slices.Compact(tags)
+}
+
+func isNotTagRune(
+	character rune,
+) (excluded bool) {
+	isTagRune := unicode.IsLetter(character) || unicode.IsDigit(character) || character == '_' || character == '.'
+	return !isTagRune
+}
+
+func isIntegrationTag(
+	tag string,
+) (matches bool) {
+	return tag == integrationTag
+}
+
+func BuildConstraint(
+	path string,
+) (expression constraint.Expr, err error) {
+	comments, err := headerComments(path)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	index := slices.IndexFunc(
+		comments,
+		isGoBuild,
+	)
+	if index < 0 {
+		return nil,
+			nil
+	}
+
+	expression, err = constraint.Parse(comments[index].Text)
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"parse build constraint of %s: %w",
+				path,
+				err,
+			)
+	}
+
+	return expression,
+		nil
+}
+
+func isGoBuild(
+	comment *ast.Comment,
+) (isConstraint bool) {
+	return constraint.IsGoBuild(comment.Text)
 }

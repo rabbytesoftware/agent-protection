@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# semver-next.sh v1.2.3 patch|minor|major -> prints the next tag.
-# Owned, ~15 lines, no third-party release-automation tool.
 set -euo pipefail
 
 LATEST="${1:?usage: semver-next.sh <latest-tag> <patch|minor|major>}"

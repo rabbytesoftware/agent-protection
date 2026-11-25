@@ -1,0 +1,40 @@
+AGENT PROTECTION: THE SHAPE YOUR CODE MUST HAVE
+
+Read this before fixing findings. AP is not a list of patterns to dodge. It enforces one architecture, and the only way to pass is to build that architecture. Every rule has a NOT A FIX line: if your change matches it, it will be caught again, and it wastes the reviewer's time.
+
+1. NO COMMENTS. ANY LANGUAGE. NONE.
+   Comments are where weak code gets justified instead of fixed. If you are about to write one, the code is not clean yet: rename, extract, split, name the constant, until the code says it. A good function needs no comment. The reasoning behind a change goes in the commit message.
+
+2. THE MODULE MODEL (Go)
+   A package P with child packages under P/internal/ is a module.
+
+   P/                        API only:
+     p.go                      exported interfaces, the types and constants they use
+     errors.go                 exported Err sentinels and error types
+     container.go              exported entry functions: construct the internal packages,
+                               pass them into each other, return P's interface.
+                               Calls, assignments, returns and if err != nil guards only.
+     internal/
+       store/                  implementation of one responsibility
+       dispatch/               implementation of another
+       ...
+
+   - Every public package (no internal/ in its path) and every module directory holds only its API plus container.go. Methods, unexported helpers, unexported types and package variables live under internal/. The project root is no exception.
+   - Only container.go imports a module's internal/ children. A module with internal/ children has a container.go.
+   - Shared vocabulary: internal packages cannot import their module root, so types the API and its internals both name (a Reservation, a Policy, a Status) live in a declaration-only package under internal/ (types, constants and Err sentinels, nothing else, like any vocabulary package). The internals import that package, never the root. The root re-exports it from an API file with aliases, constants and sentinels only: type Reservation = vocab.Reservation, const Limit = vocab.Limit, var ErrFull = vocab.ErrFull (an Err name bound to an Err sentinel of that package, nothing computed). Its Error and String methods stay a single return of a field, a literal, a concatenation or one fmt or errors call; a String with branches or arithmetic makes it a package with behavior, which the root cannot re-export. Any other use of an internal import outside container.go is still wiring in the wrong place.
+   - container.go entry functions return P's own interfaces or types (aliases included), basic types or error, never a type from an internal package. Configuration arrives as parameters: no os.Getenv, no lookup tables, no branching on anything but err.
+   - Commands: in a package main directory only main.go holds code, and func main only wires: it calls entry functions (its own logic lives under cmd/<name>/internal/), passes os.Args in, and exits with the result through os.Exit, printing errors with fmt.Fprintln(os.Stderr, ...).
+   - Production code never imports a mock or fake package.
+   - Siblings are one layer. A package may import a sibling only if that sibling imports no sibling. A package that needs two siblings is doing its parent's wiring: declare the interfaces it needs, take them in its constructor, and let the parent's container.go pass the implementations in.
+   - Nothing outside module M imports a package below M (M/models, M/options). Import M.
+   - Vocabulary packages (models, contracts, types, dto, ports, api, options, entities, schema) hold declarations only.
+   - Exported structs with pointer-receiver methods are implementations: unexport them, return interfaces.
+   - Interfaces are used, not only embedded. Do not shatter one interface into role interfaces nobody depends on.
+   - Package names are unique and say what the package provides. No look-alike siblings (dispatch and dispatcher).
+   - At most 8 source files per directory, 500 lines per file, one type per file named after it, x.go has exactly x_test.go.
+   - Mocks live in a directory named mocks or fakes, or in files named mock_x.go or x_mock.go. Nothing else is a mock.
+
+3. HOW TO WORK
+   - Design the tree first: which modules, which responsibilities, which interfaces each consumer declares, what each container.go wires. Then move code.
+   - Never split a package to get under a count, never rename to dodge a name list, never move code into a public sibling, an example or a test-support package to escape the API-only rule.
+   - ap fix repairs pure layout (one parameter, argument, literal element, return value or condition per line, paragraph blank lines). Run it first, then fix the rest by design.

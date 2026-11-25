@@ -16,10 +16,6 @@ const (
 	jsonOpeners = "[{"
 )
 
-// Eslint runs eslint through bun over root with any extra arguments and
-// returns its per-file JSON report, every FilePath made relative to root.
-// A non-zero exit still yields the report; it fails when bun cannot start
-// or the output holds no parseable JSON report.
 func Eslint(
 	root string,
 	arguments ...string,
@@ -42,9 +38,14 @@ func Eslint(
 func run(
 	root string,
 	arguments []string,
-) (output []byte, err error) {
+) (combined []byte, err error) {
 	commandArguments := append(
-		[]string{"x", "eslint", ".", "--format=json"},
+		[]string{
+			"x",
+			"eslint",
+			".",
+			"--format=json",
+		},
 		arguments...,
 	)
 	binary, err := bunBinary()
@@ -58,7 +59,7 @@ func run(
 		commandArguments...,
 	)
 	command.Dir = root
-	output, err = command.CombinedOutput()
+	combined, err = command.CombinedOutput()
 	var exitError *exec.ExitError
 	couldNotRun := err != nil && !errors.As(
 		err,
@@ -73,7 +74,7 @@ func run(
 			)
 	}
 
-	return output,
+	return combined,
 		nil
 }
 

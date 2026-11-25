@@ -20,7 +20,13 @@ func TestTestmodule(
 		{
 			name: "inline test module covers its mod line through its closing brace",
 			code: "fn real() {\n    panic!(\"a\");\n}\n\n#[cfg(test)]\nmod tests {\n    fn fake() {\n        panic!(\"b\");\n    }\n}\n",
-			want: []int{6, 7, 8, 9, 10},
+			want: []int{
+				6,
+				7,
+				8,
+				9,
+				10,
+			},
 		},
 		{
 			name: "blank lines between the attribute and the module are skipped",

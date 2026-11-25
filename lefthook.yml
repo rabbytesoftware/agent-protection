@@ -1,6 +1,3 @@
-# Agent Protection pre-commit gate. Vendored as-is into every consuming repo;
-# the pinned `ap` version is read from that repo's own .ap.yaml, never
-# hardcoded here.
 pre-commit:
   parallel: false
   commands:

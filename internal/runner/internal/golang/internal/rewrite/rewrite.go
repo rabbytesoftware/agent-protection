@@ -1,6 +1,7 @@
 package rewrite
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"go/format"
@@ -14,12 +15,6 @@ const (
 	fileMode  = 0o644
 )
 
-// Rewrite rewrites in place every file that edits finds something to change
-// in, and returns their paths relative to root. Such a file is formatted,
-// edited and formatted again, pass after pass, until edits returns nothing.
-// Files edits leaves alone are never written. A file that fails to format,
-// settle or be written is reported in the joined error without stopping the
-// others.
 func Rewrite(
 	root string,
 	files []source.File,
@@ -51,11 +46,6 @@ func rewriteFile(
 	file source.File,
 	edits func(source.File) []source.Edit,
 ) (rewritten []string, err error) {
-	if len(edits(file)) == 0 {
-		return nil,
-			nil
-	}
-
 	content, err := settle(
 		root,
 		file.Path,
@@ -66,6 +56,14 @@ func rewriteFile(
 	if err != nil {
 		return nil,
 			err
+	}
+
+	if bytes.Equal(
+		content,
+		file.Content,
+	) {
+		return nil,
+			nil
 	}
 
 	err = os.WriteFile(

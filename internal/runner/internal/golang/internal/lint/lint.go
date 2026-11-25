@@ -11,16 +11,20 @@ import (
 	"strings"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
 const (
-	binary          = "golangci-lint"
-	buildTagsEnvVar = "AP_GO_BUILD_TAGS"
-	configName      = ".ap-lint-config.generated.yml"
-	configFileMode  = 0o644
-	typecheck       = "typecheck"
-	allMatches      = -1
-	issuesExitCode  = 1
+	binary                 = "golangci-lint"
+	buildTagsEnvVar        = "AP_GO_BUILD_TAGS"
+	configName             = "golangci.yml"
+	configDirectoryPattern = "ap-lint-*"
+	configFileMode         = 0o644
+	typecheck              = "typecheck"
+	allMatches             = -1
+	issuesExitCode         = 1
+	locationSeparator      = ":"
+	unusedLinter           = "unused"
 )
 
 const (
@@ -30,15 +34,100 @@ const (
 	linterGroup
 )
 
-// Lint runs golangci-lint over the module at root with Agent Protection's
-// generated config, passing the build tags named in AP_GO_BUILD_TAGS, and
-// maps every issue from a known linter to its rule ID. It fails when
-// golangci-lint cannot start or when type-checking alone failed.
 func Lint(
 	root string,
+	environment func(string) string,
+) (findings []report.Finding, err error) {
+	findings, err = linted(
+		root,
+		environment,
+	)
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"lint checks: %w",
+				err,
+			)
+	}
+
+	return findings,
+		nil
+}
+
+func linted(
+	root string,
+	environment func(string) string,
+) (findings []report.Finding, err error) {
+	root, err = filepath.Abs(root)
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"resolve lint root: %w",
+				err,
+			)
+	}
+
+	sets, err := tagSets(
+		root,
+		envTags(environment(buildTagsEnvVar)),
+	)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	findings, err = configuredRuns(
+		root,
+		sets,
+	)
+	return slices.DeleteFunc(
+			distinct(findings),
+			isGeneratedStyle(root),
+		),
+		err
+}
+
+func configuredRuns(
+	root string,
+	sets [][]string,
+) (findings []report.Finding, err error) {
+	directory, err := os.MkdirTemp(
+		"",
+		configDirectoryPattern,
+	)
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"create lint config directory: %w",
+				err,
+			)
+	}
+
+	findings, runErr := runsWithConfig(
+		root,
+		directory,
+		sets,
+	)
+	err = errors.Join(
+		runErr,
+		removeConfig(directory),
+	)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	return findings,
+		nil
+}
+
+func runsWithConfig(
+	root string,
+	directory string,
+	sets [][]string,
 ) (findings []report.Finding, err error) {
 	configPath := filepath.Join(
-		root,
+		directory,
 		configName,
 	)
 	err = os.WriteFile(
@@ -54,31 +143,51 @@ func Lint(
 			)
 	}
 
-	output, runErr := run(
+	return runs(
 		root,
 		configPath,
+		sets,
 	)
-	err = errors.Join(
-		runErr,
-		removeConfig(configPath),
-	)
-	if err != nil {
-		return nil,
-			err
-	}
+}
 
-	return parse(output)
+func isGeneratedStyle(
+	root string,
+) (isExempt func(report.Finding) bool) {
+	return func(
+		finding report.Finding,
+	) (exempt bool) {
+		path, _, _ := strings.Cut(
+			finding.Location,
+			locationSeparator,
+		)
+		generated, err := source.IsGenerated(filepath.Join(
+			root,
+			path,
+		))
+		return err == nil && generated && !slices.Contains(
+			generatedRules(),
+			finding.Rule,
+		)
+	}
+}
+
+func generatedRules() (rules []string) {
+	return []string{"R24", "R26", "PROXY-GLOBAL-STATE"}
 }
 
 func run(
 	root string,
 	configPath string,
-) (output string, err error) {
+	tags []string,
+) (issues string, err error) {
 	command := exec.Command(
 		binary,
 		arguments(
 			configPath,
-			os.Getenv(buildTagsEnvVar),
+			strings.Join(
+				tags,
+				tagSeparator,
+			),
 		)...,
 	)
 	command.Dir = root
@@ -107,7 +216,15 @@ func arguments(
 	configPath string,
 	buildTags string,
 ) (args []string) {
-	args = []string{"run", "-c", configPath, "--max-issues-per-linter=0", "--max-same-issues=0", "--tests=false", "./..."}
+	args = []string{
+		"run",
+		"-c",
+		configPath,
+		"--max-issues-per-linter=0",
+		"--max-same-issues=0",
+		"--tests=false",
+		"./...",
+	}
 	if buildTags == "" {
 		return args
 	}
@@ -119,9 +236,9 @@ func arguments(
 }
 
 func removeConfig(
-	configPath string,
+	directory string,
 ) (err error) {
-	err = os.Remove(configPath)
+	err = os.RemoveAll(directory)
 	if err != nil {
 		return fmt.Errorf(
 			"remove lint config: %w",
@@ -134,7 +251,7 @@ func removeConfig(
 
 func parse(
 	output string,
-) (findings []report.Finding, err error) {
+) (findings []report.Finding, typechecked bool) {
 	issues := issuePattern().FindAllStringSubmatch(
 		output,
 		allMatches,
@@ -148,10 +265,7 @@ func parse(
 	)
 	if onlyTypecheckFailed {
 		return nil,
-			fmt.Errorf(
-				"golangci-lint could not type-check this module, so no linter ran: if it needs a build tag to compile, set %s and re-run",
-				buildTagsEnvVar,
-			)
+			false
 	}
 
 	for _, issue := range issues {
@@ -162,22 +276,36 @@ func parse(
 	}
 
 	return findings,
-		nil
+		true
 }
 
 func issueFindings(
 	issue []string,
 ) (findings []report.Finding) {
 	rule, known := linterRules()[issue[linterGroup]]
-	if !known {
+	if !known ||
+		isCheckedValue(issue) {
 		return nil
 	}
 
 	return []report.Finding{{
 		Rule:     rule,
-		Location: issue[pathGroup] + ":" + issue[lineGroup],
+		Location: issue[pathGroup] + locationSeparator + issue[lineGroup],
 		Snippet:  "[" + issue[linterGroup] + "] " + issue[textGroup],
 	}}
+}
+
+func isCheckedValue(
+	issue []string,
+) (checked bool) {
+	isValue := strings.HasPrefix(
+		issue[textGroup],
+		"const ",
+	) || strings.HasPrefix(
+		issue[textGroup],
+		"var ",
+	)
+	return issue[linterGroup] == unusedLinter && isValue
 }
 
 func isNotTypecheck(
@@ -203,5 +331,8 @@ func linterRules() (rules map[string]string) {
 		"errcheck":         "R26",
 		"nakedret":         "R04",
 		"interfacebloat":   "R28",
+		"ineffassign":      "R26",
+		"staticcheck":      "R26",
+		"unused":           "R69",
 	}
 }

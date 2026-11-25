@@ -14,10 +14,6 @@ const (
 	off        = 0
 )
 
-// Passthrough runs the repo's own eslint config over root and reports
-// every enabled-rule message as TS-ESLINT:<ruleId>. A repo with no eslint
-// config file directly in root has nothing to pass through and reports
-// nothing. It fails when root is unreadable or eslint cannot run or report.
 func Passthrough(
 	root string,
 ) (findings []report.Finding, err error) {

@@ -1,0 +1,404 @@
+package golang_test
+
+import (
+	"os"
+	"path/filepath"
+	"slices"
+	"testing"
+
+	"github.com/rabbytesoftware/agent-protection/internal/report"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang"
+)
+
+func TestGolang(
+	t *testing.T,
+) {
+	root := t.TempDir()
+	writeFile(
+		t,
+		filepath.Join(
+			root,
+			"go.mod",
+		),
+		"module example.com/fixture\n\ngo 1.24\n",
+	)
+	writeFile(
+		t,
+		filepath.Join(
+			root,
+			"branch.go",
+		),
+		"package fixture\n\n// Branch picks a label.\nfunc Branch(x bool) (label string) {\n\tif x {\n\t\treturn \"yes\"\n\t} else {\n\t\treturn \"no\"\n\t}\n}\n",
+	)
+	findings, err := golang.Golang(
+		root,
+		os.Getenv,
+	)
+	if err != nil {
+		t.Fatalf(
+			"Golang() error = %v",
+			err,
+		)
+	}
+
+	got := ruleIDs(findings)
+	for _, want := range []string{"R01", "R03", "R42"} {
+		assertContains(
+			t,
+			got,
+			want,
+		)
+	}
+}
+
+func TestGolangSeesThroughGeneratedHeaders(
+	t *testing.T,
+) {
+	cases := []struct {
+		name    string
+		files   map[string]string
+		want    []string
+		dropped []string
+	}{
+		{name: "a forged header with a go:generate only in a test file is hand-written", files: map[string]string{"kind_string.go": stringerSquare, "kind_test.go": stringerProof}, want: []string{"R03", "R07", "R24", "R26"}},
+		{name: "a forged sqlc header with a one-line sqlc config is hand-written", files: map[string]string{"square.go": sqlcSquare, "sqlc.yaml": "version: \"2\"\n"}, want: []string{"R03", "R07", "R24", "R26", "R27"}},
+		{name: "a header naming an unknown generator is hand-written", files: map[string]string{"square.go": forgedSquare, "generate.go": "package fixture\n\n//go:generate go run ./gen\n"}, want: []string{"R03", "R07", "R24", "R26"}},
+		{name: "a proven generated file still gets state, error and panic rules", files: map[string]string{"kind_string.go": stringerSquare, "kind.go": stringerProof}, want: []string{"R24", "R26", "R27"}, dropped: []string{"R03", "R07"}},
+	}
+	for _, tc := range cases {
+		assertRuleSelection(
+			t,
+			tc.name,
+			generatedFixtureRules(
+				t,
+				tc.files,
+			),
+			tc.want,
+			tc.dropped,
+		)
+	}
+}
+
+func assertRuleSelection(
+	t *testing.T,
+	name string,
+	got []string,
+	want []string,
+	dropped []string,
+) {
+	t.Helper()
+	isMismatch := slices.ContainsFunc(
+		want,
+		absentFrom(got),
+	) || slices.ContainsFunc(
+		dropped,
+		presentIn(got),
+	)
+	if isMismatch {
+		t.Errorf(
+			"%s: Golang() = %v, want %v and none of %v",
+			name,
+			got,
+			want,
+			dropped,
+		)
+	}
+}
+
+func generatedFixtureRules(
+	t *testing.T,
+	files map[string]string,
+) (rules []string) {
+	t.Helper()
+	root := t.TempDir()
+	files["go.mod"] = "module example.com/fixture\n\ngo 1.24\n"
+	for name, content := range files {
+		writeFile(
+			t,
+			filepath.Join(
+				root,
+				name,
+			),
+			content,
+		)
+	}
+
+	findings, err := golang.Golang(
+		root,
+		os.Getenv,
+	)
+	if err != nil {
+		t.Fatalf(
+			"Golang() error = %v",
+			err,
+		)
+	}
+
+	return ruleIDs(findings)
+}
+
+func absentFrom(
+	got []string,
+) (isAbsent func(string) bool) {
+	return func(
+		rule string,
+	) (absent bool) {
+		return !slices.Contains(
+			got,
+			rule,
+		)
+	}
+}
+
+func presentIn(
+	got []string,
+) (isPresent func(string) bool) {
+	return func(
+		rule string,
+	) (present bool) {
+		return slices.Contains(
+			got,
+			rule,
+		)
+	}
+}
+
+func TestGolangErrors(
+	t *testing.T,
+) {
+	missing := filepath.Join(
+		t.TempDir(),
+		"missing",
+	)
+	withoutLinter := t.TempDir()
+	writeFile(
+		t,
+		filepath.Join(
+			withoutLinter,
+			"go.mod",
+		),
+		"module example.com/fixture\n\ngo 1.24\n",
+	)
+	cases := []struct {
+		root string
+		path string
+	}{
+		{root: missing, path: os.Getenv("PATH")},
+		{root: withoutLinter, path: t.TempDir()},
+	}
+	for _, tc := range cases {
+		assertGolangError(
+			t,
+			tc.root,
+			tc.path,
+		)
+	}
+}
+
+func TestFix(
+	t *testing.T,
+) {
+	root := fixModule(t)
+	changed, err := golang.Fix(root)
+	if err != nil {
+		t.Fatalf(
+			"Fix() error = %v",
+			err,
+		)
+	}
+
+	if !slices.Equal(
+		changed,
+		[]string{"join.go", "join_test.go"},
+	) {
+		t.Errorf(
+			"Fix() changed = %v, want join.go and join_test.go only",
+			changed,
+		)
+	}
+
+	assertNoLayoutFindings(
+		t,
+		root,
+	)
+}
+
+func TestFixRejectsUnparsableModules(
+	t *testing.T,
+) {
+	root := t.TempDir()
+	writeFile(
+		t,
+		filepath.Join(
+			root,
+			"broken.go",
+		),
+		"package\n",
+	)
+	_, err := golang.Fix(root)
+	if err == nil {
+		t.Error("Fix() error = nil, want a parse error")
+	}
+}
+
+func fixModule(
+	t *testing.T,
+) (root string) {
+	t.Helper()
+	root = t.TempDir()
+	files := map[string]string{
+		"go.mod":       "module example.com/fixture\n\ngo 1.24\n",
+		"join.go":      "package fixture\n\nimport \"fmt\"\n\nfunc Join(key string, value int) (joined string) {\n\tif key == \"\" {\n\t\treturn \"\"\n\t}\n\treturn fmt.Sprint(key, value)\n}\n",
+		"join_test.go": "package fixture\n\nimport \"testing\"\n\nfunc TestJoin(t *testing.T) {\n\tif Join(1, 2) == \"\" {\n\t\tt.Error(\"empty\")\n\t}\n}\n",
+		"gen.go":       "// Code generated by sqlc. DO NOT EDIT.\n\npackage fixture\n\nfunc gen(a int, b int) {}\n",
+		"sqlc.yaml":    "version: \"2\"\nsql:\n  - gen:\n      go:\n        out: .\n",
+	}
+	for name, content := range files {
+		writeFile(
+			t,
+			filepath.Join(
+				root,
+				name,
+			),
+			content,
+		)
+	}
+
+	return root
+}
+
+func assertNoLayoutFindings(
+	t *testing.T,
+	root string,
+) {
+	t.Helper()
+	findings, err := golang.Golang(
+		root,
+		os.Getenv,
+	)
+	if err != nil {
+		t.Fatalf(
+			"Golang() error = %v",
+			err,
+		)
+	}
+
+	remaining := slices.DeleteFunc(
+		ruleIDs(findings),
+		isNotLayoutRule,
+	)
+	if len(remaining) > 0 {
+		t.Errorf(
+			"Golang() after Fix() still reports %v",
+			remaining,
+		)
+	}
+}
+
+func isNotLayoutRule(
+	rule string,
+) (other bool) {
+	return !slices.Contains(
+		[]string{"R01", "R52", "R55"},
+		rule,
+	)
+}
+
+func readFile(
+	t *testing.T,
+	path string,
+) (content string) {
+	t.Helper()
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf(
+			"read %s: %v",
+			path,
+			err,
+		)
+	}
+
+	return string(bytes)
+}
+
+func assertContains(
+	t *testing.T,
+	got []string,
+	want string,
+) {
+	t.Helper()
+	if !slices.Contains(
+		got,
+		want,
+	) {
+		t.Errorf(
+			"Golang() rules = %v, want %s among them",
+			got,
+			want,
+		)
+	}
+}
+
+func assertGolangError(
+	t *testing.T,
+	root string,
+	path string,
+) {
+	t.Helper()
+	t.Setenv(
+		"PATH",
+		path,
+	)
+	_, err := golang.Golang(
+		root,
+		os.Getenv,
+	)
+	if err == nil {
+		t.Errorf(
+			"Golang(%s) with PATH %s: error = nil, want one",
+			root,
+			path,
+		)
+	}
+}
+
+func ruleIDs(
+	findings []report.Finding,
+) (ids []string) {
+	for _, finding := range findings {
+		ids = append(
+			ids,
+			finding.Rule,
+		)
+	}
+
+	return ids
+}
+
+func writeFile(
+	t *testing.T,
+	path string,
+	content string,
+) {
+	t.Helper()
+	err := os.WriteFile(
+		path,
+		[]byte(content),
+		0o600,
+	)
+	if err != nil {
+		t.Fatalf(
+			"write %s: %v",
+			path,
+			err,
+		)
+	}
+}
+
+const forgedSquare = "// Code generated by squaregen. DO NOT EDIT.\n\npackage fixture\n\nimport \"os\"\n\nvar Calls = map[int]int{}\n\nfunc Square(value int) (result int) {\n\tCalls[value]++\n\tdata, _ := os.ReadFile(\"/etc/hosts\")\n\tif len(data) > 0 {\n\t\treturn value\n\t} else {\n\t\treturn value * value\n\t}\n}\n"
+
+const (
+	stringerSquare = "// Code generated by \"stringer -type=Kind\"; DO NOT EDIT.\n\npackage fixture\n\nimport \"os\"\n\nvar Calls = map[int]int{}\n\nfunc Square(value int) (result int) {\n\tCalls[value]++\n\tdata, _ := os.ReadFile(\"/etc/hosts\")\n\tif len(data) > 0 {\n\t\treturn value\n\t} else if value > 99 {\n\t\tpanic(\"overflow\")\n\t}\n\n\treturn value * value\n}\n"
+	stringerProof  = "package fixture\n\n//go:generate stringer -type=Kind\ntype Kind int\n"
+	sqlcSquare     = "// Code generated by sqlc. DO NOT EDIT.\n\npackage fixture\n\nimport \"os\"\n\nvar Calls = map[int]int{}\n\nfunc Square(value int) (result int) {\n\tCalls[value]++\n\tdata, _ := os.ReadFile(\"/etc/hosts\")\n\tif len(data) > 0 {\n\t\treturn value\n\t} else if value > 99 {\n\t\tpanic(\"overflow\")\n\t}\n\n\treturn value * value\n}\n"
+)
