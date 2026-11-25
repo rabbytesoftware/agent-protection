@@ -189,9 +189,18 @@ func isSchemeSeparator(
 		text[:at],
 		[]byte(schemeColon),
 	)
-	return hasColon &&
-		len(scheme) > 0 &&
-		isIdentifierByte(scheme[len(scheme)-1])
+	start := bytes.LastIndexFunc(
+		scheme,
+		isNotIdentifierRune,
+	) + 1
+	return hasColon && slices.Contains(
+		urlSchemes(),
+		strings.ToLower(string(scheme[start:])),
+	)
+}
+
+func urlSchemes() (schemes []string) {
+	return []string{"http", "https", "ws", "wss", "ftp", "file", "mailto"}
 }
 
 func isReferenceDirective(

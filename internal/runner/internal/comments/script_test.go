@@ -27,6 +27,7 @@ func TestScript(
 		{name: "escaped dollar brace is template text", path: "a.ts", code: "const u = `a \\${ // still`;\n", want: nil},
 		{name: "code after a closed template is lexed", path: "a.ts", code: "const u = `${a}`; // real\n", want: []string{"R07 a.ts:1"}},
 		{name: "braces in code before a comment", path: "a.ts", code: "function f() {\n  if (a) { b(); }\n}\n// real\n", want: []string{"R07 a.ts:4"}},
+		{name: "a label glued to a comment is reported", path: "a.ts", code: "const o = { note:// hidden\n};\n", want: []string{"R07 a.ts:1"}},
 		{name: "url in jsx text passes", path: "a.tsx", code: "const v = <a>see https://x.dev/a</a>;\n", want: nil},
 		{name: "comment after a url in jsx text is reported", path: "a.tsx", code: "const v = <a>http://x</a>; // real\n", want: []string{"R07 a.tsx:1"}},
 		{name: "comment after a spaced colon is reported", path: "a.ts", code: "const o = { a: // why\n  1 };\n", want: []string{"R07 a.ts:1"}},

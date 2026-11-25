@@ -1,4 +1,4 @@
-package rust
+package testmodule
 
 import (
 	"errors"
@@ -7,20 +7,13 @@ import (
 	"slices"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/comments"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/rust/internal/clippy"
-	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/rust/internal/testmodule"
 )
 
-func Rust(
+func Production(
 	root string,
+	warnings []clippy.Warning,
 ) (findings []report.Finding, err error) {
-	warnings, err := clippy.Clippy(root)
-	if err != nil {
-		return nil,
-			err
-	}
-
 	testLines, err := inlineTestLines(
 		root,
 		warnings,
@@ -30,21 +23,9 @@ func Rust(
 			err
 	}
 
-	commented, err := comments.Comments(
-		root,
-		rustExtensions(),
-	)
-	if err != nil {
-		return nil,
-			err
-	}
-
-	return append(
-			productionFindings(
-				warnings,
-				testLines,
-			),
-			commented...,
+	return productionFindings(
+			warnings,
+			testLines,
 		),
 		nil
 }
@@ -66,10 +47,6 @@ func productionFindings(
 	return findings
 }
 
-func rustExtensions() (extensions []string) {
-	return []string{".rs"}
-}
-
 func inlineTestLines(
 	root string,
 	warnings []clippy.Warning,
@@ -77,7 +54,7 @@ func inlineTestLines(
 	lines = map[string][]int{}
 	failures := []error{}
 	for _, path := range warnedPaths(warnings) {
-		fileLines, readErr := testmodule.Testmodule(filepath.Join(
+		fileLines, readErr := Testmodule(filepath.Join(
 			root,
 			path,
 		))

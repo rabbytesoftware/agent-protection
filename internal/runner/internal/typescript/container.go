@@ -26,7 +26,7 @@ func Typescript(
 
 	commented, err := comments.Comments(
 		root,
-		scriptExtensions(),
+		comments.ScriptExtensions(),
 	)
 	if err != nil {
 		return nil,
@@ -39,8 +39,4 @@ func Typescript(
 			commented,
 		),
 		nil
-}
-
-func scriptExtensions() (extensions []string) {
-	return []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"}
 }

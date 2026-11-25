@@ -151,3 +151,11 @@ func isGenerated(
 func generatedMarkers() (markers []string) {
 	return []string{"Code generated", "@generated", "DO NOT EDIT"}
 }
+
+func ScriptExtensions() (extensions []string) {
+	return []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"}
+}
+
+func RustExtensions() (extensions []string) {
+	return []string{".rs"}
+}
