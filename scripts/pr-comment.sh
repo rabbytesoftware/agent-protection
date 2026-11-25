@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# pr-comment.sh <ap-binary> <ap-report.json> <ap-exit-code> <component>
-# Creates or updates the Agent Protection comment for one component folder on
-# the current pull request, so a monorepo gets one comment per component. Needs GH_TOKEN with pull-requests: write, plus the standard
-# GITHUB_* variables Actions provides.
 set -euo pipefail
 
 AP="${1:?usage: pr-comment.sh <ap-binary> <ap-report.json> <ap-exit-code> <component>}"

@@ -3,6 +3,7 @@ package runner_test
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/runner"
@@ -63,6 +64,51 @@ func TestRunnerChecksGoModule(
 		t.Errorf(
 			"Runner() findings = %v, want none for a compliant module",
 			findings,
+		)
+	}
+}
+
+func TestRunnerScansCommentsInEveryLanguage(
+	t *testing.T,
+) {
+	root := t.TempDir()
+	files := map[string]string{
+		"go.mod":     "module example.com/clean\n\n// pinned\ngo 1.24\n",
+		"version.go": "package clean\n\n// Version is the release.\nconst Version = \"1\"\n",
+		"release.sh": "#!/bin/sh\n# hack\ngo build ./...\n",
+	}
+	for path, content := range files {
+		writeExecutable(
+			t,
+			filepath.Join(
+				root,
+				path,
+			),
+			content,
+		)
+	}
+
+	findings, err := runner.Runner(root)
+	got := []string{}
+	for _, finding := range findings {
+		got = append(
+			got,
+			finding.Rule+" "+finding.Location,
+		)
+	}
+
+	slices.Sort(got)
+	want := []string{"R07 go.mod:3", "R07 release.sh:2", "R07 version.go:3"}
+	isWrong := err != nil || !slices.Equal(
+		got,
+		want,
+	)
+	if isWrong {
+		t.Errorf(
+			"Runner() = %v, %v, want each comment reported once: %v",
+			got,
+			err,
+			want,
 		)
 	}
 }

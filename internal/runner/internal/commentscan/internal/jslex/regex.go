@@ -1,10 +1,12 @@
-package commentscan
+package jslex
 
 import (
 	"bytes"
 	"slices"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/commentscan/internal/lexeme"
 )
 
 const (
@@ -29,7 +31,7 @@ func startsRegex(
 		horizontalSpace,
 	)
 	isLineStart := len(before) == 0 ||
-		before[len(before)-1] == newline
+		before[len(before)-1] == lexeme.Newline
 	if isLineStart {
 		return true
 	}
@@ -60,7 +62,7 @@ func trailingWord(
 func isNotIdentifierRune(
 	character rune,
 ) (separator bool) {
-	return character < utf8.RuneSelf && !isIdentifierByte(byte(character))
+	return character < utf8.RuneSelf && !lexeme.IsIdentifierByte(byte(character))
 }
 
 func regexEnd(
@@ -68,7 +70,7 @@ func regexEnd(
 	at int,
 ) (end int) {
 	cursor := at + 1
-	for isOpen(
+	for lexeme.IsOpen(
 		text,
 		cursor,
 		regexStops,
@@ -79,7 +81,7 @@ func regexEnd(
 		)
 	}
 
-	return closedEnd(
+	return lexeme.ClosedEnd(
 		text,
 		cursor,
 		regexDelimiter,
@@ -91,15 +93,15 @@ func regexSegmentEnd(
 	at int,
 ) (next int) {
 	if text[at] != classOpener {
-		return escapedNext(
+		return lexeme.EscapedNext(
 			text,
 			at,
 		)
 	}
 
-	return closedEnd(
+	return lexeme.ClosedEnd(
 		text,
-		scanUntil(
+		lexeme.ScanUntil(
 			text,
 			at+1,
 			classStops,

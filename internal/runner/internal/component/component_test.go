@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
@@ -20,8 +21,9 @@ func TestCheck(
 		want    []string
 		wantErr bool
 	}{
-		{name: "the first present marker picks the checker", markers: []string{component.RustMarker, component.GoMarker}, want: []string{"go"}},
-		{name: "a lone rust marker picks rust", markers: []string{component.RustMarker}, want: []string{"rust"}},
+		{name: "the first present marker picks the checker and its owned extensions", markers: []string{component.RustMarker, component.GoMarker}, want: []string{"go", "comments:.go"}},
+		{name: "a lone rust marker picks rust and scans every comment", markers: []string{component.RustMarker}, want: []string{"rust", "comments:"}},
+		{name: "a failing checker is an error", markers: []string{component.TypescriptMarker}, wantErr: true},
 		{name: "no marker is an error", markers: nil, wantErr: true},
 	}
 	for _, tc := range cases {
@@ -31,6 +33,7 @@ func TestCheck(
 				tc.markers,
 			),
 			checkers(),
+			scanned,
 		)
 		assertChecked(
 			t,
@@ -40,6 +43,22 @@ func TestCheck(
 			tc.want,
 			tc.wantErr,
 		)
+	}
+}
+
+func TestCheckFailingCommentScan(
+	t *testing.T,
+) {
+	_, err := component.Check(
+		rootWith(
+			t,
+			[]string{component.GoMarker},
+		),
+		checkers(),
+		failingScan,
+	)
+	if err == nil {
+		t.Error("Check() error = nil, want the comment scan failure")
 	}
 }
 
@@ -80,7 +99,7 @@ func TestFix(
 
 func checkers() (registered []component.Checker) {
 	return []component.Checker{
-		{Marker: component.GoMarker, Check: labelled("go")},
+		{Marker: component.GoMarker, Check: labelled("go"), Owned: []string{component.GoSource}},
 		{Marker: component.RustMarker, Check: labelled("rust")},
 		{Marker: component.TypescriptMarker, Check: failing},
 	}
@@ -102,6 +121,25 @@ func failing(
 ) (findings []report.Finding, err error) {
 	return nil,
 		errors.New("unreachable")
+}
+
+func scanned(
+	root string,
+	owned []string,
+) (findings []report.Finding, err error) {
+	return []report.Finding{{Rule: "comments:" + strings.Join(
+			owned,
+			",",
+		)}},
+		nil
+}
+
+func failingScan(
+	root string,
+	owned []string,
+) (findings []report.Finding, err error) {
+	return nil,
+		errors.New("scan failed")
 }
 
 func rootWith(

@@ -1,9 +1,12 @@
-package commentscan
+package rustlex
 
 import (
 	"bytes"
+	"path/filepath"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/commentscan/internal/lexeme"
 )
 
 const (
@@ -13,14 +16,14 @@ const (
 	rawHash        = "#"
 	rawMarker      = "r"
 	stringKinds    = "bc"
-	noStops        = ""
+	rustExtension  = ".rs"
 	opensComment   = 1
 	closesComment  = -1
 )
 
 func rustSpans(
 	text []byte,
-) (spans []span) {
+) (spans []lexeme.Span) {
 	cursor := rustShebangEnd(text)
 	for cursor < len(text) {
 		next, found := rustTokenEnd(
@@ -47,35 +50,35 @@ func rustShebangEnd(
 		return 0
 	}
 
-	return shebangEnd(text)
+	return lexeme.ShebangEnd(text)
 }
 
 func rustTokenEnd(
 	text []byte,
 	at int,
-) (next int, spans []span) {
-	if hasPrefix(
+) (next int, spans []lexeme.Span) {
+	if lexeme.HasPrefix(
 		text,
 		at,
-		lineCommentOpener,
+		lexeme.LineCommentOpener,
 	) {
-		return lineComment(
+		return lexeme.LineComment(
 			text,
 			at,
 		)
 	}
 
-	if hasPrefix(
+	if lexeme.HasPrefix(
 		text,
 		at,
-		blockCommentOpener,
+		lexeme.BlockCommentOpener,
 	) {
 		next = nestedBlockEnd(
 			text,
 			at,
 		)
 		return next,
-			[]span{{start: at, end: next}}
+			[]lexeme.Span{{Start: at, End: next}}
 	}
 
 	return rustLiteralEnd(
@@ -91,10 +94,10 @@ func rustLiteralEnd(
 ) (end int) {
 	switch text[at] {
 	case stringQuote:
-		return quotedEnd(
+		return lexeme.QuotedEnd(
 			text,
 			at,
-			noStops,
+			lexeme.NoStops,
 		)
 	case charQuote:
 		return charOrLifetimeEnd(
@@ -133,22 +136,22 @@ func blockDelimiter(
 	text []byte,
 	at int,
 ) (delta int, next int) {
-	if hasPrefix(
+	if lexeme.HasPrefix(
 		text,
 		at,
-		blockCommentOpener,
+		lexeme.BlockCommentOpener,
 	) {
 		return opensComment,
-			at + len(blockCommentOpener)
+			at + len(lexeme.BlockCommentOpener)
 	}
 
-	if hasPrefix(
+	if lexeme.HasPrefix(
 		text,
 		at,
-		blockCommentCloser,
+		lexeme.BlockCommentCloser,
 	) {
 		return closesComment,
-			at + len(blockCommentCloser)
+			at + len(lexeme.BlockCommentCloser)
 	}
 
 	return 0,
@@ -162,7 +165,7 @@ func charOrLifetimeEnd(
 	rest := text[at+1:]
 	if bytes.HasPrefix(
 		rest,
-		[]byte{escape},
+		[]byte{lexeme.Escape},
 	) {
 		return escapedCharEnd(
 			text,
@@ -187,11 +190,11 @@ func escapedCharEnd(
 	at int,
 ) (end int) {
 	escapeEnd := min(
-		at+1+escapeWidth,
+		at+1+lexeme.EscapeWidth,
 		len(text),
 	)
 	closing := bytes.IndexByte(
-		text[escapeEnd:lineEnd(
+		text[escapeEnd:lexeme.LineEnd(
 			text,
 			escapeEnd,
 		)],
@@ -239,7 +242,7 @@ func rawStringOpening(
 	at int,
 ) (width int) {
 	isInsideIdentifier := at > 0 &&
-		isIdentifierByte(text[at-1])
+		lexeme.IsIdentifierByte(text[at-1])
 	if isInsideIdentifier {
 		return 0
 	}
@@ -283,4 +286,17 @@ func rawDelimiterWidth(
 	}
 
 	return len(rest) - len(afterHashes) + 1
+}
+
+func Rustlex() (language lexeme.Language) {
+	return lexeme.Language{
+		Matches: matches,
+		Spans:   rustSpans,
+	}
+}
+
+func matches(
+	name string,
+) (matched bool) {
+	return filepath.Ext(name) == rustExtension
 }

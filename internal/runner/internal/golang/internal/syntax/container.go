@@ -34,6 +34,7 @@ import (
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/roleinterface"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/sideeffect"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/stateless"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/stringcomment"
 )
 
 func Syntax(
@@ -71,6 +72,7 @@ func styleFindings(
 		paragraph.Paragraph(everyFile),
 		maxdepth.Maxdepth(everyFile),
 		commentpolicy.Commentpolicy(everyFile),
+		stringcomment.Stringcomment(everyFile),
 		noelse.Noelse(everyFile),
 		namedreturn.Namedreturn(everyFile),
 		genericname.Genericname(everyFile),

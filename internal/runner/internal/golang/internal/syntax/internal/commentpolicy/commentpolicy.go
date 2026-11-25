@@ -27,6 +27,10 @@ func Commentpolicy(
 			findings,
 			fileFindings(file)...,
 		)
+		findings = append(
+			findings,
+			preambleFindings(file)...,
+		)
 	}
 
 	return findings
@@ -58,9 +62,9 @@ func groupFindings(
 	isProse := !slices.Contains(
 		exempt,
 		group,
-	) && slices.ContainsFunc(
-		group.List,
-		isProseComment,
+	) && hasProse(
+		file,
+		group,
 	)
 	if !isProse {
 		return nil
@@ -76,13 +80,7 @@ func groupFindings(
 func exemptGroups(
 	file source.File,
 ) (groups []*ast.CommentGroup) {
-	for _, declaration := range file.Syntax.Decls {
-		groups = append(
-			groups,
-			cgoPreamble(declaration)...,
-		)
-	}
-
+	groups = cgoPreambles(file)
 	for _, function := range source.Nodes[*ast.FuncDecl](file.Syntax) {
 		groups = append(
 			groups,
@@ -186,8 +184,16 @@ func startsWithOutput(
 	)
 }
 
-func isProseComment(
-	comment *ast.Comment,
+func hasProse(
+	file source.File,
+	group *ast.CommentGroup,
 ) (prose bool) {
-	return !isDirective(comment.Text)
+	for _, comment := range group.List {
+		prose = prose || !isDirective(
+			file,
+			comment,
+		)
+	}
+
+	return prose
 }

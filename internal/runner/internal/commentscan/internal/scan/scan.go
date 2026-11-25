@@ -1,4 +1,4 @@
-package commentscan
+package scan
 
 import (
 	"bytes"
@@ -8,21 +8,22 @@ import (
 	"path/filepath"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/commentscan/internal/lexeme"
 )
 
 const (
 	rule            = "R07"
 	snippet         = "comment: delete it and make the code say it through names and structure"
 	locationFormat  = "%s:%d"
-	rustExtension   = ".rs"
 	generatedWindow = 500
 )
 
-func Comments(
+func Scan(
 	root string,
-	extensions []string,
+	excluded []string,
+	languages []lexeme.Language,
 ) (findings []report.Finding, err error) {
-	visitor := &walker{root: root, extensions: extensions}
+	visitor := &walker{root: root, excluded: excluded, languages: languages}
 	err = filepath.WalkDir(
 		root,
 		visitor.visit,
@@ -36,10 +37,10 @@ func Comments(
 	}
 
 	failures := []error{}
-	for _, path := range visitor.files {
+	for _, file := range visitor.files {
 		fileFound, fileErr := fileFindings(
 			root,
-			path,
+			file,
 		)
 		findings = append(
 			findings,
@@ -57,9 +58,9 @@ func Comments(
 
 func fileFindings(
 	root string,
-	path string,
+	file source,
 ) (findings []report.Finding, err error) {
-	text, err := os.ReadFile(path)
+	text, err := os.ReadFile(file.path)
 	if err != nil {
 		return nil,
 			fmt.Errorf(
@@ -75,7 +76,7 @@ func fileFindings(
 
 	rel, err := filepath.Rel(
 		root,
-		path,
+		file.path,
 	)
 	if err != nil {
 		return nil,
@@ -87,12 +88,9 @@ func fileFindings(
 
 	return lineFindings(
 			filepath.ToSlash(rel),
-			commentLines(
+			lexeme.Lines(
 				text,
-				spansOf(
-					path,
-					text,
-				),
+				file.language.Spans(text),
 			),
 		),
 		nil
@@ -120,17 +118,6 @@ func lineFindings(
 	return findings
 }
 
-func spansOf(
-	path string,
-	text []byte,
-) (spans []span) {
-	if filepath.Ext(path) == rustExtension {
-		return rustSpans(text)
-	}
-
-	return scriptSpans(text)
-}
-
 func isGenerated(
 	text []byte,
 ) (generated bool) {
@@ -150,12 +137,4 @@ func isGenerated(
 
 func generatedMarkers() (markers []string) {
 	return []string{"Code generated", "@generated", "DO NOT EDIT"}
-}
-
-func ScriptExtensions() (extensions []string) {
-	return []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"}
-}
-
-func RustExtensions() (extensions []string) {
-	return []string{".rs"}
 }
