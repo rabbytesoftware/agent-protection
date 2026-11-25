@@ -100,7 +100,10 @@ func declarationFindings(
 		found,
 		declaration,
 	)
-	isVocabularyOnly := len(findings) == 0 && found.vocabulary
+	isCleanEntry := found.api && filepath.Base(file.Path) == containerFile
+	isVocabularyOnly := len(findings) == 0 &&
+		found.vocabulary &&
+		!isCleanEntry
 	if !isVocabularyOnly {
 		return findings
 	}

@@ -29,9 +29,9 @@ func TestPublicapiVocabularyPackages(
 				want:  []string{"R14 models/models.go:3"},
 			},
 			{
-				name:  "container.go entry function in a vocabulary package is reported by R57",
+				name:  "clean container.go entry function in a vocabulary module passes",
 				files: map[string]string{"api/container.go": "package api\n\nfunc New() int {\n\treturn build()\n}\n"},
-				want:  []string{"R57 api/container.go:3"},
+				want:  nil,
 			},
 			{
 				name:  "mock files in a vocabulary package pass",
