@@ -73,7 +73,7 @@ func literalFindings(
 
 func elementValue(
 	element ast.Expr,
-) (value ast.Expr) {
+) (stored ast.Expr) {
 	pair, isPair := element.(*ast.KeyValueExpr)
 	if isPair {
 		return pair.Value

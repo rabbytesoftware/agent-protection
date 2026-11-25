@@ -22,6 +22,7 @@ func modeFindings(
 			findings,
 			functionModeFindings(
 				file,
+				members,
 				function,
 				constants,
 			)...,
@@ -84,21 +85,27 @@ func specNames(
 
 func functionModeFindings(
 	file source.File,
+	members []source.File,
 	function *ast.FuncDecl,
 	constants []string,
 ) (findings []report.Finding) {
-	if function.Body == nil {
+	names, kinds := parameterList(function.Type.Params)
+	if function.Body == nil ||
+		len(names) < 2 {
 		return nil
 	}
 
-	for _, parameter := range function.Type.Params.List {
+	for position, name := range names {
 		findings = append(
 			findings,
 			parameterModeFindings(
 				file,
+				members,
 				function,
-				parameter,
 				constants,
+				position,
+				name.Name,
+				identifierName(kinds[position]),
 			)...,
 		)
 	}
@@ -108,37 +115,71 @@ func functionModeFindings(
 
 func parameterModeFindings(
 	file source.File,
+	members []source.File,
 	function *ast.FuncDecl,
-	parameter *ast.Field,
 	constants []string,
+	position int,
+	name string,
+	kind string,
 ) (findings []report.Finding) {
-	kind := identifierName(parameter.Type)
-	names, _ := parameterList(function.Type.Params)
-	isCandidate := len(names) > 1 && slices.Contains(
+	isCandidate := slices.Contains(
 		modeTypes(),
 		kind,
+	) && passesConstant(
+		members,
+		function,
+		position,
+		constants,
 	)
 	if !isCandidate {
 		return nil
 	}
 
-	for _, name := range parameter.Names {
-		findings = appendFieldFinding(
-			findings,
-			file,
-			function,
-			modeFormat,
-			name.Name,
-			onlyComparedValue(
-				function.Body,
-				name.Name,
-				constants,
-			),
-			kind,
+	return appendFieldFinding(
+		nil,
+		file,
+		function,
+		modeFormat,
+		name,
+		onlyComparedValue(
+			function.Body,
+			name,
+			constants,
+		),
+		kind,
+	)
+}
+
+func passesConstant(
+	members []source.File,
+	function *ast.FuncDecl,
+	position int,
+	constants []string,
+) (passes bool) {
+	if function.Name.IsExported() {
+		return true
+	}
+
+	arguments := []ast.Expr{}
+	for _, file := range members {
+		arguments = append(
+			arguments,
+			callArguments(
+				file,
+				function.Name.Name,
+				position,
+			)...,
 		)
 	}
 
-	return findings
+	for _, argument := range arguments {
+		passes = passes || isConstant(
+			argument,
+			constants,
+		)
+	}
+
+	return passes
 }
 
 func onlyComparedValue(

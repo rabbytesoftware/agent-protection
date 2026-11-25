@@ -252,7 +252,7 @@ func specBindings(
 
 func firstValue(
 	values []ast.Expr,
-) (value ast.Expr) {
+) (first ast.Expr) {
 	if len(values) == 0 {
 		return nil
 	}
