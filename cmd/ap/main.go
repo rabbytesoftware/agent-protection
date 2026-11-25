@@ -1,214 +1,29 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"os"
-	"slices"
 
+	"github.com/rabbytesoftware/agent-protection/cmd/ap/internal/command"
+	"github.com/rabbytesoftware/agent-protection/cmd/ap/internal/dispatch"
 	"github.com/rabbytesoftware/agent-protection/internal/guide"
-	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/rulebook"
 	"github.com/rabbytesoftware/agent-protection/internal/runner"
 )
 
-const (
-	checkCommand      = "check"
-	fixCommand        = "fix"
-	markdownCommand   = "markdown"
-	guideCommand      = "guide"
-	guideArguments    = 2
-	reportPath        = "ap-report.json"
-	reportFileMode    = 0o644
-	cleanExitCode     = 0
-	findingsExitCode  = 1
-	usageExitCode     = 2
-	expectedArguments = 3
-	usage             = "usage: ap check <root-dir> | ap fix <root-dir> | ap markdown <ap-report.json> | ap guide"
-)
-
 func main() {
-	os.Exit(run(os.Args))
-}
-
-func run(
-	arguments []string,
-) (code int) {
-	isGuide := len(arguments) == guideArguments && arguments[1] == guideCommand
-	if isGuide {
-		fmt.Print(guide.Guide())
-		return cleanExitCode
+	tools := command.Tools{
+		Run:     runner.Runner,
+		Rewrite: runner.Fix,
+		Docs:    rulebook.Docs,
+		Manual:  guide.Guide,
 	}
-
-	command, target, err := commandArguments(arguments)
-	if err != nil {
-		fmt.Fprintln(
-			os.Stderr,
-			err,
-		)
-		return usageExitCode
-	}
-
-	switch command {
-	case markdownCommand:
-		return markdown(target)
-	case fixCommand:
-		return fix(target)
-	}
-
-	return check(target)
-}
-
-func commandArguments(
-	arguments []string,
-) (command string, target string, err error) {
-	isKnownCommand := len(arguments) == expectedArguments && slices.Contains(
-		[]string{
-			checkCommand,
-			fixCommand,
-			markdownCommand,
+	os.Exit(dispatch.Dispatch(
+		os.Args,
+		dispatch.Commands{
+			Check:    tools.Check,
+			Fix:      tools.Fix,
+			Markdown: tools.Markdown,
+			Guide:    tools.Guide,
 		},
-		arguments[1],
-	)
-	if !isKnownCommand {
-		return "",
-			"",
-			errors.New(usage)
-	}
-
-	return arguments[1],
-		arguments[2],
-		nil
-}
-
-func check(
-	root string,
-) (code int) {
-	output, err := checked(root)
-	if err != nil {
-		fmt.Fprintf(
-			os.Stderr,
-			"check failed: %v\n",
-			err,
-		)
-		return findingsExitCode
-	}
-
-	err = writeReport(output)
-	if err != nil {
-		fmt.Fprintf(
-			os.Stderr,
-			"write report: %v\n",
-			err,
-		)
-		return findingsExitCode
-	}
-
-	fmt.Print(output.Text())
-	code = exitCode(output)
-	if code != cleanExitCode {
-		fmt.Print("\n" + guide.Guide())
-	}
-
-	return code
-}
-
-func checked(
-	root string,
-) (output report.Output, err error) {
-	findings, err := runner.Runner(root)
-	if err != nil {
-		return report.Output{},
-			err
-	}
-
-	registry, err := rulebook.Docs()
-	if err != nil {
-		return report.Output{},
-			fmt.Errorf(
-				"load rule registry: %w",
-				err,
-			)
-	}
-
-	return report.Report(
-			findings,
-			registry,
-		),
-		nil
-}
-
-func fix(
-	root string,
-) (code int) {
-	changed, err := runner.Fix(root)
-	for _, path := range changed {
-		fmt.Println(path)
-	}
-
-	fmt.Printf(
-		"files changed: %d\n",
-		len(changed),
-	)
-	if err != nil {
-		fmt.Fprintf(
-			os.Stderr,
-			"fix failed: %v\n",
-			err,
-		)
-		return findingsExitCode
-	}
-
-	return cleanExitCode
-}
-
-func markdown(
-	path string,
-) (code int) {
-	document, err := os.ReadFile(path)
-	if err != nil {
-		fmt.Fprintf(
-			os.Stderr,
-			"read report: %v\n",
-			err,
-		)
-		return findingsExitCode
-	}
-
-	output, err := report.Decode(document)
-	if err != nil {
-		fmt.Fprintln(
-			os.Stderr,
-			err,
-		)
-		return findingsExitCode
-	}
-
-	fmt.Print(output.Markdown())
-	return cleanExitCode
-}
-
-func writeReport(
-	output report.Output,
-) (err error) {
-	document, err := output.JSON()
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(
-		reportPath,
-		[]byte(document),
-		reportFileMode,
-	)
-}
-
-func exitCode(
-	output report.Output,
-) (code int) {
-	if len(output.Findings) > 0 {
-		return findingsExitCode
-	}
-
-	return cleanExitCode
+	))
 }

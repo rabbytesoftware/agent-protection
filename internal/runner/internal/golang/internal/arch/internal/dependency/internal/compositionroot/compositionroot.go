@@ -35,11 +35,12 @@ func Compositionroot(
 
 	packages := groupByDirectory(files)
 	directories := slices.Sorted(maps.Keys(packages))
+	vocabularies := source.DeclarationPackages(files)
 	for _, directory := range directories {
 		findings = append(
 			findings,
 			moduleFindings(
-				modulePath,
+				module{path: modulePath, vocabularies: vocabularies},
 				directory,
 				directories,
 				packages[directory],
@@ -67,7 +68,7 @@ func groupByDirectory(
 }
 
 func moduleFindings(
-	modulePath string,
+	owner module,
 	directory string,
 	directories []string,
 	files []source.File,
@@ -94,7 +95,7 @@ func moduleFindings(
 			files,
 		),
 		strayWiringFindings(
-			modulePath,
+			owner,
 			directory,
 			name,
 			files,
@@ -103,7 +104,7 @@ func moduleFindings(
 }
 
 func strayWiringFindings(
-	modulePath string,
+	owner module,
 	directory string,
 	name string,
 	files []source.File,
@@ -115,7 +116,7 @@ func strayWiringFindings(
 		findings = append(
 			findings,
 			wiringFindings(
-				modulePath,
+				owner,
 				directory,
 				name,
 				file,
@@ -149,7 +150,7 @@ func missingContainerFindings(
 }
 
 func wiringFindings(
-	modulePath string,
+	owner module,
 	directory string,
 	name string,
 	file source.File,
@@ -158,7 +159,7 @@ func wiringFindings(
 		findings = append(
 			findings,
 			wiringFinding(
-				modulePath,
+				owner,
 				directory,
 				name,
 				file,
@@ -171,14 +172,14 @@ func wiringFindings(
 }
 
 func wiringFinding(
-	modulePath string,
+	owner module,
 	directory string,
 	name string,
 	file source.File,
 	spec *ast.ImportSpec,
 ) (findings []report.Finding) {
 	imported, inModule := importedDirectory(
-		modulePath,
+		owner.path,
 		spec,
 	)
 	isOwnInternal := inModule && strings.HasPrefix(
@@ -188,7 +189,13 @@ func wiringFinding(
 			internalDirectory,
 		)+string(filepath.Separator),
 	)
-	if !isOwnInternal {
+	isExempt := !isOwnInternal || isReExport(
+		owner,
+		imported,
+		file,
+		spec,
+	)
+	if isExempt {
 		return nil
 	}
 

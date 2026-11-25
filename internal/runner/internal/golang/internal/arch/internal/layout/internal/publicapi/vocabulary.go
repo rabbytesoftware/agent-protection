@@ -42,7 +42,7 @@ func vocabularyFindings(
 func vocabularyRemedy(
 	flagged violation,
 ) (remedy string) {
-	isBehavior := flagged.kind == funcKind || flagged.kind == methodKind
+	isBehavior := flagged.kind == funcKind || flagged.kind == methodKind || flagged.kind == errorMethodKind
 	if isBehavior {
 		return behaviorRemedy
 	}

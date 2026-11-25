@@ -1,6 +1,8 @@
 package rust
 
 import (
+	"slices"
+
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/commentscan"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/rust/internal/clippy"
@@ -34,9 +36,9 @@ func Rust(
 			err
 	}
 
-	return append(
+	return slices.Concat(
 			production,
-			commented...,
+			commented,
 		),
 		nil
 }

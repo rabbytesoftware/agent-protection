@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/layout/internal/entrypoint"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/layout/internal/internalboundary"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/layout/internal/maxfilesperdir"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/arch/internal/layout/internal/packageset"
@@ -21,6 +22,10 @@ func Layout(
 		root,
 		files,
 	)
+	entries, entriesErr := entrypoint.Entrypoint(
+		root,
+		files,
+	)
 	names, namesErr := packageset.Packageset(
 		root,
 		files,
@@ -30,6 +35,7 @@ func Layout(
 	crowded, crowdedErr := maxfilesperdir.Maxfilesperdir(root)
 	err = errors.Join(
 		surfacesErr,
+		entriesErr,
 		namesErr,
 		boundariesErr,
 		pairingsErr,
@@ -42,6 +48,7 @@ func Layout(
 
 	return slices.Concat(
 			surfaces,
+			entries,
 			names,
 			boundaries,
 			pairings,
