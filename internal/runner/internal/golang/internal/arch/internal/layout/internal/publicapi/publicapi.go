@@ -19,7 +19,7 @@ func Publicapi(
 	root string,
 	files []source.File,
 ) (findings []report.Finding, err error) {
-	supportDirectories, err := testSupport(root)
+	modulePath, sourceDirectories, supportDirectories, err := moduleLayout(root)
 	if err != nil {
 		return nil,
 			fmt.Errorf(
@@ -28,17 +28,11 @@ func Publicapi(
 			)
 	}
 
-	paths, err := source.Paths(root)
-	if err != nil {
-		return nil,
-			fmt.Errorf(
-				"public api: %w",
-				err,
-			)
-	}
-
-	sourceDirectories := directoriesOf(paths)
 	structs := packageStructs(files)
+	vocabularies := vocabularyImports(
+		modulePath,
+		files,
+	)
 	for _, file := range files {
 		findings = append(
 			findings,
@@ -49,6 +43,7 @@ func Publicapi(
 					sourceDirectories,
 					supportDirectories,
 					structs,
+					vocabularies,
 				),
 			)...,
 		)
@@ -56,6 +51,37 @@ func Publicapi(
 
 	return findings,
 		nil
+}
+
+func moduleLayout(
+	root string,
+) (modulePath string, sourceDirectories []string, supportDirectories []string, err error) {
+	modulePath, err = source.ModulePath(root)
+	if err != nil {
+		return "",
+			nil,
+			nil,
+			err
+	}
+
+	paths, err := source.Paths(root)
+	if err != nil {
+		return "",
+			nil,
+			nil,
+			err
+	}
+
+	sourceDirectories = directoriesOf(paths)
+	supportDirectories, err = testSupport(
+		root,
+		modulePath,
+		sourceDirectories,
+	)
+	return modulePath,
+		sourceDirectories,
+		supportDirectories,
+		err
 }
 
 func directoriesOf(

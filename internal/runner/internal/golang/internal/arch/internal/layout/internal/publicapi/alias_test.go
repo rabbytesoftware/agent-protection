@@ -2,7 +2,10 @@ package publicapi_test
 
 import "testing"
 
-const internalStore = "package store\n\ntype Store struct{}\n"
+const (
+	internalStore   = "package store\n\ntype Store struct{}\n\nfunc Open() {}\n"
+	vocabularyStore = "package vocab\n\ntype Reservation struct{ Seats int }\n\nconst Limit = 3\n\nvar ErrFull = errFull{}\n\ntype errFull struct{}\n\nfunc (errFull) Error() string { return \"full\" }\n"
+)
 
 func TestPublicapiAliases(
 	t *testing.T,
@@ -66,6 +69,22 @@ func TestPublicapiAliases(
 				name:  "alias qualified by a name that is not imported passes",
 				files: map[string]string{"ledger.go": "package ledger\n\ntype Source = a.B\n"},
 				want:  nil,
+			},
+			{
+				name: "alias to a declaration-only internal package passes",
+				files: map[string]string{
+					"ledger.go":               "package ledger\n\nimport \"example.com/m/internal/vocab\"\n\ntype Reservation = vocab.Reservation\n\nconst Limit = vocab.Limit\n",
+					"internal/vocab/vocab.go": vocabularyStore,
+				},
+				want: nil,
+			},
+			{
+				name: "alias to an internal package holding package state is reported",
+				files: map[string]string{
+					"ledger.go":               "package ledger\n\nimport \"example.com/m/internal/vocab\"\n\ntype Reservation = vocab.Reservation\n",
+					"internal/vocab/vocab.go": "package vocab\n\ntype Reservation struct{}\n\nvar cache = map[int]int{}\n",
+				},
+				want: []string{"R14 ledger.go:5"},
 			},
 			{
 				name: "struct alias inside an internal package that is not a module passes",

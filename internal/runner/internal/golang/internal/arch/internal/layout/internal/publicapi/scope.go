@@ -15,12 +15,13 @@ const (
 )
 
 type scope struct {
-	packageName string
-	label       string
-	internal    string
-	structs     []string
-	api         bool
-	vocabulary  bool
+	packageName  string
+	label        string
+	internal     string
+	structs      []string
+	vocabularies []string
+	api          bool
+	vocabulary   bool
 }
 
 func scopeOf(
@@ -28,6 +29,7 @@ func scopeOf(
 	sourceDirectories []string,
 	supportDirectories []string,
 	structs map[string][]string,
+	vocabularies []string,
 ) (found scope) {
 	if source.IsMock(file.Rel) {
 		return scope{}
@@ -49,9 +51,10 @@ func scopeOf(
 			file,
 			sourceDirectories,
 		),
-		internal: internalPath(directory),
-		structs:  structs[directory],
-		api:      !isExempt && (isModule || !source.IsInternalTree(directory)),
+		internal:     internalPath(directory),
+		structs:      structs[directory],
+		vocabularies: vocabularies,
+		api:          !isExempt && (isModule || !source.IsInternalTree(directory)),
 		vocabulary: slices.Contains(
 			vocabularyNames(),
 			packageName,

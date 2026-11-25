@@ -5,6 +5,8 @@ import (
 	"go/token"
 	"slices"
 	"strings"
+
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
 const (
@@ -49,11 +51,14 @@ func functionViolations(
 
 	receiver := receiverType(function.Recv.List[0].Type)
 	isErrorMethod := ast.IsExported(receiver) && slices.Contains(
-		errorMethods(),
+		source.ErrorMethods(),
 		name,
 	)
 	if isErrorMethod {
-		return nil
+		return errorMethodViolations(
+			function,
+			receiver,
+		)
 	}
 
 	return []violation{{node: function, kind: methodKind, name: receiver + "." + name, exported: function.Name.IsExported()}}
@@ -174,8 +179,4 @@ func isSentinelOrBlank(
 		name,
 		sentinelHead,
 	)
-}
-
-func errorMethods() (names []string) {
-	return []string{"Error", "Unwrap", "Is", "As", "String"}
 }

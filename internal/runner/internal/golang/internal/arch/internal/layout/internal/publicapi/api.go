@@ -30,10 +30,7 @@ func apiFindings(
 		function,
 	)
 	if isEntry {
-		return delegationFindings(
-			file,
-			function,
-		)
+		return nil
 	}
 
 	return slices.Concat(
@@ -99,6 +96,11 @@ func apiRemedy(
 		return functionRemedy(
 			flagged,
 			found,
+		)
+	case errorMethodKind:
+		return fmt.Sprintf(
+			"Error, Unwrap, Is, As and String hold a single return of a field, a literal, a concatenation or one fmt.Sprintf, fmt.Errorf or errors call; move the logic under %s",
+			found.internal,
 		)
 	}
 

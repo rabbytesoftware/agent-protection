@@ -29,13 +29,9 @@ type importer struct {
 
 func testSupport(
 	root string,
+	modulePath string,
+	sourceDirectories []string,
 ) (directories []string, err error) {
-	modulePath, err := source.ModulePath(root)
-	if err != nil {
-		return nil,
-			err
-	}
-
 	found, err := importers(root)
 	if err != nil {
 		return nil,
@@ -46,23 +42,47 @@ func testSupport(
 		slices.Clone(found),
 		isTestImporter,
 	)
-	return slices.Concat(
-			without(
-				importedBy(
-					modulePath,
-					slices.DeleteFunc(
-						found,
-						isProductionImporter,
-					),
-				),
-				importedBy(
-					modulePath,
-					productionImporters,
+	candidates := without(
+		slices.Concat(
+			importedBy(
+				modulePath,
+				slices.DeleteFunc(
+					found,
+					isProductionImporter,
 				),
 			),
 			testHelpers(productionImporters),
 		),
+		importedBy(
+			modulePath,
+			productionImporters,
+		),
+	)
+	return slices.DeleteFunc(
+			candidates,
+			moduleDirectory(
+				root,
+				sourceDirectories,
+			),
+		),
 		nil
+}
+
+func moduleDirectory(
+	root string,
+	sourceDirectories []string,
+) (isModule func(string) bool) {
+	return func(
+		directory string,
+	) (excluded bool) {
+		return directory == rootDirectory || source.IsModule(
+			filepath.Join(
+				root,
+				directory,
+			),
+			sourceDirectories,
+		)
+	}
 }
 
 func testHelpers(

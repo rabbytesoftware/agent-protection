@@ -41,12 +41,36 @@ func TestPublicapiTestSupportPackages(
 				want: []string{"R14 store/storetest/storetest.go:3"},
 			},
 			{
-				name: "root package imported only from tests passes",
+				name: "root package imported only from tests is reported",
 				files: map[string]string{
 					"helper.go":       "package m\n\nfunc helper() {}\n",
 					"sub/sub_test.go": "package sub_test\n\nimport \"example.com/m\"\n",
 				},
-				want: nil,
+				want: []string{"R14 helper.go:3"},
+			},
+			{
+				name: "root file importing testing does not exempt the root",
+				files: map[string]string{
+					"fixture.go": "package pricing\n\nimport \"testing\"\n\nfunc Fixture(t testing.TB) int {\n\treturn quote()\n}\n",
+					"quote.go":   "package pricing\n\nfunc quote() int {\n\treturn 1\n}\n",
+				},
+				want: []string{"R14 fixture.go:5", "R14 quote.go:3"},
+			},
+			{
+				name: "module directory importing testing is not test support",
+				files: map[string]string{
+					"store/store.go":              "package store\n\nimport \"testing\"\n\nfunc helper(t testing.TB) {}\n",
+					"store/internal/disk/disk.go": "package disk\n",
+				},
+				want: []string{"R14 store/store.go:5"},
+			},
+			{
+				name: "testing helper imported by production code is not test support",
+				files: map[string]string{
+					"store/storetest/storetest.go": "package storetest\n\nimport \"testing\"\n\nfunc run(t *testing.T) {}\n",
+					"cmd/app/main.go":              "package main\n\nimport _ \"example.com/m/store/storetest\"\n\nfunc main() {}\n",
+				},
+				want: []string{"R14 store/storetest/storetest.go:5"},
 			},
 			{
 				name: "package whose source imports testing passes",

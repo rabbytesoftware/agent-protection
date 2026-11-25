@@ -50,6 +50,7 @@ func exposingAlias(
 	) || isInternalTarget(
 		file.Syntax,
 		target,
+		found.vocabularies,
 	)
 	if !isExposing {
 		return nil
@@ -101,6 +102,7 @@ func isStructTarget(
 func isInternalTarget(
 	syntax *ast.File,
 	target ast.Expr,
+	vocabularies []string,
 ) (isInternal bool) {
 	selector, isSelector := target.(*ast.SelectorExpr)
 	if !isSelector {
@@ -108,13 +110,39 @@ func isInternalTarget(
 	}
 
 	qualifier, isIdentifier := selector.X.(*ast.Ident)
-	return isIdentifier && slices.ContainsFunc(
-		qualifiedPaths(
-			syntax,
-			qualifier.Name,
+	return isIdentifier && len(without(
+		slices.DeleteFunc(
+			qualifiedPaths(
+				syntax,
+				qualifier.Name,
+			),
+			isOutsideInternal,
 		),
-		source.IsInternalTree,
-	)
+		vocabularies,
+	)) > 0
+}
+
+func isOutsideInternal(
+	imported string,
+) (excluded bool) {
+	return !source.IsInternalTree(imported)
+}
+
+func vocabularyImports(
+	modulePath string,
+	files []source.File,
+) (paths []string) {
+	for _, directory := range source.DeclarationPackages(files) {
+		paths = append(
+			paths,
+			path.Join(
+				modulePath,
+				directory,
+			),
+		)
+	}
+
+	return paths
 }
 
 func qualifiedPaths(
