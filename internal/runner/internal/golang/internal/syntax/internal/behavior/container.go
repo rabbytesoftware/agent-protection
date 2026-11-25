@@ -5,6 +5,7 @@ import (
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/behavior/internal/assertion"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/behavior/internal/boolparam"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/behavior/internal/cqs"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/syntax/internal/behavior/internal/ctxfirstparam"
@@ -33,5 +34,9 @@ func Behavior(
 			tests,
 		)),
 		realinfra.Realinfra(source.HandWritten(tests)),
+		assertion.Assertion(
+			files,
+			source.HandWritten(tests),
+		),
 	)
 }

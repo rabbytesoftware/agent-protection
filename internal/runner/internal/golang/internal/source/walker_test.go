@@ -231,3 +231,93 @@ func TestWalkerSkipsNestedModules(
 		)
 	}
 }
+
+func TestWalkersRejectMissingRoot(
+	t *testing.T,
+) {
+	missing := filepath.Join(
+		t.TempDir(),
+		"missing",
+	)
+	walkers := []func(string) error{
+		sourceError,
+		testsError,
+		pathsError,
+		directoriesError,
+	}
+	for _, walker := range walkers {
+		assertWalkError(
+			t,
+			walker,
+			missing,
+		)
+	}
+}
+
+func assertWalkError(
+	t *testing.T,
+	walker func(string) error,
+	root string,
+) {
+	t.Helper()
+	err := walker(root)
+	if err == nil {
+		t.Errorf(
+			"walking %s: error = nil, want one",
+			root,
+		)
+	}
+}
+
+func sourceError(
+	root string,
+) (err error) {
+	_, err = source.Source(root)
+	return err
+}
+
+func testsError(
+	root string,
+) (err error) {
+	_, err = source.Tests(root)
+	return err
+}
+
+func pathsError(
+	root string,
+) (err error) {
+	_, err = source.Paths(root)
+	return err
+}
+
+func directoriesError(
+	root string,
+) (err error) {
+	_, err = source.Directories(root)
+	return err
+}
+
+func TestWalkersRejectUnreadableFiles(
+	t *testing.T,
+) {
+	walkers := map[string]func(string) error{"broken.go": sourceError, "broken_test.go": testsError}
+	for name, walker := range walkers {
+		root := t.TempDir()
+		symlink(
+			t,
+			filepath.Join(
+				root,
+				"missing.go",
+			),
+			filepath.Join(
+				root,
+				name,
+			),
+		)
+		assertWalkError(
+			t,
+			walker,
+			root,
+		)
+	}
+}

@@ -24,7 +24,7 @@ func Shape(
 	return slices.Concat(
 		onetypeperfile.Onetypeperfile(source.HandWritten(files)),
 		methodfile.Methodfile(source.HandWritten(files)),
-		filelinelimit.Filelinelimit(source.HandWritten(files)),
+		filelinelimit.Filelinelimit(everyFile),
 		packagehygiene.Packagehygiene(source.HandWritten(files)),
 		nostutter.Nostutter(source.HandWritten(files)),
 		interfacesize.Interfacesize(source.HandWritten(files)),

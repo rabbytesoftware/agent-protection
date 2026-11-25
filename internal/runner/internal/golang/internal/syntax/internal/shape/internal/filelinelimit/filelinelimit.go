@@ -8,8 +8,10 @@ import (
 )
 
 const (
-	rule     = "R44"
-	maxLines = 500
+	rule         = "R44"
+	maxLines     = 500
+	sourceFormat = "%d lines, over the %d line limit: split the file by responsibility"
+	testFormat   = "%d lines, over the %d line limit, test files included: a test file this long means its source file holds more than one responsibility; split the source by responsibility and move each group of tests into the x_test.go of the file it exercises (benchmarks may go to x_bench_test.go)"
 )
 
 func Filelinelimit(
@@ -37,9 +39,19 @@ func fileFindings(
 		Rule:     rule,
 		Location: file.Location(file.Syntax),
 		Snippet: fmt.Sprintf(
-			"%d lines, over the %d line limit: split the file by responsibility",
+			formatFor(file.Rel),
 			lines,
 			maxLines,
 		),
 	}}
+}
+
+func formatFor(
+	rel string,
+) (format string) {
+	if source.IsTest(rel) {
+		return testFormat
+	}
+
+	return sourceFormat
 }

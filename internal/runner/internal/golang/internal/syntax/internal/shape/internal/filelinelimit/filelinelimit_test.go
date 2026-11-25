@@ -48,6 +48,7 @@ func TestFilelinelimit(
 			tc.name,
 			filelinelimit.Filelinelimit([]source.File{parsed(
 				t,
+				"p.go",
 				code,
 			)}),
 			tc.want,
@@ -55,15 +56,59 @@ func TestFilelinelimit(
 	}
 }
 
+func TestFilelinelimitSnippets(
+	t *testing.T,
+) {
+	code := packageClause + strings.Repeat(
+		"// line\n",
+		500,
+	)
+	findings := filelinelimit.Filelinelimit([]source.File{
+		parsed(
+			t,
+			"p.go",
+			code,
+		),
+		parsed(
+			t,
+			"p_test.go",
+			code,
+		),
+	})
+	want := []string{
+		"501 lines, over the 500 line limit: split the file by responsibility",
+		"501 lines, over the 500 line limit, test files included: a test file this long means its source file holds more than one responsibility; split the source by responsibility and move each group of tests into the x_test.go of the file it exercises (benchmarks may go to x_bench_test.go)",
+	}
+	got := []string{}
+	for _, finding := range findings {
+		got = append(
+			got,
+			finding.Snippet,
+		)
+	}
+
+	if !slices.Equal(
+		got,
+		want,
+	) {
+		t.Errorf(
+			"snippets = %q, want %q",
+			got,
+			want,
+		)
+	}
+}
+
 func parsed(
 	t *testing.T,
+	rel string,
 	code string,
 ) (file source.File) {
 	t.Helper()
 	fileSet := token.NewFileSet()
 	syntax, err := parser.ParseFile(
 		fileSet,
-		"p.go",
+		rel,
 		code,
 		parser.ParseComments,
 	)
@@ -75,8 +120,8 @@ func parsed(
 	}
 
 	return source.File{
-		Path:    "p.go",
-		Rel:     "p.go",
+		Path:    rel,
+		Rel:     rel,
 		FileSet: fileSet,
 		Syntax:  syntax,
 	}
