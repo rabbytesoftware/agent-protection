@@ -34,7 +34,6 @@ func Publicapi(
 		sourceDirectories,
 		supportDirectories,
 		packageStructs(files),
-		packageFunctions(files),
 		vocabularyImports(
 			modulePath,
 			files,
@@ -62,7 +61,6 @@ func scopesOf(
 	sourceDirectories []string,
 	supportDirectories []string,
 	structs map[string][]string,
-	functions map[string][]string,
 	vocabularies []string,
 ) (scopes []scope) {
 	for _, file := range files {
@@ -73,7 +71,6 @@ func scopesOf(
 				sourceDirectories,
 				supportDirectories,
 				structs,
-				functions,
 				vocabularies,
 			),
 		)

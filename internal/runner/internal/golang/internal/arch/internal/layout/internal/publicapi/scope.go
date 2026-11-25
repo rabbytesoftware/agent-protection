@@ -19,7 +19,6 @@ type scope struct {
 	label        string
 	internal     string
 	structs      []string
-	functions    []string
 	vocabularies []string
 	api          bool
 	vocabulary   bool
@@ -30,7 +29,6 @@ func scopeOf(
 	sourceDirectories []string,
 	supportDirectories []string,
 	structs map[string][]string,
-	functions map[string][]string,
 	vocabularies []string,
 ) (found scope) {
 	directory := filepath.ToSlash(filepath.Dir(file.Rel))
@@ -51,7 +49,6 @@ func scopeOf(
 		),
 		internal:     internalPath(directory),
 		structs:      structs[directory],
-		functions:    functions[directory],
 		vocabularies: vocabularies,
 		api:          !isExempt && (isModule || !source.IsInternalTree(directory)),
 		vocabulary: slices.Contains(

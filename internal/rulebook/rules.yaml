@@ -158,14 +158,6 @@ R27:
     rationale: "A library that panics or exits takes the decision to crash away from its caller; errors are values the caller can handle, log or wrap. Real generator output (protoc, sqlc, stringer, mockery) does not panic, so a generated header is no reason to stop looking."
     fix_strategy: "Return an error wrapped with context via %w instead of panicking or exiting, and let main decide whether startup failure is fatal."
     not_a_fix: "Replacing panic with log.Fatal, os.Exit or runtime.Goexit inside a library; aliasing the log or os import; calling a must-style helper in another package that panics on your behalf; calling Fatal on a logger value; returning a zero value and swallowing the failure instead of returning an error; calling logger.Fatalf on a *log.Logger or log.Default().Panicln; binding terminate := os.Exit and calling terminate(1); syscall.Exit or unix.Exit in place of os.Exit; adding a // Code generated ... DO NOT EDIT. header: generated files are still checked for panics."
-R28:
-    id: R28
-    level: L1
-    text: "Keep interfaces small (1-3 methods counted after flattening embedded interfaces of the module), defined in the consuming package. A struct that embeds interfaces of the module is an interface surface too: its methods promoted from embedded interfaces (directly or through embedded structs of the module) plus its own exported methods count against the same cap, and so do its exported func-typed fields (func literals or func types of the module), so a struct of four exported func fields is a four-method interface built by hand. _test.go files and mock files are exempt"
-    enforcement: analyzer
-    rationale: "A large interface forces every implementor and every fake to satisfy methods most callers never use, and couples far more callers to far more surface than necessary. Embedding small interfaces into a large one keeps the whole surface, and so does embedding them into a struct that a constructor returns: every caller of New gets the whole god object. A struct whose exported fields are funcs is the same surface assembled by hand: every holder can call or replace every operation, and nothing ties the funcs to one implementation."
-    fix_strategy: "Split the interface along how it's actually consumed; define each smaller interface where it's used and have each consumer depend on the small one it calls. When a module assembles several roles, return each small interface from its own constructor instead of one struct that embeds them all. Replace a struct of exported func fields with small interfaces implemented by methods on unexported types, each returned by its own constructor."
-    not_a_fix: "Splitting the interface into arbitrary pieces of 3 or fewer methods (DispatcherParkRecovery) that are not concepts any consumer actually asks for; embedding the pieces back into one big interface that every caller still takes; embedding the small interfaces in a struct to rebuild the same surface; turning methods into exported func fields of a struct filled from package funcs or method values; unexporting the func fields while exporting setters for them; leaving the definition in the producer package under a new name."
 R32:
     id: "R32"
     level: "L0"
@@ -331,7 +323,7 @@ R60:
     level: L1
     text: "An internal interface is used by production code, not only embedded: no interface that is only ever embedded in other interfaces or referenced only from _test.go files, and no interface that only re-embeds one other"
     enforcement: analyzer
-    rationale: "Splitting an interface into role interfaces nothing depends on games the small-interface rule: the method set is unchanged, only scattered across names readers must chase. A use that exists only in a test proves nothing in production narrows to the role."
+    rationale: "A role interface nothing depends on is noise: the method set is unchanged, only scattered across names readers must chase. A use that exists only in a test proves nothing in production narrows to the role."
     fix_strategy: "Inline the embedded interface's methods into the interface that uses it, or depend on the small interface where it really narrows what a consumer needs. Use a re-embedded interface directly."
     not_a_fix: "Adding a dummy parameter or variable of the role interface type only to count as a use; referencing the role interface from a test, or embedding it in a test fake, so it counts as used."
 R61:

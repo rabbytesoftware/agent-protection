@@ -17,7 +17,6 @@ linters:
     - unparam
     - errcheck
     - nakedret
-    - interfacebloat
     - ineffassign
     - staticcheck
     - unused
@@ -27,8 +26,6 @@ linters:
     errcheck:
       check-blank: true
       check-type-assertions: true
-    interfacebloat:
-      max: 3
     staticcheck:
       checks:
         - SA4006

@@ -5,18 +5,14 @@ import (
 	"go/ast"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
 )
 
 const (
-	containerFile  = "container.go"
-	apiFormat      = "%s %s in %s: %s"
-	behaviorFormat = "type %s in %s has %d exported func fields (%s): a struct of funcs is behavior, not API; declare an interface with these operations here, implement it with methods under %s and return it from container.go"
-	fieldSeparator = ", "
-	maxFunctions   = 3
+	containerFile = "container.go"
+	apiFormat     = "%s %s in %s: %s"
 )
 
 func apiFindings(
@@ -48,168 +44,7 @@ func apiFindings(
 			found,
 			declaration,
 		),
-		behaviorFindings(
-			file,
-			found,
-			declaration,
-		),
 	)
-}
-
-func behaviorFindings(
-	file source.File,
-	found scope,
-	declaration ast.Decl,
-) (findings []report.Finding) {
-	for _, spec := range typeSpecs(declaration) {
-		findings = append(
-			findings,
-			behaviorFinding(
-				file,
-				found,
-				spec,
-			)...,
-		)
-	}
-
-	return findings
-}
-
-func behaviorFinding(
-	file source.File,
-	found scope,
-	spec *ast.TypeSpec,
-) (findings []report.Finding) {
-	structure, isStruct := spec.Type.(*ast.StructType)
-	if !isStruct {
-		return nil
-	}
-
-	functions := exportedFunctions(
-		found,
-		structure,
-	)
-	if len(functions) <= maxFunctions {
-		return nil
-	}
-
-	return []report.Finding{{
-		Rule:     apiRule,
-		Location: file.Location(spec.Name),
-		Snippet: fmt.Sprintf(
-			behaviorFormat,
-			spec.Name.Name,
-			found.label,
-			len(functions),
-			strings.Join(
-				functions,
-				fieldSeparator,
-			),
-			found.internal,
-		),
-	}}
-}
-
-func exportedFunctions(
-	found scope,
-	structure *ast.StructType,
-) (functions []string) {
-	for _, field := range structure.Fields.List {
-		functions = append(
-			functions,
-			functionNames(
-				found,
-				field,
-				exportedNames(field.Names),
-			)...,
-		)
-	}
-
-	return functions
-}
-
-func functionNames(
-	found scope,
-	field *ast.Field,
-	names []string,
-) (functions []string) {
-	_, isLiteral := ast.Unparen(field.Type).(*ast.FuncType)
-	named, isNamed := ast.Unparen(field.Type).(*ast.Ident)
-	isFunction := isLiteral || isNamed && slices.Contains(
-		found.functions,
-		named.Name,
-	)
-	if !isFunction {
-		return nil
-	}
-
-	return names
-}
-
-func exportedNames(
-	identifiers []*ast.Ident,
-) (names []string) {
-	for _, identifier := range identifiers {
-		names = appendExported(
-			names,
-			identifier,
-		)
-	}
-
-	return names
-}
-
-func appendExported(
-	names []string,
-	identifier *ast.Ident,
-) (extended []string) {
-	if !identifier.IsExported() {
-		return names
-	}
-
-	return append(
-		names,
-		identifier.Name,
-	)
-}
-
-func packageFunctions(
-	files []source.File,
-) (functions map[string][]string) {
-	functions = map[string][]string{}
-	for _, file := range files {
-		directory := filepath.ToSlash(filepath.Dir(file.Rel))
-		functions[directory] = append(
-			functions[directory],
-			functionTypes(file.Syntax)...,
-		)
-	}
-
-	return functions
-}
-
-func functionTypes(
-	syntax *ast.File,
-) (names []string) {
-	for _, spec := range source.Nodes[*ast.TypeSpec](syntax) {
-		names = append(
-			names,
-			functionType(spec)...,
-		)
-	}
-
-	return names
-}
-
-func functionType(
-	spec *ast.TypeSpec,
-) (names []string) {
-	_, isFunction := spec.Type.(*ast.FuncType)
-	if !isFunction {
-		return nil
-	}
-
-	return []string{spec.Name.Name}
 }
 
 func violationFindings(
