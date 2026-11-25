@@ -148,7 +148,7 @@ func assertFixed(
 func fixed(
 	t *testing.T,
 	code string,
-) (result string) {
+) (rewritten string) {
 	t.Helper()
 	file := parsedContent(
 		t,

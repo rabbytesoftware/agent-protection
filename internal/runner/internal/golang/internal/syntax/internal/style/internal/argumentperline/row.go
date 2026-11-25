@@ -66,7 +66,7 @@ func inlineRow(
 
 func rowValue(
 	element ast.Expr,
-) (value ast.Expr) {
+) (rowExpression ast.Expr) {
 	pair, isPair := element.(*ast.KeyValueExpr)
 	if isPair {
 		return rowValue(pair.Value)

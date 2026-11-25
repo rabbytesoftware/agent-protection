@@ -50,9 +50,10 @@ func fileFindings(
 		)
 	}
 
-	return append(
+	return slices.Concat(
 		findings,
-		unnamedFindings(file)...,
+		unnamedFindings(file),
+		vagueFindings(file),
 	)
 }
 
@@ -309,6 +310,6 @@ func isNamed(
 
 func hasResults(
 	statement *ast.ReturnStmt,
-) (results bool) {
+) (returnsValues bool) {
 	return len(statement.Results) > 0
 }

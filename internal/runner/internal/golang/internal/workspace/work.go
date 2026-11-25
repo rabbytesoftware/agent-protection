@@ -56,10 +56,10 @@ func workMembers(
 
 func unquoted(
 	field string,
-) (value string) {
-	value, err := strconv.Unquote(field)
+) (text string) {
+	text, err := strconv.Unquote(field)
 	if err == nil {
-		return value
+		return text
 	}
 
 	return field

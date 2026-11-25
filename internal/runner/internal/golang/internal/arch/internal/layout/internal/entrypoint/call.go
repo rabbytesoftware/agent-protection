@@ -282,7 +282,7 @@ func qualifierPath(
 }
 
 func isAllowedCall(
-	role string,
+	fileRole role,
 	qualified string,
 	call *ast.CallExpr,
 ) (allowed bool) {
@@ -293,7 +293,7 @@ func isAllowedCall(
 		return true
 	}
 
-	if role != mainRole {
+	if fileRole != mainRole {
 		return false
 	}
 

@@ -250,7 +250,7 @@ func generalOf(
 func valueAt(
 	spec *ast.ValueSpec,
 	index int,
-) (value ast.Expr) {
+) (assigned ast.Expr) {
 	if len(spec.Values) != len(spec.Names) {
 		return nil
 	}

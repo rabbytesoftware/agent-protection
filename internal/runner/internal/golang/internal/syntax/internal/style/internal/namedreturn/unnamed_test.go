@@ -37,6 +37,11 @@ func TestUnnamedResults(
 			want: []string{"p.go:3 method Builder[T].Build returns unnamed results (Bus[T], Pair[K, V]): name every result after what it holds, for example (bus Bus[T], pair Pair[K, V])"},
 		},
 		{
+			name: "a type parameter result suggests value and a numbered type name falls back to a placeholder",
+			code: "package p\n\nfunc (r Reader[T]) Get() (T, Result2, error) {\n\treturn nil, nil, nil\n}\n",
+			want: []string{"p.go:3 method Reader[T].Get returns unnamed results (T, Result2, error): name every result after what it holds, for example (value T, <name> Result2, err error)"},
+		},
+		{
 			name: "func literal results are reported",
 			code: "package p\n\nvar less = func(a int, b int) bool {\n\treturn a < b\n}\n",
 			want: []string{"p.go:3 func literal returns unnamed results (bool): name every result after what it holds, for example (<name> bool)"},

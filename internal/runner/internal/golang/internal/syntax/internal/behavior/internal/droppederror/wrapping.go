@@ -123,7 +123,7 @@ func appendRebuilt(
 
 func errorValue(
 	part ast.Expr,
-) (value ast.Expr) {
+) (checked ast.Expr) {
 	call, isCall := ast.Unparen(part).(*ast.CallExpr)
 	if !isCall {
 		return part

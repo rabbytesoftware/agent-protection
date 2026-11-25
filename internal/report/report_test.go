@@ -106,13 +106,13 @@ func assertReport(
 
 func locations(
 	findings []report.Finding,
-) (result []string) {
+) (listed []string) {
 	for _, finding := range findings {
-		result = append(
-			result,
+		listed = append(
+			listed,
 			finding.Location,
 		)
 	}
 
-	return result
+	return listed
 }

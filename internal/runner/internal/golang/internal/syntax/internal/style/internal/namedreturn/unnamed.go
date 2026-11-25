@@ -145,7 +145,20 @@ func suggestedName(
 		return errorName
 	}
 
-	return validName(typeName(kind))
+	name = validName(typeName(kind))
+	if isLetter(name) {
+		return opaqueName
+	}
+
+	if isVague(
+		name,
+		kind,
+		nil,
+	) {
+		return placeholderName
+	}
+
+	return name
 }
 
 func typeName(

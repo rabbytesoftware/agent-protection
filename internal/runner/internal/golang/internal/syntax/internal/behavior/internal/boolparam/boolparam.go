@@ -35,12 +35,20 @@ func Boolparam(
 	}
 
 	for _, file := range files {
-		findings = append(
+		findings = slices.Concat(
 			findings,
 			fileFindings(
 				file,
 				named[packageKey(file)],
-			)...,
+			),
+			flagFieldFindings(
+				file,
+				packages[packageKey(file)],
+			),
+			modeFindings(
+				file,
+				packages[packageKey(file)],
+			),
 		)
 	}
 
