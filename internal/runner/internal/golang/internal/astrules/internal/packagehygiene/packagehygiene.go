@@ -2,6 +2,8 @@ package packagehygiene
 
 import (
 	"fmt"
+	"maps"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -10,20 +12,32 @@ import (
 )
 
 const (
-	formatRule  = "R21"
-	genericRule = "R22"
-	underscore  = "_"
+	formatRule        = "R21"
+	genericRule       = "R22"
+	packageSubject    = "package"
+	directorySubject  = "directory"
+	mainPackage       = "main"
+	testPackageSuffix = "_test"
+	rootDirectory     = "."
 )
 
 func Packagehygiene(
 	files []source.File,
 ) (findings []report.Finding) {
-	for _, file := range files {
+	packages := map[string]source.File{}
+	for _, file := range slices.Backward(slices.DeleteFunc(
+		slices.Clone(files),
+		isMock,
+	)) {
+		packages[filepath.Dir(file.Rel)] = file
+	}
+
+	for _, directory := range slices.Sorted(maps.Keys(packages)) {
 		findings = append(
 			findings,
-			slices.Concat(
-				formatFindings(file),
-				genericFindings(file),
+			packageFindings(
+				directory,
+				packages[directory],
 			)...,
 		)
 	}
@@ -31,49 +45,87 @@ func Packagehygiene(
 	return findings
 }
 
-func formatFindings(
+func packageFindings(
+	directory string,
 	file source.File,
 ) (findings []report.Finding) {
 	name := file.Syntax.Name.Name
-	isWellFormed := strings.ToLower(name) == name && !strings.Contains(
+	findings = nameFindings(
+		packageSubject,
 		name,
-		underscore,
+		file.Location(file.Syntax.Name),
 	)
-	if isWellFormed {
-		return nil
-	}
-
-	return []report.Finding{{
-		Rule:     formatRule,
-		Location: file.Location(file.Syntax.Name),
-		Snippet: fmt.Sprintf(
-			"package %q: rename it to a short lowercase noun without underscores",
-			name,
-		),
-	}}
-}
-
-func genericFindings(
-	file source.File,
-) (findings []report.Finding) {
-	name := file.Syntax.Name.Name
-	if !slices.Contains(
-		genericNames(),
+	base := filepath.Base(directory)
+	isDirectoryChecked := directory != rootDirectory && name != mainPackage && !strings.HasSuffix(
 		name,
-	) {
+		testPackageSuffix,
+	) && base != name && !isVersion(base)
+	if !isDirectoryChecked {
+		return findings
+	}
+
+	return slices.Concat(
+		findings,
+		[]report.Finding{{
+			Rule:     formatRule,
+			Location: directory,
+			Snippet: fmt.Sprintf(
+				"directory %q holds package %q: name the directory after the package it holds",
+				base,
+				name,
+			),
+		}},
+		nameFindings(
+			directorySubject,
+			base,
+			directory,
+		),
+	)
+}
+
+func nameFindings(
+	subject string,
+	name string,
+	location string,
+) (findings []report.Finding) {
+	for _, check := range checks() {
+		findings = append(
+			findings,
+			checkFindings(
+				check,
+				subject,
+				name,
+				location,
+			)...,
+		)
+	}
+
+	return findings
+}
+
+func checkFindings(
+	check nameCheck,
+	subject string,
+	name string,
+	location string,
+) (findings []report.Finding) {
+	if !check.violates(name) {
 		return nil
 	}
 
 	return []report.Finding{{
-		Rule:     genericRule,
-		Location: file.Location(file.Syntax.Name),
+		Rule:     check.rule,
+		Location: location,
 		Snippet: fmt.Sprintf(
-			"package %q is a generic dumping ground: name it after what it does",
+			check.format,
+			subject,
 			name,
 		),
 	}}
 }
 
-func genericNames() (names []string) {
-	return []string{"util", "utils", "common", "helpers", "helper", "base", "misc", "shared"}
+func isMock(
+	file source.File,
+) (excluded bool) {
+	return source.IsMock(file.Rel)
 }

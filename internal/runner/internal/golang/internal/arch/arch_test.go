@@ -26,7 +26,7 @@ func TestArch(
 				"internal/a/service.go":   "package a\n\nimport \"example.com/m/internal/b\"\n\nfunc A() {\n\tb.B()\n}\n",
 				"internal/a/misc_test.go": "package a_test\n",
 				"internal/b/b.go":         "package b\n\nfunc B() {}\n",
-				"internal/b/b_test.go":    "package b_test\n",
+				"internal/b/b_test.go":    "package b_test\n\nfunc TestB() {}\n",
 			},
 			want: []string{
 				"R16 internal/a/service.go:3",

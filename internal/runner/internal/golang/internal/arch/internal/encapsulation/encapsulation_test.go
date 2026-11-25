@@ -76,6 +76,33 @@ func TestEncapsulation(
 			},
 			want: []string{"R19 internal/report"},
 		},
+		{
+			name: "package two internal boundaries deep imported only by a sibling is reported",
+			files: map[string]string{
+				"internal/svc/svc.go":                "package svc\n\nimport \"example.com/m/internal/svc/internal/api\"\n\nvar _ = api.X\n",
+				"internal/svc/internal/api/api.go":   "package api\n\nimport \"example.com/m/internal/svc/internal/repo\"\n\nvar X = repo.X\n",
+				"internal/svc/internal/repo/repo.go": "package repo\n\nfunc X() {}\n",
+			},
+			want: []string{"R19 internal/svc/internal/repo"},
+		},
+		{
+			name: "package deep inside an internal tree imported only by the module above it passes",
+			files: map[string]string{
+				"internal/svc/svc.go":                    "package svc\n\nimport \"example.com/m/internal/svc/internal/store/sql\"\n\nvar _ = sql.X\n",
+				"internal/svc/internal/store/sql/sql.go": "package sql\n\nfunc X() {}\n",
+			},
+			want: nil,
+		},
+		{
+			name: "blank imports do not count as importers",
+			files: map[string]string{
+				"internal/metrics/metrics.go": "package metrics\n\nimport (\n\t_ \"example.com/m/internal/cache\"\n\t\"example.com/m/internal/svc\"\n)\n\nvar _ = svc.X\n",
+				"internal/tracing/tracing.go": "package tracing\n\nimport (\n\t\"example.com/m/internal/cache\"\n\t_ \"example.com/m/internal/svc\"\n)\n\nvar _ = cache.X\n",
+				"internal/cache/cache.go":     "package cache\n\nfunc X() {}\n",
+				"internal/svc/svc.go":         "package svc\n\nfunc X() {}\n",
+			},
+			want: []string{"R19 internal/cache", "R19 internal/svc"},
+		},
 	}
 	for _, tc := range cases {
 		assertFindings(
