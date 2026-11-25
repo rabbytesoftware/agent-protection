@@ -2,7 +2,9 @@ package nopanic
 
 import (
 	"go/ast"
+	"go/types"
 	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -16,10 +18,14 @@ const (
 	mainPackage     = "main"
 	panicSnippet    = "panic call: return an error to the caller instead"
 	exitSnippet     = " call ends the process from a library: return an error to the caller instead and let main decide whether to exit"
+	valueSnippet    = " used as a value ends the process from a library when called: return an error to the caller instead and let main decide whether to exit"
 	qualifier       = "."
 	logPath         = "log"
 	osPath          = "os"
 	runtimePath     = "runtime"
+	syscallPath     = "syscall"
+	unixPath        = "golang.org/x/sys/unix"
+	windowsPath     = "golang.org/x/sys/windows"
 	unresolvedName  = ""
 	blankImportName = "_"
 	dotImportName   = "."
@@ -29,10 +35,14 @@ const (
 func Nopanic(
 	files []source.File,
 ) (findings []report.Finding) {
+	fields := loggerFields(files)
 	for _, file := range files {
 		findings = append(
 			findings,
-			fileFindings(file)...,
+			fileFindings(
+				file,
+				fields[filepath.Dir(file.Path)],
+			)...,
 		)
 	}
 
@@ -41,18 +51,22 @@ func Nopanic(
 
 func fileFindings(
 	file source.File,
+	fields []string,
 ) (findings []report.Finding) {
 	if file.Syntax.Name.Name == mainPackage {
 		return nil
 	}
 
-	imports := importedPaths(file.Syntax)
-	for _, call := range source.Nodes[*ast.CallExpr](file.Syntax) {
+	found := scopeOf(
+		file.Syntax,
+		fields,
+	)
+	for _, expression := range source.Nodes[ast.Expr](file.Syntax) {
 		findings = appendFinding(
 			findings,
 			file,
-			call,
-			imports,
+			expression,
+			found,
 		)
 	}
 
@@ -62,12 +76,12 @@ func fileFindings(
 func appendFinding(
 	findings []report.Finding,
 	file source.File,
-	call *ast.CallExpr,
-	imports map[string]string,
+	expression ast.Expr,
+	found scope,
 ) (extended []report.Finding) {
-	snippet := callSnippet(
-		call,
-		imports,
+	snippet := expressionSnippet(
+		expression,
+		found,
 	)
 	if snippet == unresolvedName {
 		return findings
@@ -77,15 +91,31 @@ func appendFinding(
 		findings,
 		report.Finding{
 			Rule:     rule,
-			Location: file.Location(call),
+			Location: file.Location(expression),
 			Snippet:  snippet,
 		},
 	)
 }
 
-func callSnippet(
+func expressionSnippet(
+	expression ast.Expr,
+	found scope,
+) (snippet string) {
+	switch typed := expression.(type) {
+	case *ast.CallExpr:
+		return panicCallSnippet(typed)
+	case *ast.SelectorExpr:
+		return selectorSnippet(
+			typed,
+			found,
+		)
+	}
+
+	return unresolvedName
+}
+
+func panicCallSnippet(
 	call *ast.CallExpr,
-	imports map[string]string,
 ) (snippet string) {
 	callee, isIdent := call.Fun.(*ast.Ident)
 	isPanic := isIdent &&
@@ -94,26 +124,40 @@ func callSnippet(
 		return panicSnippet
 	}
 
+	return unresolvedName
+}
+
+func selectorSnippet(
+	selector *ast.SelectorExpr,
+	found scope,
+) (snippet string) {
 	name := terminatorName(
-		call,
-		imports,
+		selector,
+		found.imports,
 	)
+	isLoggerExit := name == unresolvedName && slices.Contains(
+		terminators()[logPath],
+		selector.Sel.Name,
+	) && found.isLogger(selector.X)
+	if isLoggerExit {
+		name = types.ExprString(selector)
+	}
+
 	if name == unresolvedName {
 		return unresolvedName
 	}
 
-	return name + exitSnippet
+	if found.isCalled(selector) {
+		return name + exitSnippet
+	}
+
+	return name + valueSnippet
 }
 
 func terminatorName(
-	call *ast.CallExpr,
+	selector *ast.SelectorExpr,
 	imports map[string]string,
 ) (name string) {
-	selector, isSelector := call.Fun.(*ast.SelectorExpr)
-	if !isSelector {
-		return unresolvedName
-	}
-
 	receiver, isIdent := selector.X.(*ast.Ident)
 	isPackage := isIdent &&
 		receiver.Obj == nil
@@ -182,5 +226,8 @@ func terminators() (names map[string][]string) {
 		},
 		osPath:      {"Exit"},
 		runtimePath: {"Goexit"},
+		syscallPath: {"Exit"},
+		unixPath:    {"Exit"},
+		windowsPath: {"Exit"},
 	}
 }

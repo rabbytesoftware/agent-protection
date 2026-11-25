@@ -39,6 +39,21 @@ func TestEntrypointPackageMain(
 				want:  []string{"R14 main.go:3", "R14 main.go:5"},
 			},
 			{
+				name:  "package var in main.go running a func literal is reported",
+				files: map[string]string{"main.go": "package main\n\nimport \"os\"\n\nvar _ = func() (handled bool) {\n\tos.Exit(run())\n\treturn true\n}()\n\nfunc main() {}\n"},
+				want:  []string{"R14 main.go:5"},
+			},
+			{
+				name:  "package vars in main.go initialized by calls are reported",
+				files: map[string]string{"main.go": "package main\n\nimport \"flag\"\n\nvar (\n\tmode = flag.String(\"mode\", \"fast\", \"mode\")\n\tsize, limit = sizes()\n)\n\nfunc main() {}\n"},
+				want:  []string{"R14 main.go:6", "R14 main.go:7", "R14 main.go:7"},
+			},
+			{
+				name:  "package vars in main.go without calls pass",
+				files: map[string]string{"main.go": "package main\n\nvar version string\n\nvar name = \"app\"\n\nfunc main() {}\n"},
+				want:  nil,
+			},
+			{
 				name:  "init in main.go is reported",
 				files: map[string]string{"main.go": "package main\n\nfunc init() {}\n\nfunc main() {}\n"},
 				want:  []string{"R14 main.go:3"},

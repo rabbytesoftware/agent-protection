@@ -5,6 +5,13 @@ import (
 	"go/token"
 	"go/types"
 	"slices"
+	"strings"
+)
+
+const (
+	cancelSuffix = "cancel"
+	logName      = "log"
+	loggerSuffix = "logger"
 )
 
 func mutatingCalls(
@@ -179,4 +186,137 @@ func calleeName(
 	call *ast.CallExpr,
 ) (name string) {
 	return types.ExprString(call.Fun)
+}
+
+func commandCalls(
+	described callable,
+) (calls []*ast.CallExpr) {
+	for _, call := range described.calls {
+		calls = appendCommand(
+			calls,
+			described,
+			call,
+		)
+	}
+
+	return calls
+}
+
+func appendCommand(
+	calls []*ast.CallExpr,
+	described callable,
+	call *ast.CallExpr,
+) (extended []*ast.CallExpr) {
+	if !isCommand(
+		described,
+		call,
+	) {
+		return calls
+	}
+
+	return append(
+		calls,
+		call,
+	)
+}
+
+func isCommand(
+	described callable,
+	call *ast.CallExpr,
+) (command bool) {
+	signature, isSignature := resolvedType(
+		described,
+		call.Fun,
+	).(*ast.FuncType)
+	_, isSlot := everySlot(described)[rootName(receiverOf(call.Fun))]
+	return isSignature &&
+		isSlot &&
+		signature.Results.NumFields() == 0 &&
+		!isExemptCommand(
+			described,
+			call.Fun,
+		)
+}
+
+func commandRoots(
+	described callable,
+) (names []string) {
+	for _, call := range commandCalls(described) {
+		names = append(
+			names,
+			rootName(receiverOf(call.Fun)),
+		)
+	}
+
+	return names
+}
+
+func isExemptCommand(
+	described callable,
+	function ast.Expr,
+) (exempt bool) {
+	name := strings.ToLower(lastName(function))
+	isLifecycle := slices.Contains(
+		lockMethods(),
+		name,
+	) || strings.HasSuffix(
+		name,
+		cancelSuffix,
+	)
+	if isLifecycle {
+		return true
+	}
+
+	owner := receiverOf(function)
+	if owner == nil {
+		return false
+	}
+
+	return isLoggerName(lastName(owner)) || isLoggerName(ownerTypeName(resolvedType(
+		described,
+		owner,
+	)))
+}
+
+func isLoggerName(
+	name string,
+) (logger bool) {
+	lowered := strings.ToLower(name)
+	return lowered == logName || strings.HasSuffix(
+		lowered,
+		loggerSuffix,
+	)
+}
+
+func ownerTypeName(
+	expression ast.Expr,
+) (name string) {
+	selector, isSelector := elementType(expression).(*ast.SelectorExpr)
+	if isSelector {
+		return selector.Sel.Name
+	}
+
+	return typeName(expression)
+}
+
+func lastName(
+	expression ast.Expr,
+) (name string) {
+	switch typed := ast.Unparen(expression).(type) {
+	case *ast.Ident:
+		return typed.Name
+	case *ast.SelectorExpr:
+		return typed.Sel.Name
+	}
+
+	return ""
+}
+
+func lockMethods() (names []string) {
+	return []string{
+		"lock",
+		"unlock",
+		"rlock",
+		"runlock",
+	}
 }

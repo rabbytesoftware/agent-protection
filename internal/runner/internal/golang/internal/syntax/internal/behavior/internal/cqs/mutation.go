@@ -26,6 +26,8 @@ func directPositions(
 	for _, name := range slices.Concat(
 		sharedRoots(described.declaration.Body),
 		stdlibRoots(described),
+		commandRoots(described),
+		pointerFieldRoots(described),
 	) {
 		positions = appendPosition(
 			positions,
@@ -110,7 +112,70 @@ func appendPosition(
 func writtenRoots(
 	body *ast.BlockStmt,
 ) (names []string) {
-	targets := []ast.Expr{}
+	for _, target := range writeTargets(body) {
+		names = append(
+			names,
+			mutatedRoot(target),
+		)
+	}
+
+	return names
+}
+
+func pointerFieldRoots(
+	described callable,
+) (names []string) {
+	for _, target := range writeTargets(described.declaration.Body) {
+		names = appendPointerField(
+			names,
+			described,
+			target,
+		)
+	}
+
+	return names
+}
+
+func appendPointerField(
+	names []string,
+	described callable,
+	target ast.Expr,
+) (extended []string) {
+	if !throughPointerField(
+		described,
+		target,
+	) {
+		return names
+	}
+
+	return append(
+		names,
+		rootName(target),
+	)
+}
+
+func throughPointerField(
+	described callable,
+	target ast.Expr,
+) (through bool) {
+	selector, isSelector := ast.Unparen(target).(*ast.SelectorExpr)
+	if !isSelector {
+		return false
+	}
+
+	_, isPointer := resolvedType(
+		described,
+		selector.X,
+	).(*ast.StarExpr)
+	return isPointer || throughPointerField(
+		described,
+		selector.X,
+	)
+}
+
+func writeTargets(
+	body *ast.BlockStmt,
+) (targets []ast.Expr) {
 	for _, assignment := range liveNodes[*ast.AssignStmt](body) {
 		targets = append(
 			targets,
@@ -135,14 +200,7 @@ func writtenRoots(
 		)
 	}
 
-	for _, target := range targets {
-		names = append(
-			names,
-			mutatedRoot(target),
-		)
-	}
-
-	return names
+	return targets
 }
 
 func everySlot(

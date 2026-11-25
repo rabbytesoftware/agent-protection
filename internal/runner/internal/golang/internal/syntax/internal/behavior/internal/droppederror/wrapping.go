@@ -26,6 +26,8 @@ const (
 	directiveFlags  = "+-# 0123456789."
 	unplainPrefixes = "[*"
 	wrappingFormat  = "%s is formatted with %%%c: wrap the error with %%w so callers can errors.Is/As it"
+	rebuiltFormat   = "%s rebuilds the error from its text and drops the chain: wrap it with fmt.Errorf(\"...: %%w\", %s) so callers can errors.Is/As it"
+	newName         = "New"
 )
 
 func wrappingFindings(
@@ -47,7 +49,87 @@ func wrappingFindings(
 		)
 	}
 
+	for _, call := range source.Nodes[*ast.CallExpr](file.Syntax) {
+		findings = append(
+			findings,
+			rebuiltFindings(
+				file,
+				call,
+				callees,
+			)...,
+		)
+	}
+
 	return findings
+}
+
+func rebuiltFindings(
+	file source.File,
+	call *ast.CallExpr,
+	callees map[string]int,
+) (findings []report.Finding) {
+	selector, isSelector := call.Fun.(*ast.SelectorExpr)
+	isNew := isSelector &&
+		len(call.Args) == 1 &&
+		identifierName(selector.X) == errorsPackage &&
+		selector.Sel.Name == newName
+	if !isNew {
+		return nil
+	}
+
+	for _, part := range source.Nodes[ast.Expr](call.Args[0]) {
+		findings = appendRebuilt(
+			findings,
+			file,
+			call,
+			part,
+			callees,
+		)
+	}
+
+	return findings[:min(
+		len(findings),
+		1,
+	)]
+}
+
+func appendRebuilt(
+	findings []report.Finding,
+	file source.File,
+	call *ast.CallExpr,
+	part ast.Expr,
+	callees map[string]int,
+) (extended []report.Finding) {
+	if !isErrorArgument(
+		part,
+		callees,
+	) {
+		return findings
+	}
+
+	return append(
+		findings,
+		finding(
+			file,
+			call,
+			fmt.Sprintf(
+				rebuiltFormat,
+				types.ExprString(call),
+				types.ExprString(errorValue(part)),
+			),
+		),
+	)
+}
+
+func errorValue(
+	part ast.Expr,
+) (value ast.Expr) {
+	call, isCall := ast.Unparen(part).(*ast.CallExpr)
+	if !isCall {
+		return part
+	}
+
+	return receiverOf(call)
 }
 
 func errorfFindings(

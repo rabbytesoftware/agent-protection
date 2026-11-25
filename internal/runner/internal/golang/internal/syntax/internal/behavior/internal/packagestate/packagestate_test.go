@@ -93,6 +93,42 @@ func TestPackagestate(
 			want: nil,
 		},
 		{
+			name: "blank interface assertions with composite literals pass",
+			rel:  "p.go",
+			code: "package p\n\nvar (\n\t_ I = T{}\n\t_ I = &T{}\n\t_ I[int] = (*G[int])(nil)\n)\n",
+			want: nil,
+		},
+		{
+			name: "blank var initialized by a call is reported",
+			rel:  "p.go",
+			code: "package p\n\nimport \"flag\"\n\nvar _ = flag.String(\n\t\"mode\",\n\t\"fast\",\n\t\"mode\",\n)\n",
+			want: []string{"R24 p.go:5"},
+		},
+		{
+			name: "blank var running a func literal is reported, in main too",
+			rel:  "main.go",
+			code: "package main\n\nvar _ = func() (ok bool) {\n\tregister()\n\treturn true\n}()\n",
+			want: []string{"R24 main.go:3"},
+		},
+		{
+			name: "blank interface assertion hiding a call is reported",
+			rel:  "p.go",
+			code: "package p\n\nvar _ I = T{\n\tready: start(),\n}\n\nvar _ I = (*T)(boot())\n",
+			want: []string{"R24 p.go:3", "R24 p.go:7"},
+		},
+		{
+			name: "blank var without a call passes",
+			rel:  "p.go",
+			code: "package p\n\nvar _ = limit\n\nvar _ = func() {\n}\n",
+			want: nil,
+		},
+		{
+			name: "sentinel built by a func literal call is reported",
+			rel:  "p.go",
+			code: "package p\n\nvar ErrBoot = func() (err error) {\n\tregister()\n\treturn nil\n}()\n",
+			want: []string{"R24 p.go:3"},
+		},
+		{
 			name: "embedded data passes, alone or grouped",
 			rel:  "p.go",
 			code: "package p\n\nimport _ \"embed\"\n\n//go:embed a.txt\nvar a string\n\nvar (\n\t//go:embed b.txt\n\tb string\n\tc string\n)\n",

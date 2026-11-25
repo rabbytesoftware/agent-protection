@@ -85,6 +85,51 @@ func TestCqsThroughCalls(
 			code: "package p\n\ntype T struct {\n\tv int\n}\n\nfunc (t *T) bump() {\n\tt.v++\n}\n\nfunc (t *T) Bump() (err error) {\n\tt.bump()\n\treturn nil\n}\n",
 			want: nil,
 		},
+		{
+			name: "result-less method on an interface field of the receiver is reported",
+			code: "package p\n\ntype Ledger interface {\n\tRecord(\n\t\tvalue int,\n\t)\n\tCount() (count int)\n}\n\ntype T struct {\n\tledger Ledger\n}\n\nfunc (t *T) Square(\n\tv int,\n) (r int) {\n\tt.ledger.Record(v)\n\treturn v * t.ledger.Count()\n}\n",
+			want: []string{"p.go:14"},
+		},
+		{
+			name: "result-less func field called through a value receiver is reported",
+			code: "package p\n\ntype T struct {\n\trecord func(value int)\n}\n\nfunc (t T) Note(\n\tv int,\n) (r int) {\n\tt.record(v)\n\treturn v\n}\n",
+			want: []string{"p.go:7"},
+		},
+		{
+			name: "result-less method on an interface parameter is reported",
+			code: "package p\n\ntype Sink interface {\n\tPut(\n\t\tvalue int,\n\t)\n}\n\nfunc f(\n\tsink Sink,\n) (n int) {\n\tsink.Put(1)\n\treturn 1\n}\n",
+			want: []string{"p.go:9"},
+		},
+		{
+			name: "query calling a command helper on the receiver is reported",
+			code: "package p\n\ntype T struct {\n\tonHit func()\n}\n\nfunc (t *T) hit() {\n\tt.onHit()\n}\n\nfunc (t *T) Get() (v int) {\n\tt.hit()\n\treturn 1\n}\n",
+			want: []string{"p.go:11"},
+		},
+		{
+			name: "interface methods with results on fields pass",
+			code: "package p\n\ntype Ledger interface {\n\tCount() (count int)\n}\n\ntype T struct {\n\tledger Ledger\n}\n\nfunc (t *T) Get() (v int) {\n\treturn t.ledger.Count()\n}\n",
+			want: nil,
+		},
+		{
+			name: "calling a func parameter passes",
+			code: "package p\n\nfunc run(\n\tvisit func(value int),\n) (n int) {\n\tvisit(1)\n\treturn 1\n}\n",
+			want: nil,
+		},
+		{
+			name: "lock, cancel and logger calls pass",
+			code: "package p\n\ntype locker interface {\n\tLock()\n\tUnlock()\n}\n\ntype Logger interface {\n\tInfo(\n\t\tmessage string,\n\t)\n}\n\ntype T struct {\n\tmu     locker\n\tcancel func()\n\tlog    Logger\n\taudit  auditLogger\n}\n\ntype auditLogger interface {\n\tWrite(\n\t\tline string,\n\t)\n}\n\nfunc (t *T) Get() (v int) {\n\tt.mu.Lock()\n\tdefer t.mu.Unlock()\n\tt.log.Info(\"get\")\n\tt.audit.Write(\"get\")\n\tt.cancel()\n\treturn 1\n}\n",
+			want: nil,
+		},
+		{
+			name: "storing the created value through an interface field passes",
+			code: "package p\n\ntype Repo interface {\n\tAdd(\n\t\titem *Item,\n\t)\n}\n\ntype T struct {\n\trepo Repo\n}\n\nfunc (t *T) Create() (item *Item) {\n\tcreated := &Item{}\n\tt.repo.Add(created)\n\treturn created\n}\n",
+			want: nil,
+		},
+		{
+			name: "result-less command returning only an error passes",
+			code: "package p\n\ntype Sink interface {\n\tPut()\n}\n\ntype T struct {\n\tsink Sink\n}\n\nfunc (t *T) Flush() (err error) {\n\tt.sink.Put()\n\treturn nil\n}\n",
+			want: nil,
+		},
 	}
 	for _, tc := range cases {
 		assertCase(

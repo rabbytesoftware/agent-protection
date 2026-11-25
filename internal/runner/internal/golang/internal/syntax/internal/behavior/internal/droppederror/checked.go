@@ -4,10 +4,16 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"go/types"
 	"slices"
 
 	"github.com/rabbytesoftware/agent-protection/internal/report"
 	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/golang/internal/source"
+)
+
+const (
+	errorsPackage = "errors"
+	partialFormat = "%s handles only the error it matches and drops every other %s: return, wrap or check %s again on the path where it does not match"
 )
 
 func checkedFindings(
@@ -16,14 +22,20 @@ func checkedFindings(
 	callees map[string]int,
 ) (findings []report.Finding) {
 	for _, statement := range source.Nodes[*ast.IfStmt](function) {
-		findings = append(
+		findings = slices.Concat(
 			findings,
 			ifFindings(
 				file,
 				function,
 				statement,
 				callees,
-			)...,
+			),
+			matchFindings(
+				file,
+				function,
+				statement,
+				callees,
+			),
 		)
 	}
 
@@ -79,6 +91,153 @@ func checkFindings(
 			checked.Name,
 		),
 	)}
+}
+
+func matchFindings(
+	file source.File,
+	function *ast.FuncDecl,
+	statement *ast.IfStmt,
+	callees map[string]int,
+) (findings []report.Finding) {
+	for _, call := range source.Nodes[*ast.CallExpr](statement.Cond) {
+		findings = append(
+			findings,
+			matchFinding(
+				file,
+				function,
+				statement,
+				call,
+				callees,
+			)...,
+		)
+	}
+
+	return findings
+}
+
+func matchFinding(
+	file source.File,
+	function *ast.FuncDecl,
+	statement *ast.IfStmt,
+	call *ast.CallExpr,
+	callees map[string]int,
+) (findings []report.Finding) {
+	checked := matchedError(call)
+	isDrop := checked != nil &&
+		isFailure(
+			checked,
+			callees,
+		) &&
+		!isParameter(
+			function,
+			checked,
+		) &&
+		!isNamedResult(
+			function,
+			checked,
+		) &&
+		!reachesMismatch(
+			function,
+			statement,
+			call,
+			checked,
+		)
+	if !isDrop {
+		return nil
+	}
+
+	return []report.Finding{finding(
+		file,
+		call,
+		fmt.Sprintf(
+			partialFormat,
+			types.ExprString(call.Fun),
+			checked.Name,
+			checked.Name,
+		),
+	)}
+}
+
+func reachesMismatch(
+	function *ast.FuncDecl,
+	statement *ast.IfStmt,
+	call *ast.CallExpr,
+	checked *ast.Ident,
+) (reaches bool) {
+	uses, bindings := occurrences(
+		function,
+		checked,
+	)
+	reaches = anyBetween(
+		uses,
+		call.End(),
+		statement.Body.Lbrace,
+	) || anyBetween(
+		uses,
+		statement.End(),
+		earliestAfter(
+			bindings,
+			statement.End(),
+			function.End(),
+		),
+	)
+	if statement.Else != nil {
+		reaches = reaches || anyBetween(
+			uses,
+			statement.Else.Pos(),
+			statement.Else.End(),
+		)
+	}
+
+	return reaches || isNegated(
+		statement.Cond,
+		call,
+	) && (anyBetween(
+		uses,
+		statement.Body.Lbrace,
+		statement.Body.Rbrace,
+	) || len(source.Nodes[*ast.CallExpr](statement.Body)) > 0)
+}
+
+func isNegated(
+	condition ast.Expr,
+	call *ast.CallExpr,
+) (negated bool) {
+	for _, unary := range source.Nodes[*ast.UnaryExpr](condition) {
+		negated = negated || unary.Op == token.NOT && ast.Unparen(unary.X) == call
+	}
+
+	return negated
+}
+
+func matchedError(
+	call *ast.CallExpr,
+) (checked *ast.Ident) {
+	selector, isSelector := call.Fun.(*ast.SelectorExpr)
+	isMatch := isSelector &&
+		len(call.Args) == 2 &&
+		identifierName(selector.X) == errorsPackage &&
+		slices.Contains(
+			matchFunctions(),
+			selector.Sel.Name,
+		)
+	if !isMatch {
+		return nil
+	}
+
+	checked, isIdent := ast.Unparen(call.Args[0]).(*ast.Ident)
+	if !isIdent {
+		return nil
+	}
+
+	return checked
+}
+
+func matchFunctions() (names []string) {
+	return []string{
+		"Is",
+		"As",
+	}
 }
 
 func nilChecked(

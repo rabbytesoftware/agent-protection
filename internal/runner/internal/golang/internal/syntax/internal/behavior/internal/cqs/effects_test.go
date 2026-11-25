@@ -92,3 +92,27 @@ func TestCqsAcrossFiles(
 		)
 	}
 }
+
+func TestCqsQualifiedInterfaces(
+	t *testing.T,
+) {
+	contract := "package ports\n\ntype Bus interface {\n\tPublish(\n\t\tevent string,\n\t)\n\tCount() (count int)\n}\n"
+	query := "package a\n\nimport \"example.com/m/ports\"\n\ntype T struct {\n\tbus ports.Bus\n}\n\nfunc (t *T) Get() (v int) {\n\tt.bus.Publish(\"get\")\n\treturn t.bus.Count()\n}\n"
+	assertLocations(
+		t,
+		"result-less method of an interface declared in another package is reported",
+		cqs.Cqs([]source.File{
+			parsedAt(
+				t,
+				"ports/bus.go",
+				contract,
+			),
+			parsedAt(
+				t,
+				"a/query.go",
+				query,
+			),
+		}),
+		[]string{"a/query.go:9"},
+	)
+}
