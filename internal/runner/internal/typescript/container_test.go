@@ -56,7 +56,7 @@ func TestTypescript(
 	}
 
 	got := summaries(findings)
-	want := []string{"TS-ESLINT:no-console src/a.ts:2", "TS-ESLINT:custom/rule src/a.ts:5", "TS-NO-DEBUG-OUTPUT src/a.ts:2", "R07 a.ts:1"}
+	want := []string{"TS-ESLINT:no-console src/a.ts:2", "TS-ESLINT:custom/rule src/a.ts:5", "TS-NO-DEBUG-OUTPUT src/a.ts:2"}
 	if !slices.Equal(
 		got,
 		want,
@@ -82,7 +82,7 @@ func TestTypescriptEslintFailure(
 	}
 }
 
-func TestTypescriptUnreadableSource(
+func TestTypescriptProjectEslintFailure(
 	t *testing.T,
 ) {
 	root := t.TempDir()
@@ -95,22 +95,13 @@ func TestTypescriptUnreadableSource(
 		"export default [];\n",
 		0o600,
 	)
-	writeFile(
-		t,
-		filepath.Join(
-			root,
-			"a.ts",
-		),
-		"export {};\n",
-		0o000,
-	)
 	fakeBun(
 		t,
-		"printf '%s' '[]'",
+		"exit 2",
 	)
 	_, err := typescript.Typescript(root)
 	if err == nil {
-		t.Error("Typescript() error = nil, want an error for a source file the comment scan cannot read")
+		t.Error("Typescript() error = nil, want the project eslint run failure")
 	}
 }
 

@@ -1,19 +1,22 @@
-package commentscan
+package jslex
 
 import (
 	"bytes"
+	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/rabbytesoftware/agent-protection/internal/runner/internal/commentscan/internal/lexeme"
 )
 
 const (
-	templateQuote      = '`'
-	templateStops      = "`"
-	expressionOpener   = "${"
-	blockOpener        = '{'
-	blockCloser        = '}'
-	scriptQuotes       = "'\""
-	scriptStringStops  = "\n"
+	templateQuote    = '`'
+	templateStops    = "`"
+	expressionOpener = "${"
+	blockOpener      = '{'
+	blockCloser      = '}'
+	scriptQuotes     = "'\""
+
 	tripleSlash        = "///"
 	schemeColon        = ":"
 	referenceDirective = "<reference"
@@ -24,8 +27,8 @@ const (
 
 func scriptSpans(
 	text []byte,
-) (spans []span) {
-	cursor := shebangEnd(text)
+) (spans []lexeme.Span) {
+	cursor := lexeme.ShebangEnd(text)
 	for cursor < len(text) {
 		closing, found := scriptBlockEnd(
 			text,
@@ -44,7 +47,7 @@ func scriptSpans(
 func scriptBlockEnd(
 	text []byte,
 	at int,
-) (closing int, spans []span) {
+) (closing int, spans []lexeme.Span) {
 	depth := 0
 	closing = at
 	for !closesScriptBlock(
@@ -94,21 +97,21 @@ func braceDelta(
 func scriptTokenEnd(
 	text []byte,
 	at int,
-) (next int, spans []span) {
+) (next int, spans []lexeme.Span) {
 	switch {
-	case hasPrefix(
+	case lexeme.HasPrefix(
 		text,
 		at,
-		lineCommentOpener,
+		lexeme.LineCommentOpener,
 	):
 		return scriptLineComment(
 			text,
 			at,
 		)
-	case hasPrefix(
+	case lexeme.HasPrefix(
 		text,
 		at,
-		blockCommentOpener,
+		lexeme.BlockCommentOpener,
 	):
 		return scriptBlockComment(
 			text,
@@ -136,10 +139,10 @@ func scriptLiteralEnd(
 		scriptQuotes,
 		text[at],
 	) >= 0 {
-		return quotedEnd(
+		return lexeme.QuotedEnd(
 			text,
 			at,
-			scriptStringStops,
+			lexeme.LineStops,
 		)
 	}
 
@@ -159,16 +162,16 @@ func scriptLiteralEnd(
 func scriptLineComment(
 	text []byte,
 	at int,
-) (end int, spans []span) {
+) (end int, spans []lexeme.Span) {
 	if isSchemeSeparator(
 		text,
 		at,
 	) {
-		return at + len(lineCommentOpener),
+		return at + len(lexeme.LineCommentOpener),
 			nil
 	}
 
-	end, spans = lineComment(
+	end, spans = lexeme.LineComment(
 		text,
 		at,
 	)
@@ -222,8 +225,8 @@ func isReferenceDirective(
 func scriptBlockComment(
 	text []byte,
 	at int,
-) (end int, spans []span) {
-	end = blockEnd(
+) (end int, spans []lexeme.Span) {
+	end = lexeme.BlockEnd(
 		text,
 		at,
 	)
@@ -233,7 +236,7 @@ func scriptBlockComment(
 	}
 
 	return end,
-		[]span{{start: at, end: end}}
+		[]lexeme.Span{{Start: at, End: end}}
 }
 
 func isPureAnnotation(
@@ -242,9 +245,9 @@ func isPureAnnotation(
 	inner := bytes.TrimSpace(bytes.TrimSuffix(
 		bytes.TrimPrefix(
 			comment,
-			[]byte(blockCommentOpener),
+			[]byte(lexeme.BlockCommentOpener),
 		),
-		[]byte(blockCommentCloser),
+		[]byte(lexeme.BlockCommentCloser),
 	))
 	return slices.Contains(
 		pureAnnotations(),
@@ -259,9 +262,9 @@ func pureAnnotations() (annotations []string) {
 func templateEnd(
 	text []byte,
 	at int,
-) (end int, spans []span) {
+) (end int, spans []lexeme.Span) {
 	cursor := at
-	for isOpen(
+	for lexeme.IsOpen(
 		text,
 		cursor,
 		templateStops,
@@ -277,7 +280,7 @@ func templateEnd(
 		cursor = next
 	}
 
-	return closedEnd(
+	return lexeme.ClosedEnd(
 			text,
 			cursor,
 			templateQuote,
@@ -288,13 +291,13 @@ func templateEnd(
 func templateSegmentEnd(
 	text []byte,
 	at int,
-) (next int, spans []span) {
-	if !hasPrefix(
+) (next int, spans []lexeme.Span) {
+	if !lexeme.HasPrefix(
 		text,
 		at,
 		expressionOpener,
 	) {
-		return escapedNext(
+		return lexeme.EscapedNext(
 				text,
 				at,
 			),
@@ -310,4 +313,24 @@ func templateSegmentEnd(
 			len(text),
 		),
 		spans
+}
+
+func Jslex() (language lexeme.Language) {
+	return lexeme.Language{
+		Matches: matches,
+		Spans:   scriptSpans,
+	}
+}
+
+func matches(
+	name string,
+) (matched bool) {
+	return slices.Contains(
+		extensions(),
+		filepath.Ext(name),
+	)
+}
+
+func extensions() (extensions []string) {
+	return []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"}
 }

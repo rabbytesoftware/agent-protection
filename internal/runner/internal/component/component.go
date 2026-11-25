@@ -14,12 +14,14 @@ const (
 	GoMarker         = "go.mod"
 	RustMarker       = "Cargo.toml"
 	TypescriptMarker = "package.json"
+	GoSource         = ".go"
 	markerSeparator  = ", "
 )
 
 func Check(
 	root string,
 	checkers []Checker,
+	comments func(string, []string) ([]report.Finding, error),
 ) (findings []report.Finding, err error) {
 	index := slices.Index(
 		presence(
@@ -36,7 +38,26 @@ func Check(
 			)
 	}
 
-	return checkers[index].Check(root)
+	own, err := checkers[index].Check(root)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	commented, err := comments(
+		root,
+		checkers[index].Owned,
+	)
+	if err != nil {
+		return nil,
+			err
+	}
+
+	return append(
+			own,
+			commented...,
+		),
+		nil
 }
 
 func presence(

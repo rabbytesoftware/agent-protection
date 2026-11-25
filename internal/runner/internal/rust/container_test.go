@@ -47,10 +47,10 @@ func TestRust(
 	got := locations(findings)
 	if !slices.Equal(
 		got,
-		[]string{"src/lib.rs:2", "src/main.rs:1"},
+		[]string{"src/lib.rs:2"},
 	) {
 		t.Errorf(
-			"Rust() locations = %v, want the production unwrap at src/lib.rs:2 and the comment at src/main.rs:1",
+			"Rust() locations = %v, want only the production unwrap at src/lib.rs:2; comments are scanned by the runner",
 			got,
 		)
 	}
@@ -79,41 +79,6 @@ func TestRustClippyFailure(
 	_, err := rust.Rust(t.TempDir())
 	if err == nil {
 		t.Error("Rust() error = nil, want the clippy failure")
-	}
-}
-
-func TestRustUnreadableSource(
-	t *testing.T,
-) {
-	root := t.TempDir()
-	path := filepath.Join(
-		root,
-		"src/lib.rs",
-	)
-	writeFile(
-		t,
-		path,
-		library,
-	)
-	err := os.Chmod(
-		path,
-		0o000,
-	)
-	if err != nil {
-		t.Fatalf(
-			"chmod %s: %v",
-			path,
-			err,
-		)
-	}
-
-	fakeCargo(
-		t,
-		"true",
-	)
-	_, err = rust.Rust(root)
-	if err == nil {
-		t.Error("Rust() error = nil, want an error for a source file the comment scan cannot read")
 	}
 }
 
